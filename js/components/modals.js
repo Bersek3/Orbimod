@@ -314,6 +314,7 @@ export class ConnectionHubModal {
               </div>
               <div id="twitch-validation-feedback" style="display: none; font-size: 11.5px; padding: 6px 10px; border-radius: 4px;"></div>
             </div>
+            `}
 
             <!-- Auto-Detected Moderated Channels Section -->
             <div style="margin-top: 14px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; display: flex; flex-direction: column; gap: 10px;">
