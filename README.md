@@ -20,13 +20,13 @@ git push origin main
 ### 2. Activar GitHub Pages
 1. Ve a tu repositorio en GitHub -> **Settings** -> **Pages**.
 2. En **Source**, selecciona **Deploy from a branch** -> branch `main` / `(root)` y pulsa **Save**.
-3. Tu app estará disponible en: `https://TU_USUARIO.github.io/futbol/`
+3. Tu app estará disponible en: `https://bersek3.github.io/Orbimod/`
 
 ### 3. Registrar tu Aplicación en Twitch Developer Console (Direct 1-Click OAuth)
 1. Ve a [https://dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps) e inicia sesión.
 2. Haz clic en **"Register Your Application"** (Registrar Aplicación):
    - **Name**: `OrbiMod`
-   - **OAuth Redirect URLs**: `https://TU_USUARIO.github.io/futbol/` (y también puedes añadir `http://localhost:5500`)
+   - **OAuth Redirect URLs**: `https://bersek3.github.io/Orbimod/` (y también puedes añadir `http://localhost:5500`)
    - **Category**: `Website Integration`
 3. Copia el **Client ID** que te proporciona Twitch.
 4. Abre **OrbiMod** -> haz clic en **Vincular Twitch** -> pega tu **Client ID** en la Opción 1 y haz clic en **"🟣 Iniciar Sesión Directa"**.
