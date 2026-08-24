@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS MOD DECK — Twitch & Kick Multi-Channel Moderation Control Station</title>
+  <meta name="description" content="Software profesional de alta velocidad para moderar múltiples canales simultáneos de Twitch y Kick con AutoMod, Inspector de Usuarios y Registro de Auditoría.">
+
+  <!-- CSS Design System (Relative paths for GitHub Pages compatibility) -->
+  <link rel="stylesheet" href="./css/main.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/chat.css">
+  <link rel="stylesheet" href="./css/responsive.css">
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239146FF'><polygon points='12 2 2 7 12 12 22 7 12 2'/><polyline points='2 17 12 22 22 17'/><polyline points='2 12 12 17 22 12'/></svg>">
+</head>
+<body>
+  <div id="app-root">
+
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <!-- Brand & Title -->
+      <div class="brand-section">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        </div>
+        <div class="brand-title">
+          <h1>NEXUS MOD DECK <span class="brand-version-pill">PRO v2.4</span></h1>
+          <div class="brand-sub">
+            <span>Twitch & Kick Multi-Channel Moderation</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: Layout View Switchers -->
+      <nav class="header-nav">
+        <button class="layout-btn active" data-layout="layout-grid-2x2" title="Cuadrícula 2x2 (4 Canales)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span>Grid 2x2</span>
+        </button>
+        <button class="layout-btn" data-layout="layout-split-1-2" title="Canal Principal + Secundarios">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="9" height="18"/><rect x="14" y="3" width="7" height="8"/><rect x="14" y="13" width="7" height="8"/></svg>
+          <span>Split 1+2</span>
+        </button>
+        <button class="layout-btn" data-layout="layout-chat-wall" title="Muro de Chats (Sin Video)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="16" y2="21"/><rect x="2" y="3" width="20" height="18" rx="2"/></svg>
+          <span>Chat Wall</span>
+        </button>
+        <button class="layout-btn" data-layout="layout-single-focus" title="Enfoque en 1 Canal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          <span>Focus</span>
+        </button>
+      </nav>
+
+      <!-- Right: Main Mod Action Buttons -->
+      <div class="header-actions">
+        <!-- Shield Mode Quick Trigger -->
+        <button id="btn-global-shield" class="btn btn-shield" title="Activar Escudo de Emergencia / Bloqueo Total (Alt+S)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Escudo</span>
+        </button>
+
+        <!-- AutoMod Queue with Badge -->
+        <button id="btn-automod-queue" class="btn btn-secondary btn-badge-container" title="Cola de Revisión AutoMod (Alt+A)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>AutoMod</span>
+          <span id="automod-badge-count" class="pill-count" style="display: none;">0</span>
+        </button>
+
+        <!-- Audit Log -->
+        <button id="btn-audit-log" class="btn btn-secondary" title="Registro de Auditoría en Tiempo Real (Alt+L)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span>Auditoría</span>
+        </button>
+
+        <!-- Event Radar -->
+        <button id="btn-event-radar" class="btn btn-secondary" title="Radar de Raids y Eventos (Alt+R)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Radar</span>
+        </button>
+
+        <!-- Macros Manager -->
+        <button id="btn-macro-manager" class="btn btn-secondary btn-icon" title="Gestor de Macros y Respuestas Rápidas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h8M6 16h12"/></svg>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button id="btn-toggle-sound" class="btn btn-secondary btn-icon active" title="Alternar Efectos de Audio">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+        </button>
+
+        <!-- Connection Hub / Settings -->
+        <button id="btn-connection-hub" class="btn btn-secondary btn-icon" title="Conexiones y Tokens de Moderación">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        </button>
+
+        <!-- Hotkeys Help -->
+        <button id="btn-hotkeys-help" class="btn btn-secondary btn-icon" title="Atajos de Teclado">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </button>
+
+        <!-- Add Channel Button -->
+        <button id="btn-add-channel" class="btn btn-primary" title="Añadir Nuevo Canal de Twitch o Kick">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          <span>+ Añadir Canal</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Global Sub-Header / Status Ticker Bar -->
+    <div class="status-ticker-bar">
+      <div class="status-metrics">
+        <!-- Live Velocity Metric -->
+        <div class="metric-item">
+          <div class="metric-dot pulse"></div>
+          <span>Velocidad Chat:</span>
+          <span id="metric-msg-velocity" class="metric-value">0 msg/s</span>
+        </div>
+
+        <!-- Active Channels Count -->
+        <div class="metric-item">
+          <span>Canales Deck:</span>
+          <span id="metric-channels-count" class="metric-value">4 Activos</span>
+        </div>
+
+        <!-- Chatters in Session -->
+        <div class="metric-item">
+          <span>Usuarios en Sesión:</span>
+          <span id="metric-total-chatters" class="metric-value">0 Usuarios</span>
+        </div>
+
+        <!-- Platform Status Lights -->
+        <div class="metric-item" style="gap: 14px; margin-left: 10px;">
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span id="twitch-conn-dot" class="metric-dot" style="background: var(--twitch-purple); box-shadow: 0 0 8px var(--twitch-purple);"></span>
+            <span id="twitch-conn-text">Twitch API</span>
+          </span>
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span id="kick-conn-dot" class="metric-dot" style="background: var(--kick-green); box-shadow: 0 0 8px var(--kick-green);"></span>
+            <span id="kick-conn-text">Kick Pusher</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="status-ticker-right">
+        <div class="hotkey-hint">
+          <span>Inspector Rápido:</span>
+          <span class="kbd-badge">Clic en Usuario</span>
+        </div>
+        <div class="hotkey-hint">
+          <span>AutoMod:</span>
+          <span class="kbd-badge">Alt + A</span>
+        </div>
+        <div class="hotkey-hint">
+          <span>Macros:</span>
+          <span class="kbd-badge">Ctrl + 1..5</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <main class="main-workspace" style="flex-direction: column;">
+      
+      <!-- Interactive Quick Launchpad & Welcome Guide -->
+      <section id="launchpad-hero" class="launchpad-hero">
+        <div class="launchpad-header">
+          <div class="launchpad-title-group">
+            <span style="font-size: 20px;">⚡</span>
+            <h2>Centro de Inicio Rápido & Vinculación</h2>
+            <span class="badge-success" style="font-size: 10px; padding: 2px 6px; border-radius: 4px;">GUÍA INTUITIVA</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="btn-toggle-demo-simulator" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">
+              <span>⚡ Modo Simulador: <strong id="demo-status-text" style="color:var(--success-green);">ACTIVO</strong></span>
+            </button>
+            <button id="btn-dismiss-launchpad" class="icon-btn-subtle" title="Minimizar / Ocultar Centro de Inicio">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="launchpad-steps-grid">
+          <!-- Step 1: Twitch OAuth -->
+          <div id="step-connect-twitch" class="launchpad-step-card twitch-accent">
+            <div class="step-card-header">
+              <span class="step-number-badge">PASO 1</span>
+              <span class="channel-tag badge-twitch">TWITCH HELIX</span>
+            </div>
+            <div class="step-card-title">
+              <span>🟣 Vincular Twitch</span>
+            </div>
+            <div class="step-card-desc">
+              Conecta tu cuenta oficial para autodetectar todos los canales donde eres moderador con 1 clic.
+            </div>
+            <div class="step-card-action">
+              <span>Conectar / Escanear ↗</span>
+            </div>
+          </div>
+
+          <!-- Step 2: Kick API -->
+          <div id="step-connect-kick" class="launchpad-step-card kick-accent">
+            <div class="step-card-header">
+              <span class="step-number-badge">PASO 2</span>
+              <span class="channel-tag badge-kick">KICK PUSHER</span>
+            </div>
+            <div class="step-card-title">
+              <span>🟢 Vincular Kick</span>
+            </div>
+            <div class="step-card-desc">
+              Verifica tu usuario de Kick y sincroniza eventos de chat, suscriptores y acciones de moderación.
+            </div>
+            <div class="step-card-action">
+              <span>Configurar Kick ↗</span>
+            </div>
+          </div>
+
+          <!-- Step 3: Add/Import Channels -->
+          <div id="step-add-channels" class="launchpad-step-card">
+            <div class="step-card-header">
+              <span class="step-number-badge">PASO 3</span>
+              <span class="channel-tag" style="background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan);">MULTI-DECK</span>
+            </div>
+            <div class="step-card-title">
+              <span>➕ Gestionar Canales</span>
+            </div>
+            <div class="step-card-desc">
+              Añade canales manuales o selecciona las cuadrículas de trabajo (Grid 2x2, Split 1+2, Chat Wall).
+            </div>
+            <div class="step-card-action">
+              <span>+ Añadir Canal ↗</span>
+            </div>
+          </div>
+
+          <!-- Step 4: AutoMod & Protection -->
+          <div id="step-config-automod" class="launchpad-step-card">
+            <div class="step-card-header">
+              <span class="step-number-badge">PASO 4</span>
+              <span class="channel-tag badge-danger">ESCUDO</span>
+            </div>
+            <div class="step-card-title">
+              <span>🛡️ AutoMod & Filtros</span>
+            </div>
+            <div class="step-card-desc">
+              Personaliza el bloqueador de links sospechosos, palabras prohibidas y activa el Modo Escudo ante raids.
+            </div>
+            <div class="step-card-action">
+              <span>Ver Filtros & Cola ↗</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Channels Deck Grid -->
+      <div id="channels-deck" class="channels-deck layout-grid-2x2"></div>
+    </main>
+
+    <!-- Backdrop for Slide-Over Drawers -->
+    <div id="drawer-backdrop" class="drawer-backdrop"></div>
+
+    <!-- Slide-Over Drawers -->
+    <aside id="user-inspector-drawer" class="side-drawer"></aside>
+    <aside id="automod-queue-drawer" class="side-drawer"></aside>
+    <aside id="audit-log-drawer" class="side-drawer" style="width: 500px;"></aside>
+    <aside id="event-radar-drawer" class="side-drawer"></aside>
+
+    <!-- Generic Modal Dialog -->
+    <div id="generic-modal" class="modal-overlay"></div>
+
+    <!-- Toast Notifications Hub -->
+    <div id="toast-container"></div>
+
+  </div>
+
+  <!-- Main ES Module Entry Point -->
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

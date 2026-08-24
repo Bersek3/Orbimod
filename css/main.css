@@ -1,0 +1,195 @@
+/* ==========================================================================
+   NEXUS MOD DECK — CORE DESIGN SYSTEM & THEME
+   Cyber-Obsidian Dark Palette with Twitch Purple & Kick Neon Green Accents
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Color Tokens */
+  --bg-primary: #0a0c10;
+  --bg-secondary: #11141c;
+  --bg-tertiary: #181d29;
+  --bg-card: rgba(22, 27, 39, 0.75);
+  --bg-card-hover: rgba(30, 37, 53, 0.85);
+  --bg-glass: rgba(16, 20, 30, 0.7);
+  --bg-glass-heavy: rgba(10, 12, 18, 0.88);
+  --bg-input: rgba(12, 15, 23, 0.9);
+  --bg-overlay: rgba(5, 7, 12, 0.82);
+
+  /* Platform Accent Colors */
+  --twitch-purple: #9146ff;
+  --twitch-purple-glow: rgba(145, 70, 255, 0.35);
+  --twitch-purple-subtle: rgba(145, 70, 255, 0.12);
+  --twitch-purple-light: #bf94ff;
+
+  --kick-green: #53fc18;
+  --kick-green-glow: rgba(83, 252, 24, 0.35);
+  --kick-green-subtle: rgba(83, 252, 24, 0.12);
+  --kick-green-dark: #00e701;
+
+  /* UI Status Colors */
+  --accent-cyan: #00f2fe;
+  --accent-cyan-glow: rgba(0, 242, 254, 0.3);
+  --danger-red: #ff3366;
+  --danger-glow: rgba(255, 51, 102, 0.35);
+  --warning-amber: #ffb800;
+  --warning-glow: rgba(255, 184, 0, 0.3);
+  --success-green: #00f090;
+  --info-blue: #38bdf8;
+  --mod-gold: #ffd700;
+
+  /* Text & Border Tokens */
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --text-inverse: #090d16;
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.14);
+  --border-bright: rgba(255, 255, 255, 0.25);
+  --border-twitch: rgba(145, 70, 255, 0.4);
+  --border-kick: rgba(83, 252, 24, 0.4);
+
+  /* Elevation & Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.65);
+  --shadow-glow-twitch: 0 0 20px rgba(145, 70, 255, 0.3);
+  --shadow-glow-kick: 0 0 20px rgba(83, 252, 24, 0.3);
+  --shadow-glow-danger: 0 0 20px rgba(255, 51, 102, 0.4);
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Layout */
+  --header-height: 64px;
+  --status-bar-height: 38px;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Base Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+/* Background Ambient Glow */
+body::before {
+  content: '';
+  position: fixed;
+  top: -150px;
+  left: 20%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(145, 70, 255, 0.12) 0%, rgba(0, 0, 0, 0) 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -150px;
+  right: 15%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(83, 252, 24, 0.08) 0%, rgba(0, 0, 0, 0) 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* App Container Layout */
+#app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  z-index: 1;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Utility Classes */
+.mono {
+  font-family: var(--font-mono);
+}
+
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge-twitch {
+  background: var(--twitch-purple-subtle);
+  color: var(--twitch-purple-light);
+  border: 1px solid var(--border-twitch);
+}
+
+.badge-kick {
+  background: var(--kick-green-subtle);
+  color: var(--kick-green);
+  border: 1px solid var(--border-kick);
+}
+
+.badge-danger {
+  background: rgba(255, 51, 102, 0.15);
+  color: var(--danger-red);
+  border: 1px solid rgba(255, 51, 102, 0.35);
+}
+
+.badge-warning {
+  background: rgba(255, 184, 0, 0.15);
+  color: var(--warning-amber);
+  border: 1px solid rgba(255, 184, 0, 0.35);
+}
+
+.badge-success {
+  background: rgba(0, 240, 144, 0.15);
+  color: var(--success-green);
+  border: 1px solid rgba(0, 240, 144, 0.35);
+}

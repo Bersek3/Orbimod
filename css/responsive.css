@@ -1,0 +1,79 @@
+/* ==========================================================================
+   NEXUS MOD DECK — RESPONSIVE & ADAPTIVE LAYOUTS
+   Support for varying screen sizes, ultra-wides, split monitors, mobile/tablet
+   ========================================================================== */
+
+/* Large Screens & Multi-Monitor Support */
+@media (min-width: 1920px) {
+  .channels-deck.layout-grid-2x2 {
+    gap: 16px;
+  }
+
+  .chat-message {
+    font-size: 13.5px;
+  }
+}
+
+/* Medium Screens / Laptops */
+@media (max-width: 1280px) {
+  .brand-title h1 {
+    font-size: 14px;
+  }
+
+  .status-metrics {
+    gap: 12px;
+  }
+
+  .layout-btn span {
+    display: none;
+  }
+
+  .layout-btn {
+    padding: 6px 8px;
+  }
+
+  .side-drawer {
+    width: 400px;
+  }
+}
+
+/* Compact Screens / Tablets */
+@media (max-width: 900px) {
+  .status-ticker-bar {
+    display: none;
+  }
+
+  .channels-deck.layout-grid-2x2 {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, 1fr);
+  }
+
+  .channels-deck.layout-split-1-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .side-drawer {
+    width: 100vw;
+    right: -100vw;
+  }
+}
+
+/* Ultra Compact / Mobile */
+@media (max-width: 600px) {
+  .app-header {
+    padding: 0 10px;
+  }
+
+  .btn span {
+    display: none;
+  }
+
+  .btn {
+    padding: 6px 10px;
+  }
+
+  .modal-container {
+    width: 96%;
+    max-height: 94vh;
+  }
+}
