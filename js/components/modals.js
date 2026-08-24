@@ -265,55 +265,39 @@ export class ConnectionHubModal {
                 <button class="btn btn-secondary disconnect-twitch-btn" style="font-size: 11px; color: var(--danger-red);">Desvincular</button>
               </div>
             ` : `
-              <!-- Option A: Direct Twitch OAuth (For GitHub Pages or custom Client ID) -->
-            <div style="background: rgba(145,70,255,0.08); border: 1px solid var(--border-twitch); border-radius: var(--radius-md); padding: 14px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                  <div style="font-weight: 700; color: #fff; font-size: 13.5px;">Opción 1: Iniciar Sesión Directa con Twitch OAuth (Recomendado para GitHub Pages)</div>
-                  <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
-                    Registra tu app en <a href="https://dev.twitch.tv/console/apps" target="_blank" style="color: var(--twitch-purple-light); text-decoration: underline;">dev.twitch.tv/console/apps</a> para tener inicio de sesión directo con 1 clic.
+              <!-- Primary 1-Click Official Twitch Login Banner -->
+              <div style="background: linear-gradient(135deg, rgba(145,70,255,0.18) 0%, rgba(30,20,50,0.85) 100%); border: 1px solid var(--border-twitch); border-radius: var(--radius-md); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; box-shadow: 0 4px 20px var(--twitch-purple-subtle);">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+                  <div>
+                    <div style="font-weight: 800; color: #fff; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                      <span>🟣 Iniciar Sesión con Twitch</span>
+                      <span class="badge-success" style="font-size: 9.5px; padding: 1px 6px; border-radius: 3px;">OFICIAL (1-CLIC)</span>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.4;">
+                      Conéctate de forma segura con tu cuenta de Twitch para autodetectar todos los canales que moderas.
+                    </div>
                   </div>
+                  <button class="btn btn-primary direct-oauth-login-btn" style="font-size: 13px; font-weight: 700; padding: 10px 18px; box-shadow: 0 0 15px var(--twitch-purple-glow);">
+                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+                    <span>Conectar mi Cuenta con Twitch</span>
+                  </button>
                 </div>
               </div>
 
-              <!-- Redirect URI display & copy -->
-              <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-subtle); border-radius: var(--radius-xs); padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                <div style="font-size: 11px; min-width: 0;">
-                  <span style="color: var(--text-dim);">Tu Redirect URI (copiar en Twitch Console):</span>
-                  <div class="mono current-redirect-uri" style="color: var(--accent-cyan); word-break: break-all; margin-top: 2px;">${apiService.getCurrentRedirectUri()}</div>
+              <!-- Secondary Advanced Options (Token Manual / Token Generator) -->
+              <details style="background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px;">
+                <summary style="font-size: 11.5px; color: var(--text-dim); cursor: pointer; font-weight: 600;">Opciones avanzadas (Token manual alternativo)</summary>
+                <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                  <div style="font-size: 11px; color: var(--text-muted);">Si prefieres ingresar un token generado manualmente:</div>
+                  <div style="display: flex; gap: 6px;">
+                    <input type="password" class="form-input twitch-token-input" placeholder="Pega tu Access Token manual..." value="${this._escapeHtml(creds.twitchToken || '')}">
+                    <button class="btn btn-secondary validate-twitch-btn" style="padding: 7px 14px; font-size: 11.5px;">
+                      <span>Validar Token</span>
+                    </button>
+                  </div>
+                  <div id="twitch-validation-feedback" style="display: none; font-size: 11.5px; padding: 6px 10px; border-radius: 4px;"></div>
                 </div>
-                <button class="btn btn-secondary copy-redirect-uri-btn" style="font-size: 10.5px; padding: 4px 8px; white-space: nowrap;">Copiar URI</button>
-              </div>
-
-              <!-- Client ID input & Direct Login -->
-              <div style="display: flex; gap: 6px;">
-                <input type="text" class="form-input custom-client-id-input" placeholder="Pega tu Client ID de Twitch Developer Console..." value="${this._escapeHtml(apiService.getTwitchClientId())}">
-                <button class="btn btn-primary direct-oauth-login-btn" style="white-space: nowrap; padding: 7px 14px;">
-                  <span>🟣 Iniciar Sesión Directa ↗</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Option B: Quick Token Generator (Instant zero-config) -->
-            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                  <div style="font-weight: 700; color: #fff; font-size: 13px;">Opción 2: Generador de Token Rápido (Sin crear aplicación)</div>
-                  <div style="font-size: 11px; color: var(--text-dim);">Obtén un token instantáneo pre-configurado con 1 clic:</div>
-                </div>
-                <a href="${apiService.getQuickTokenGeneratorUrl()}" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px; text-decoration: none;" target="_blank">
-                  <span>Abrir Generador ↗</span>
-                </a>
-              </div>
-
-              <div style="display: flex; gap: 6px;">
-                <input type="password" class="form-input twitch-token-input" placeholder="Pega tu Access Token aquí..." value="${this._escapeHtml(creds.twitchToken || '')}">
-                <button class="btn btn-primary validate-twitch-btn" style="padding: 7px 16px;">
-                  <span>⚡ Validar Token</span>
-                </button>
-              </div>
-              <div id="twitch-validation-feedback" style="display: none; font-size: 11.5px; padding: 6px 10px; border-radius: 4px;"></div>
-            </div>
+              </details>
             `}
 
             <!-- Auto-Detected Moderated Channels Section -->
@@ -408,18 +392,11 @@ export class ConnectionHubModal {
       });
     });
 
-    // Direct OAuth Login Button
+    // Direct 1-Click OAuth Login Button
     const directLoginBtn = this.modal.querySelector('.direct-oauth-login-btn');
-    const customClientIdInput = this.modal.querySelector('.custom-client-id-input');
-
     directLoginBtn?.addEventListener('click', () => {
-      const customId = customClientIdInput.value.trim();
-      if (!customId) {
-        alert('Por favor ingresa primero tu Client ID de tu aplicación creada en dev.twitch.tv/console/apps');
-        return;
-      }
-      apiService.saveTwitchClientId(customId);
-      const authUrl = apiService.getTwitchAuthUrl(customId);
+      const clientId = apiService.getTwitchClientId();
+      const authUrl = apiService.getTwitchAuthUrl(clientId);
       window.location.href = authUrl;
     });
 

@@ -6,11 +6,12 @@
 
 export class ApiService {
   constructor() {
-    this.defaultTwitchClientId = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
+    // Official Twitch Developer Client ID for OrbiMod
+    this.defaultTwitchClientId = '36bmcu0464pc3ja5pgoghf44mkt0de';
   }
 
   getTwitchClientId() {
-    return localStorage.getItem('nexus_twitch_custom_client_id') || '';
+    return localStorage.getItem('nexus_twitch_custom_client_id') || this.defaultTwitchClientId;
   }
 
   saveTwitchClientId(clientId) {
