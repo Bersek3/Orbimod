@@ -20,9 +20,13 @@ import { AddChannelModal, AutoModSettingsModal, ConnectionHubModal, HotkeysModal
 
 class OrbiModApp {
   constructor() {
-    this.channels = storageService.getChannels();
+    this.currentView = 'landing'; // 'landing' | 'selector' | 'deck'
+    this.allAvailableChannels = storageService.getChannels() || [];
+    this.selectedChannels = new Set(this.allAvailableChannels.map(c => c.id));
+    this.channels = []; // active in deck
     this.settings = storageService.getSettings();
     this.channelCards = new Map(); // id -> ChannelCard instance
+    this.selectedLayout = this.settings.layout || 'layout-grid-2x2';
 
     // Metrics state
     this.totalMessagesCount = 0;
@@ -46,7 +50,6 @@ class OrbiModApp {
       {
         onApprove: (item) => {
           this.showToast(`Mensaje de @${item.username} aprobado`, 'success');
-          // Dispatch to channel card
           const card = this.channelCards.get(`ch-${item.channel}`) || Array.from(this.channelCards.values()).find(c => c.channel.name.toLowerCase() === item.channel.toLowerCase());
           if (card) {
             card.addMessage({
@@ -138,26 +141,335 @@ class OrbiModApp {
 
   async init() {
     this._bindHeaderControls();
+    this._bindLandingControls();
+    this._bindSelectorControls();
     this._bindKeyboardShortcuts();
     this._startVelocityMeter();
     this._setupAutoModListener();
-
-    // Check URL hash for OAuth redirect token (#access_token=...)
-    await this._checkOAuthRedirect();
 
     // Sound toggle init
     soundService.toggleSound(this.settings.soundEnabled);
     this._updateSoundBtnVisual(this.settings.soundEnabled);
 
     // Apply layout
-    this.setLayout(this.settings.layout || 'layout-grid-2x2');
+    this.setLayout(this.selectedLayout);
 
     // Shield status
     if (this.settings.shieldActive) {
       this.handleShieldToggle(true);
     }
 
-    // Render channels
+    // Check URL hash for OAuth redirect token (#access_token=...)
+    const didAuth = await this._checkOAuthRedirect();
+
+    this.updateLandingAuthStatus();
+
+    if (didAuth) {
+      this.switchView('selector');
+    } else {
+      this.switchView('landing');
+    }
+
+    this.showToast('OrbiMod listo', 'success');
+  }
+
+  // ==========================================
+  // VIEW ROUTER (Landing, Selector, Mod Deck)
+  // ==========================================
+
+  switchView(viewName) {
+    this.currentView = viewName;
+    document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
+
+    const target = document.getElementById(`view-${viewName}`);
+    if (target) {
+      target.classList.add('active');
+    }
+
+    if (viewName === 'landing') {
+      this.updateLandingAuthStatus();
+    } else if (viewName === 'selector') {
+      this.renderChannelSelector();
+    } else if (viewName === 'deck') {
+      this.launchModDeck();
+    }
+  }
+
+  // ==========================================
+  // VIEW 1: LANDING LOGIC
+  // ==========================================
+
+  _bindLandingControls() {
+    document.getElementById('btn-landing-connect-twitch')?.addEventListener('click', () => {
+      const authUrl = apiService.getTwitchAuthUrl();
+      window.location.href = authUrl;
+    });
+
+    document.getElementById('btn-landing-connect-kick')?.addEventListener('click', () => {
+      this.connectionHubModal.open('kick');
+    });
+
+    document.getElementById('btn-landing-sandbox')?.addEventListener('click', () => {
+      this.simulator.start();
+      this.switchView('selector');
+    });
+
+    document.getElementById('btn-landing-go-selector')?.addEventListener('click', () => {
+      this.switchView('selector');
+    });
+  }
+
+  updateLandingAuthStatus() {
+    const profiles = storageService.getProfiles();
+    const twitchStatus = document.getElementById('landing-twitch-status');
+    const kickStatus = document.getElementById('landing-kick-status');
+    const twitchBtn = document.getElementById('btn-landing-connect-twitch');
+    const kickBtn = document.getElementById('btn-landing-connect-kick');
+
+    if (profiles.twitch && profiles.twitch.valid) {
+      if (twitchStatus) {
+        twitchStatus.innerHTML = `
+          <img src="${profiles.twitch.avatar || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop'}" style="width:20px;height:20px;border-radius:50%;">
+          <span style="color:var(--success-green);font-weight:700;">@${profiles.twitch.login}</span>
+          <span class="badge-success" style="font-size:9.5px;padding:1px 5px;border-radius:3px;">CONECTADO</span>
+        `;
+      }
+      if (twitchBtn) {
+        twitchBtn.innerHTML = `<span>✓ Cuenta Vinculada (@${profiles.twitch.login})</span>`;
+        twitchBtn.classList.remove('btn-primary');
+        twitchBtn.classList.add('btn-secondary');
+      }
+    }
+
+    if (profiles.kick && profiles.kick.valid) {
+      if (kickStatus) {
+        kickStatus.innerHTML = `
+          <span class="metric-dot" style="background:var(--success-green);"></span>
+          <span style="color:var(--success-green);font-weight:700;">@${profiles.kick.username}</span>
+          <span class="badge-kick" style="font-size:9.5px;padding:1px 5px;border-radius:3px;">SINCRONIZADO</span>
+        `;
+      }
+      if (kickBtn) {
+        kickBtn.innerHTML = `<span>✓ Kick Configurado (@${profiles.kick.username})</span>`;
+      }
+    }
+  }
+
+  // ==========================================
+  // VIEW 2: CHANNEL SELECTOR LOGIC
+  // ==========================================
+
+  _bindSelectorControls() {
+    document.getElementById('btn-selector-back-home')?.addEventListener('click', () => {
+      this.switchView('landing');
+    });
+
+    document.getElementById('btn-selector-launch')?.addEventListener('click', () => {
+      if (this.selectedChannels.size === 0) {
+        this.showToast('Por favor selecciona al menos 1 canal para lanzar el Deck', 'warning');
+        return;
+      }
+      this.switchView('deck');
+    });
+
+    document.getElementById('btn-selector-launch-secondary')?.addEventListener('click', () => {
+      if (this.selectedChannels.size === 0) {
+        this.showToast('Por favor selecciona al menos 1 canal para lanzar el Deck', 'warning');
+        return;
+      }
+      this.switchView('deck');
+    });
+
+    document.getElementById('btn-scan-mod-channels')?.addEventListener('click', async () => {
+      const profiles = storageService.getProfiles();
+      if (!profiles.twitch || !profiles.twitch.token) {
+        this.showToast('Primero conecta tu cuenta de Twitch para escanear tus canales', 'warning');
+        this.connectionHubModal.open('twitch');
+        return;
+      }
+
+      this.showToast('⚡ Escaneando canales donde eres moderador en Twitch...', 'twitch');
+      const res = await apiService.fetchModeratedChannels(profiles.twitch.token, profiles.twitch.clientId, profiles.twitch.userId);
+      if (res.success && res.channels.length > 0) {
+        res.channels.forEach(ch => {
+          if (!this.allAvailableChannels.some(c => c.name.toLowerCase() === ch.broadcaster_login.toLowerCase())) {
+            this.allAvailableChannels.push({
+              id: `ch-${ch.broadcaster_login.toLowerCase()}`,
+              name: ch.broadcaster_login,
+              displayName: ch.broadcaster_name,
+              platform: 'twitch',
+              isModerator: true,
+              videoEnabled: true,
+              role: 'mod',
+              avatar: ''
+            });
+            this.selectedChannels.add(`ch-${ch.broadcaster_login.toLowerCase()}`);
+          }
+        });
+        storageService.saveChannels(this.allAvailableChannels);
+        this.renderChannelSelector();
+        this.showToast(`¡Se agregaron ${res.channels.length} canales moderados a tu lista!`, 'success');
+      } else {
+        this.showToast('No se encontraron nuevos canales moderados o la lista ya está actualizada', 'info');
+      }
+    });
+
+    document.getElementById('btn-select-all-channels')?.addEventListener('click', () => {
+      this.allAvailableChannels.forEach(c => this.selectedChannels.add(c.id));
+      this.renderChannelSelector();
+    });
+
+    document.getElementById('btn-deselect-all-channels')?.addEventListener('click', () => {
+      this.selectedChannels.clear();
+      this.renderChannelSelector();
+    });
+
+    document.getElementById('btn-selector-reconnect-twitch')?.addEventListener('click', () => {
+      window.location.href = apiService.getTwitchAuthUrl();
+    });
+
+    document.getElementById('btn-selector-reconnect-kick')?.addEventListener('click', () => {
+      this.connectionHubModal.open('kick');
+    });
+
+    // Manual Channel Add
+    document.getElementById('btn-manual-add-submit')?.addEventListener('click', () => {
+      const nameInput = document.getElementById('manual-add-name');
+      const platformSelect = document.getElementById('manual-add-platform');
+      const name = nameInput.value.trim().toLowerCase();
+      const platform = platformSelect.value;
+
+      if (!name) return;
+
+      const newId = `ch-${name}`;
+      if (!this.allAvailableChannels.some(c => c.name.toLowerCase() === name)) {
+        const newChan = {
+          id: newId,
+          name: name,
+          displayName: name,
+          platform: platform,
+          isModerator: true,
+          videoEnabled: true,
+          role: 'mod',
+          avatar: ''
+        };
+        this.allAvailableChannels.push(newChan);
+        this.selectedChannels.add(newId);
+        storageService.saveChannels(this.allAvailableChannels);
+        nameInput.value = '';
+        this.renderChannelSelector();
+        this.showToast(`Canal @${name} (${platform}) añadido`, 'success');
+      } else {
+        this.selectedChannels.add(newId);
+        this.renderChannelSelector();
+        this.showToast(`Canal @${name} ya estaba en tu lista y ha sido seleccionado`, 'info');
+      }
+    });
+
+    // Layout presets click
+    document.querySelectorAll('.layout-preset-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.layout-preset-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        this.selectedLayout = card.dataset.layout;
+        this.setLayout(this.selectedLayout);
+      });
+    });
+  }
+
+  renderChannelSelector() {
+    const profiles = storageService.getProfiles();
+    const twitchLabel = document.getElementById('selector-twitch-user-label');
+    const kickLabel = document.getElementById('selector-kick-user-label');
+
+    if (twitchLabel) {
+      twitchLabel.textContent = profiles.twitch?.valid ? `@${profiles.twitch.login}` : 'Twitch no conectado';
+    }
+    if (kickLabel) {
+      kickLabel.textContent = profiles.kick?.valid ? `@${profiles.kick.username}` : 'Kick no configurado';
+    }
+
+    const grid = document.getElementById('channels-selection-grid');
+    const countBadge = document.getElementById('selected-count-badge');
+    const totalBadge = document.getElementById('total-available-badge');
+
+    if (countBadge) countBadge.textContent = this.selectedChannels.size;
+    if (totalBadge) totalBadge.textContent = `${this.allAvailableChannels.length} disponibles`;
+
+    if (!grid) return;
+
+    if (this.allAvailableChannels.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: var(--text-dim); background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle);">
+          <div style="font-size: 28px; margin-bottom: 8px;">📡</div>
+          <div style="font-size: 14px; font-weight: 700; color: #fff;">No hay canales en tu lista todavía</div>
+          <div style="font-size: 12px; margin-top: 4px;">Conecta tu cuenta de Twitch arriba o añade un canal manualmente abajo.</div>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = this.allAvailableChannels.map(ch => {
+      const isSelected = this.selectedChannels.has(ch.id);
+      const isTwitch = ch.platform === 'twitch';
+      const defaultAvatar = isTwitch 
+        ? 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop'
+        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop';
+
+      return `
+        <div class="channel-select-card ${ch.platform} ${isSelected ? 'selected' : ''}" data-channel-id="${ch.id}">
+          <div class="channel-select-info">
+            <img src="${ch.avatar || defaultAvatar}" class="channel-select-avatar" alt="${ch.name}">
+            <div style="min-width: 0;">
+              <div class="channel-select-name">${ch.displayName || ch.name}</div>
+              <div class="channel-select-meta">
+                <span class="channel-tag badge-${ch.platform}">${ch.platform.toUpperCase()}</span>
+                <span>${ch.role === 'mod' ? '🛡️ MOD' : 'Canal'}</span>
+              </div>
+            </div>
+          </div>
+          <input type="checkbox" class="channel-select-checkbox" ${isSelected ? 'checked' : ''} data-channel-id="${ch.id}">
+        </div>
+      `;
+    }).join('');
+
+    // Bind card click & checkbox
+    grid.querySelectorAll('.channel-select-card').forEach(card => {
+      const chId = card.dataset.channelId;
+      card.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'INPUT') {
+          const cb = card.querySelector('.channel-select-checkbox');
+          cb.checked = !cb.checked;
+        }
+        const isChecked = card.querySelector('.channel-select-checkbox').checked;
+        if (isChecked) {
+          this.selectedChannels.add(chId);
+          card.classList.add('selected');
+        } else {
+          this.selectedChannels.delete(chId);
+          card.classList.remove('selected');
+        }
+        if (countBadge) countBadge.textContent = this.selectedChannels.size;
+      });
+    });
+  }
+
+  // ==========================================
+  // VIEW 3: MOD DECK LAUNCH
+  // ==========================================
+
+  launchModDeck() {
+    this.channels = this.allAvailableChannels.filter(c => this.selectedChannels.has(c.id));
+    
+    // Header channel count
+    const headerCount = document.getElementById('header-channels-count');
+    if (headerCount) headerCount.textContent = this.channels.length;
+
+    // Check video setting
+    const videoEnabled = document.getElementById('selector-enable-video-all')?.checked ?? true;
+    this.channels.forEach(c => c.videoEnabled = videoEnabled);
+
+    // Render channels in deck
     this.renderChannels();
 
     // Start connections
@@ -165,50 +477,6 @@ class OrbiModApp {
 
     // Update Profile pills
     this._updateAccountPills();
-
-    this.showToast('OrbiMod iniciado correctamente', 'success');
-  }
-
-  async _checkOAuthRedirect() {
-    if (window.location.hash && window.location.hash.includes('access_token=')) {
-      const params = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = params.get('access_token');
-
-      if (accessToken) {
-        this.showToast('🟣 Procesando autenticación oficial de Twitch...', 'twitch');
-        const validation = await apiService.validateTwitchToken(accessToken);
-
-        if (validation.valid) {
-          const userProfile = await apiService.fetchTwitchUserProfile(validation.token, validation.clientId);
-          const profiles = storageService.getProfiles();
-          profiles.twitch = {
-            valid: true,
-            login: validation.login,
-            userId: validation.userId,
-            clientId: validation.clientId,
-            token: validation.token,
-            scopes: validation.scopes,
-            avatar: userProfile ? userProfile.profile_image_url : ''
-          };
-          storageService.saveProfiles(profiles);
-
-          const creds = storageService.getAuthCreds();
-          creds.twitchToken = validation.token;
-          creds.twitchUsername = validation.login;
-          storageService.saveAuthCreds(creds);
-
-          // Clean URL hash without reloading
-          window.history.replaceState(null, null, window.location.pathname);
-          this.showToast(`¡Cuenta de Twitch vinculada con éxito como @${validation.login}!`, 'success');
-
-          // Auto-fetch moderated channels!
-          const modRes = await apiService.fetchModeratedChannels(validation.token, validation.clientId, validation.userId);
-          if (modRes.success && modRes.channels.length > 0) {
-            this.showToast(`⚡ Se detectaron ${modRes.channels.length} canales donde eres moderador en Twitch`, 'success');
-          }
-        }
-      }
-    }
   }
 
   _updateAccountPills() {
@@ -236,8 +504,21 @@ class OrbiModApp {
   }
 
   _bindHeaderControls() {
+    // Return to Selector from Header Logo or Manage Channels Button
+    document.getElementById('header-logo-home-btn')?.addEventListener('click', () => {
+      this.switchView('selector');
+    });
+
+    document.getElementById('btn-header-manage-channels')?.addEventListener('click', () => {
+      this.switchView('selector');
+    });
+
+    document.getElementById('btn-exit-deck')?.addEventListener('click', () => {
+      this.switchView('landing');
+    });
+
     // Backdrop Drawer closer
-    document.getElementById('drawer-backdrop').addEventListener('click', () => {
+    document.getElementById('drawer-backdrop')?.addEventListener('click', () => {
       this.inspectorDrawer.close();
       this.automodDrawer.close();
       this.auditLogDrawer.close();
@@ -248,67 +529,30 @@ class OrbiModApp {
     document.querySelectorAll('.layout-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const layoutClass = btn.dataset.layout;
+        this.selectedLayout = layoutClass;
         this.setLayout(layoutClass);
       });
     });
 
     // Header Action Buttons
-    document.getElementById('btn-add-channel').addEventListener('click', () => this.addChannelModal.open());
-    document.getElementById('btn-automod-queue').addEventListener('click', () => this.automodDrawer.open());
-    document.getElementById('btn-audit-log').addEventListener('click', () => this.auditLogDrawer.open());
-    document.getElementById('btn-event-radar').addEventListener('click', () => this.eventRadarDrawer.open());
-    document.getElementById('btn-macro-manager').addEventListener('click', () => this.macroModal.open());
-    document.getElementById('btn-connection-hub').addEventListener('click', () => this.connectionHubModal.open());
-    document.getElementById('btn-hotkeys-help').addEventListener('click', () => this.hotkeysModal.open());
-
-    // Launchpad Step Cards & Actions
-    document.getElementById('step-connect-twitch')?.addEventListener('click', () => {
-      this.connectionHubModal.activeTab = 'twitch';
-      this.connectionHubModal.open();
+    document.getElementById('btn-add-channel')?.addEventListener('click', () => this.addChannelModal.open());
+    document.getElementById('btn-global-shield')?.addEventListener('click', () => {
+      this.settings.shieldActive = !this.settings.shieldActive;
+      this.handleShieldToggle(this.settings.shieldActive);
     });
-
-    document.getElementById('step-connect-kick')?.addEventListener('click', () => {
-      this.connectionHubModal.activeTab = 'kick';
-      this.connectionHubModal.open();
-    });
-
-    document.getElementById('step-add-channels')?.addEventListener('click', () => {
-      this.addChannelModal.open();
-    });
-
-    document.getElementById('step-config-automod')?.addEventListener('click', () => {
-      this.automodDrawer.open();
-    });
-
-    // Dismiss / Collapse Launchpad
-    const launchpad = document.getElementById('launchpad-hero');
-    const dismissBtn = document.getElementById('btn-dismiss-launchpad');
-    dismissBtn?.addEventListener('click', () => {
-      if (launchpad.style.display === 'none') {
-        launchpad.style.display = 'flex';
-      } else {
-        launchpad.style.display = 'none';
-      }
-    });
-
-    // Simulator Toggle from Home
-    const simBtn = document.getElementById('btn-toggle-demo-simulator');
-    const simStatusText = document.getElementById('demo-status-text');
-    simBtn?.addEventListener('click', () => {
-      this.settings.demoMode = !this.settings.demoMode;
+    document.getElementById('btn-automod-queue')?.addEventListener('click', () => this.automodDrawer.open());
+    document.getElementById('btn-audit-log')?.addEventListener('click', () => this.auditLogDrawer.open());
+    document.getElementById('btn-event-radar')?.addEventListener('click', () => this.eventRadarDrawer.open());
+    document.getElementById('btn-macro-manager')?.addEventListener('click', () => this.macroModal.open());
+    document.getElementById('btn-connection-hub')?.addEventListener('click', () => this.connectionHubModal.open());
+    document.getElementById('btn-hotkeys-help')?.addEventListener('click', () => this.hotkeysModal.open());
+    document.getElementById('btn-toggle-sound')?.addEventListener('click', () => {
+      this.settings.soundEnabled = !this.settings.soundEnabled;
       storageService.saveSettings(this.settings);
-
-      if (this.settings.demoMode) {
-        this.simulator.start();
-        if (simStatusText) {
-          simStatusText.textContent = 'ACTIVO';
-          simStatusText.style.color = 'var(--success-green)';
-        }
-        this.showToast('Simulador de chat en vivo activado', 'success');
-      } else {
-        this.simulator.stop();
-        if (simStatusText) {
-          simStatusText.textContent = 'PAUSADO';
+      soundService.toggleSound(this.settings.soundEnabled);
+      this._updateSoundBtnVisual(this.settings.soundEnabled);
+      this.showToast(this.settings.soundEnabled ? 'Sonidos activados' : 'Sonidos silenciados', 'info');
+    });
           simStatusText.style.color = 'var(--text-dim)';
         }
         this.showToast('Simulador pausado', 'warning');

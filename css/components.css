@@ -878,3 +878,458 @@
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+/* ==========================================================================
+   APP VIEWS MANAGER (Landing, Selector, Mod Deck)
+   ========================================================================== */
+.app-view {
+  display: none;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.app-view.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   VIEW 1: PROFESSIONAL LANDING PORTAL
+   ========================================================================== */
+.landing-container {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 50% 20%, rgba(145, 70, 255, 0.12) 0%, rgba(10, 14, 20, 0.98) 70%), var(--bg-primary);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.landing-header {
+  height: 72px;
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(10, 14, 20, 0.6);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.landing-hero-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 48px 24px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.hero-badge {
+  background: rgba(145, 70, 255, 0.15);
+  border: 1px solid var(--border-twitch);
+  color: var(--twitch-purple-light);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  margin-bottom: 20px;
+  display: inline-flex;
+}
+
+.hero-title {
+  font-size: 38px;
+  font-weight: 900;
+  line-height: 1.2;
+  color: #fff;
+  margin-bottom: 16px;
+  letter-spacing: -0.5px;
+}
+
+.hero-title .gradient-text {
+  background: linear-gradient(135deg, #a78bfa 0%, #38bdf8 50%, #53fc18 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-description {
+  font-size: 15px;
+  color: var(--text-muted);
+  max-width: 680px;
+  line-height: 1.6;
+  margin-bottom: 36px;
+}
+
+/* Landing Auth Cards Grid */
+.landing-auth-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  width: 100%;
+  max-width: 760px;
+  margin-bottom: 36px;
+}
+
+.auth-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+  transition: all var(--transition-normal);
+  position: relative;
+  box-shadow: var(--shadow-md);
+}
+
+.auth-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-bright);
+}
+
+.auth-card.twitch-card {
+  border-top: 3px solid var(--twitch-purple);
+}
+
+.auth-card.kick-card {
+  border-top: 3px solid var(--kick-green);
+}
+
+.auth-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.auth-card-icon.twitch { background: var(--twitch-purple); color: #fff; }
+.auth-card-icon.kick { background: var(--kick-green); color: #000; }
+
+.auth-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.auth-card-sub {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.auth-card-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px 12px;
+  border-radius: var(--radius-xs);
+}
+
+.btn-auth-action {
+  width: 100%;
+  padding: 10px 0;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Features Grid */
+.landing-features-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.feature-item {
+  background: var(--bg-glass-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 18px 16px;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.feature-item:hover {
+  border-color: var(--border-bright);
+  background: var(--bg-tertiary);
+}
+
+.feature-icon {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+
+.feature-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.feature-desc {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   VIEW 2: CHANNEL SELECTION & DECK CONFIGURATOR
+   ========================================================================== */
+.selector-container {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.selector-header {
+  height: 64px;
+  padding: 0 24px;
+  background: var(--bg-glass-heavy);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+.selector-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.selector-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.selector-right-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Account Status Bar */
+.selector-accounts-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  flex-wrap: wrap;
+}
+
+.account-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: #fff;
+}
+
+.account-pill.twitch { border-color: rgba(145, 70, 255, 0.4); }
+.account-pill.kick { border-color: rgba(83, 252, 24, 0.4); }
+
+.btn-text-link {
+  background: none;
+  border: none;
+  color: var(--accent-cyan);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0 4px;
+}
+
+.channels-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 4px;
+}
+
+/* Channels Selection Grid */
+.channels-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.channel-select-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.channel-select-card:hover {
+  border-color: var(--border-bright);
+  background: var(--bg-tertiary);
+}
+
+.channel-select-card.selected {
+  background: rgba(145, 70, 255, 0.12);
+  border-color: var(--twitch-purple);
+  box-shadow: 0 0 12px rgba(145, 70, 255, 0.2);
+}
+
+.channel-select-card.kick.selected {
+  background: rgba(83, 252, 24, 0.1);
+  border-color: var(--kick-green);
+  box-shadow: 0 0 12px rgba(83, 252, 24, 0.2);
+}
+
+.channel-select-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.channel-select-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border-subtle);
+}
+
+.channel-select-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.channel-select-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.channel-select-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--twitch-purple);
+  cursor: pointer;
+}
+
+.manual-add-channel-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+
+/* Config Right Column */
+.selector-config-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-preset-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.layout-preset-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.layout-preset-card:hover {
+  border-color: var(--border-bright);
+}
+
+.layout-preset-card.active {
+  background: rgba(145, 70, 255, 0.15);
+  border-color: var(--twitch-purple);
+  color: #fff;
+}
+
+.preset-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+  color: var(--twitch-purple-light);
+}
+
+.preset-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.preset-desc {
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
