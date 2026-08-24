@@ -62,7 +62,7 @@ def main():
     os.chdir(DIRECTORY)
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", PORT), RobustHandler) as httpd:
-        print(f"[*] NEXUS MOD DECK - HTTP Server active on http://localhost:{PORT}")
+        print(f"[*] ORBIMOD - HTTP Server active on http://localhost:{PORT}")
         sys.stdout.flush()
         httpd.serve_forever()
 

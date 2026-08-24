@@ -181,7 +181,7 @@ export class AuditLogDrawer {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `nexus_audit_log_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `orbimod_audit_log_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -192,7 +192,7 @@ export class AuditLogDrawer {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(logs, null, 2));
     const link = document.createElement('a');
     link.setAttribute('href', dataStr);
-    link.setAttribute('download', `nexus_audit_log_${new Date().toISOString().slice(0, 10)}.json`);
+    link.setAttribute('download', `orbimod_audit_log_${new Date().toISOString().slice(0, 10)}.json`);
     document.body.appendChild(link);
     link.click();
     link.remove();

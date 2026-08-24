@@ -1,11 +1,12 @@
 /**
- * NEXUS MOD DECK — MAIN APPLICATION CONTROLLER
+ * ORBIMOD — MAIN APPLICATION CONTROLLER
  * Orchestrates real-time connections, multi-channel deck, AutoMod, and drawers
  */
 
 import { storageService } from './services/storageService.js';
 import { soundService } from './services/soundService.js';
 import { automodService } from './services/automodService.js';
+import { apiService } from './services/apiService.js';
 import { TwitchClient } from './connection/twitch.js';
 import { KickClient } from './connection/kick.js';
 import { LiveSimulator } from './connection/simulator.js';
@@ -17,7 +18,7 @@ import { EventRadarDrawer } from './components/eventRadar.js';
 import { MacroManagerModal } from './components/macroManager.js';
 import { AddChannelModal, AutoModSettingsModal, ConnectionHubModal, HotkeysModal } from './components/modals.js';
 
-class NexusApp {
+class OrbiModApp {
   constructor() {
     this.channels = storageService.getChannels();
     this.settings = storageService.getSettings();
@@ -165,7 +166,7 @@ class NexusApp {
     // Update Profile pills
     this._updateAccountPills();
 
-    this.showToast('Nexus Mod Deck iniciado correctamente', 'success');
+    this.showToast('OrbiMod iniciado correctamente', 'success');
   }
 
   async _checkOAuthRedirect() {
@@ -805,6 +806,6 @@ class NexusApp {
 
 // Initialize App once DOM is loaded
 window.addEventListener('DOMContentLoaded', () => {
-  window.nexusApp = new NexusApp();
-  window.nexusApp.init();
+  window.orbiModApp = new OrbiModApp();
+  window.orbiModApp.init();
 });
