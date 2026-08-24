@@ -173,6 +173,67 @@ class OrbiModApp {
     this.showToast('OrbiMod listo', 'success');
   }
 
+  async _checkOAuthRedirect() {
+    if (window.location.hash && window.location.hash.includes('access_token=')) {
+      const params = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = params.get('access_token');
+
+      if (accessToken) {
+        this.showToast('🟣 Procesando autenticación oficial de Twitch...', 'twitch');
+        const validation = await apiService.validateTwitchToken(accessToken);
+
+        if (validation.valid) {
+          const userProfile = await apiService.fetchTwitchUserProfile(validation.token, validation.clientId);
+          const profiles = storageService.getProfiles();
+          profiles.twitch = {
+            valid: true,
+            login: validation.login,
+            userId: validation.userId,
+            clientId: validation.clientId,
+            token: validation.token,
+            scopes: validation.scopes,
+            avatar: userProfile ? userProfile.profile_image_url : ''
+          };
+          storageService.saveProfiles(profiles);
+
+          const creds = storageService.getAuthCreds();
+          creds.twitchToken = validation.token;
+          creds.twitchUsername = validation.login;
+          storageService.saveAuthCreds(creds);
+
+          // Clean URL hash without reloading
+          window.history.replaceState(null, null, window.location.pathname);
+          this.showToast(`¡Cuenta de Twitch vinculada con éxito como @${validation.login}!`, 'success');
+
+          // Auto-fetch moderated channels!
+          const modRes = await apiService.fetchModeratedChannels(validation.token, validation.clientId, validation.userId);
+          if (modRes.success && modRes.channels.length > 0) {
+            modRes.channels.forEach(ch => {
+              const id = `ch-${ch.broadcaster_login.toLowerCase()}`;
+              if (!this.allAvailableChannels.some(c => c.name.toLowerCase() === ch.broadcaster_login.toLowerCase())) {
+                this.allAvailableChannels.push({
+                  id: id,
+                  name: ch.broadcaster_login,
+                  displayName: ch.broadcaster_name,
+                  platform: 'twitch',
+                  isModerator: true,
+                  videoEnabled: true,
+                  role: 'mod',
+                  avatar: ''
+                });
+              }
+              this.selectedChannels.add(id);
+            });
+            storageService.saveChannels(this.allAvailableChannels);
+            this.showToast(`⚡ Se detectaron ${modRes.channels.length} canales donde eres moderador en Twitch`, 'success');
+          }
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   // ==========================================
   // VIEW ROUTER (Landing, Selector, Mod Deck)
   // ==========================================
