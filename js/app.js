@@ -553,28 +553,6 @@ class OrbiModApp {
       this._updateSoundBtnVisual(this.settings.soundEnabled);
       this.showToast(this.settings.soundEnabled ? 'Sonidos activados' : 'Sonidos silenciados', 'info');
     });
-          simStatusText.style.color = 'var(--text-dim)';
-        }
-        this.showToast('Simulador pausado', 'warning');
-      }
-    });
-
-    // Shield Mode Button
-    const shieldBtn = document.getElementById('btn-global-shield');
-    shieldBtn.addEventListener('click', () => {
-      const newState = !shieldBtn.classList.contains('active');
-      this.handleShieldToggle(newState);
-    });
-
-    // Sound Toggle Button
-    const soundBtn = document.getElementById('btn-toggle-sound');
-    soundBtn.addEventListener('click', () => {
-      const active = soundService.toggleSound();
-      this.settings.soundEnabled = active;
-      storageService.saveSettings(this.settings);
-      this._updateSoundBtnVisual(active);
-      this.showToast(active ? 'Efectos de audio activados' : 'Audio silenciado', 'warning');
-    });
   }
 
   _updateSoundBtnVisual(enabled) {
