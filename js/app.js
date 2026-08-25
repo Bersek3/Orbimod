@@ -714,6 +714,7 @@ class OrbiModApp {
               login: p.twitch_login,
               token: profiles.twitch?.token || 'linked'
             };
+            storageService.updateMasterHubField('twitch', profiles.twitch);
             changed = true;
           }
           if (p.kick_username) {
@@ -722,11 +723,18 @@ class OrbiModApp {
               username: p.kick_username,
               token: profiles.kick?.token || 'linked'
             };
+            storageService.updateMasterHubField('kick', profiles.kick);
             changed = true;
           }
           if (changed) {
             storageService.saveProfiles(profiles);
           }
+          storageService.updateMasterHubField('google', {
+            id: user.id,
+            email: user.email,
+            displayName: user.displayName || p.username,
+            avatar: user.avatar || p.avatar_url
+          });
         } else {
           // Initialize Supabase profile with local profiles if present
           if ((profiles.twitch && profiles.twitch.valid) || (profiles.kick && profiles.kick.valid)) {

@@ -526,6 +526,19 @@ class SupabaseAuthService {
           await client.from('profiles').insert(payload);
         }
       }
+
+      // 2. Propagate to any other identity rows sharing the same email (Google OAuth & Email/Pass synchronization)
+      const targetEmail = (payload.email || '').trim().toLowerCase();
+      if (targetEmail) {
+        try {
+          await client.from('profiles').update({
+            twitch_login: payload.twitch_login,
+            kick_username: payload.kick_username,
+            updated_at: new Date().toISOString()
+          }).ilike('email', targetEmail);
+        } catch (e) {}
+      }
+
       return { success: true, data };
     } catch (e) {
       console.warn('[Supabase saveLinkedAccounts exception]', e);
@@ -534,35 +547,67 @@ class SupabaseAuthService {
   }
 
   /**
-   * Load Linked Accounts from Master Supabase Profile
+   * Load Linked Accounts from Master Supabase Profile with Deep Multi-Identity Resolution
    */
   async loadLinkedAccounts(userId, email = null) {
     const client = this.getClient();
     if (!client) return { success: false };
 
     try {
+      let allProfiles = [];
+
+      // 1. Fetch by user ID
       if (userId) {
-        const { data, error } = await client
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (!error && data) return { success: true, profile: data };
+        const { data } = await client.from('profiles').select('*').eq('id', userId);
+        if (Array.isArray(data)) allProfiles.push(...data);
       }
 
-      if (email) {
-        const { data, error } = await client
-          .from('profiles')
-          .select('*')
-          .eq('email', email)
-          .maybeSingle();
-
-        if (!error && data) return { success: true, profile: data };
+      // 2. Fetch by Email (case-insensitive)
+      const targetEmail = (email || this.getCurrentUser()?.email || '').trim().toLowerCase();
+      if (targetEmail) {
+        const { data } = await client.from('profiles').select('*').ilike('email', targetEmail);
+        if (Array.isArray(data)) {
+          data.forEach(d => {
+            if (!allProfiles.some(p => p.id === d.id)) allProfiles.push(d);
+          });
+        }
       }
 
-      return { success: false };
+      if (allProfiles.length === 0) return { success: false };
+
+      // 3. Smart Merge: Extract the best linked account data across all matching rows
+      const merged = {
+        twitch_login: null,
+        kick_username: null,
+        email: targetEmail || allProfiles[0].email,
+        username: allProfiles[0].username,
+        avatar_url: allProfiles[0].avatar_url
+      };
+
+      for (const p of allProfiles) {
+        if (p.twitch_login && !merged.twitch_login) merged.twitch_login = p.twitch_login;
+        if (p.kick_username && !merged.kick_username) merged.kick_username = p.kick_username;
+        if (p.avatar_url && !merged.avatar_url) merged.avatar_url = p.avatar_url;
+        if (p.username && (!merged.username || merged.username === 'Usuario')) merged.username = p.username;
+      }
+
+      // 4. If current userId is missing the linked accounts, sync back to its own profile row
+      if (userId && (merged.twitch_login || merged.kick_username)) {
+        const myRow = allProfiles.find(p => p.id === userId);
+        if (!myRow || !myRow.twitch_login || !myRow.kick_username) {
+          try {
+            await client.from('profiles').update({
+              twitch_login: merged.twitch_login,
+              kick_username: merged.kick_username,
+              updated_at: new Date().toISOString()
+            }).eq('id', userId);
+          } catch (e) {}
+        }
+      }
+
+      return { success: true, profile: merged };
     } catch (e) {
+      console.warn('[Supabase loadLinkedAccounts error]', e);
       return { success: false, error: e.message };
     }
   }
