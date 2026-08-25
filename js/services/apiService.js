@@ -426,6 +426,44 @@ export class ApiService {
   }
 
   /**
+   * Checks if a given username is a moderator or broadcaster in a Kick channel
+   */
+  async checkKickModStatus(channelSlug, username) {
+    const cleanSlug = (channelSlug || '').trim().toLowerCase().replace(/[@#]/g, '');
+    const cleanUser = (username || '').trim().toLowerCase().replace(/[@#]/g, '');
+
+    if (!cleanSlug || !cleanUser) {
+      return { isMod: false, isOwner: false, error: 'Datos incompletos' };
+    }
+
+    if (cleanSlug === cleanUser) {
+      return { isMod: true, isOwner: true, role: 'owner' };
+    }
+
+    try {
+      const res = await fetch(`https://kick.com/api/v2/channels/${cleanSlug}/users/${cleanUser}`, {
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const isMod = Boolean(data.is_moderator || data.is_channel_owner || data.is_staff);
+        const isOwner = Boolean(data.is_channel_owner);
+        return {
+          isMod: isMod,
+          isOwner: isOwner,
+          role: isOwner ? 'owner' : (isMod ? 'mod' : 'viewer'),
+          data: data
+        };
+      }
+    } catch (e) {
+      console.warn('[Kick Mod Check Error]', e);
+    }
+
+    return { isMod: false, isOwner: false, role: 'viewer' };
+  }
+
+  /**
    * Batch checks real-time Live / Offline status for a list of channels
    */
   async checkLiveStatus(channels) {

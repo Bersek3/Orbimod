@@ -8,6 +8,7 @@ class SoundService {
     this.audioCtx = null;
     this.enabled = true;
     this.volume = 0.5;
+    this._keepAliveNode = null;
   }
 
   _init() {
@@ -19,6 +20,37 @@ class SoundService {
     }
     if (this.audioCtx && this.audioCtx.state === 'suspended') {
       this.audioCtx.resume();
+    }
+  }
+
+  /**
+   * Starts a silent background keep-alive audio signal.
+   * This signals the OS and browser (Chromium/WebKit/Gecko) that the tab is
+   * an active audio/video media workstation, preventing streams and WebSockets
+   * from pausing or being throttled when switching tabs or minimizing the window.
+   */
+  startBackgroundPlaybackKeepAlive() {
+    this._init();
+    if (!this.audioCtx) return;
+
+    try {
+      if (!this._keepAliveNode) {
+        const silentBuffer = this.audioCtx.createBuffer(1, this.audioCtx.sampleRate * 2, this.audioCtx.sampleRate);
+        const source = this.audioCtx.createBufferSource();
+        source.buffer = silentBuffer;
+        source.loop = true;
+
+        const gainNode = this.audioCtx.createGain();
+        gainNode.gain.value = 0.00001; // Inaudible keep-alive heartbeat
+
+        source.connect(gainNode);
+        gainNode.connect(this.audioCtx.destination);
+        source.start();
+
+        this._keepAliveNode = source;
+      }
+    } catch (e) {
+      console.warn('[KeepAlive] AudioContext keep alive error', e);
     }
   }
 

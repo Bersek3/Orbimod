@@ -187,9 +187,16 @@ class OrbiModApp {
     this._startVelocityMeter();
     this._setupAutoModListener();
 
-    // Sound toggle init
+    // Sound toggle init & background keep-alive
     soundService.toggleSound(this.settings.soundEnabled);
     this._updateSoundBtnVisual(this.settings.soundEnabled);
+
+    // Keep streams active in background tabs without pausing
+    const startKeepAlive = () => {
+      soundService.startBackgroundPlaybackKeepAlive();
+    };
+    document.addEventListener('click', startKeepAlive, { once: true });
+    document.addEventListener('keydown', startKeepAlive, { once: true });
 
     // Apply layout
     this.setLayout(this.selectedLayout);
@@ -202,6 +209,7 @@ class OrbiModApp {
     const hash = window.location.hash.toLowerCase();
 
     if (didAuth || hash === '#deck' || savedView === 'deck') {
+      soundService.startBackgroundPlaybackKeepAlive();
       this.switchView('deck');
     } else {
       this.switchView('landing');
