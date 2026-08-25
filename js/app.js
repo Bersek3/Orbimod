@@ -1147,7 +1147,9 @@ class OrbiModApp {
           onInspect: (userObj, channel, sessionMsgs) => this.inspectorDrawer.open(userObj, channel, sessionMsgs),
           onSendMessage: (channel, text) => this.sendMessage(channel, text),
           onToggleMode: (channel, mode, active) => this.handleRoomModeChange(channel, mode, active),
-          onRemoveChannel: (id) => this.removeChannel(id)
+          onRemoveChannel: (id) => this.removeChannel(id),
+          onReorder: (sourceId, targetId, insertAfter) => this.reorderChannels(sourceId, targetId, insertAfter),
+          onMoveStep: (id, dir) => this.moveChannelStep(id, dir)
         });
 
         this.channelCards.set(ch.id, cardInstance);
@@ -1180,6 +1182,41 @@ class OrbiModApp {
 
     const chattersEl = document.getElementById('metric-total-chatters');
     if (chattersEl) chattersEl.textContent = `${this.uniqueChatters.size} Usuarios`;
+  }
+
+  reorderChannels(sourceId, targetId, insertAfter = false) {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+
+    const fromIndex = this.channels.findIndex(c => c.id === sourceId);
+    const toIndex = this.channels.findIndex(c => c.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const [moved] = this.channels.splice(fromIndex, 1);
+    let newIndex = this.channels.findIndex(c => c.id === targetId);
+    if (insertAfter) newIndex += 1;
+
+    this.channels.splice(newIndex, 0, moved);
+
+    storageService.saveChannels(this.channels);
+    this.syncToSupabase();
+    this.renderChannels();
+    this.showToast(`↕️ Posición de #${moved.name} actualizada y guardada`, 'success');
+  }
+
+  moveChannelStep(channelId, direction) {
+    const currentIndex = this.channels.findIndex(c => c.id === channelId);
+    if (currentIndex === -1) return;
+
+    const newIndex = currentIndex + direction;
+    if (newIndex < 0 || newIndex >= this.channels.length) return;
+
+    const [moved] = this.channels.splice(currentIndex, 1);
+    this.channels.splice(newIndex, 0, moved);
+
+    storageService.saveChannels(this.channels);
+    this.syncToSupabase();
+    this.renderChannels();
+    this.showToast(`↕️ Canal #${moved.name} movido`, 'info');
   }
 
   // --- Real-time Message Flow & AutoMod Evaluation ---

@@ -109,6 +109,14 @@ export class ChannelCard {
       <!-- Header -->
       <div class="channel-header">
         <div class="channel-info">
+          <!-- Drag Handle -->
+          <div class="channel-drag-handle" title="Arrastrar y soltar para mover posición del panel">
+            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;">
+              <circle cx="8.5" cy="6" r="1.5"/><circle cx="15.5" cy="6" r="1.5"/>
+              <circle cx="8.5" cy="12" r="1.5"/><circle cx="15.5" cy="12" r="1.5"/>
+              <circle cx="8.5" cy="18" r="1.5"/><circle cx="15.5" cy="18" r="1.5"/>
+            </svg>
+          </div>
           <img src="${this.channel.avatar || 'https://via.placeholder.com/26'}" class="channel-avatar ${this.channel.platform}" alt="${this.channel.name}" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&h=100&fit=crop'">
           <div class="channel-name-block">
             <div class="channel-title">
@@ -126,6 +134,14 @@ export class ChannelCard {
         </div>
 
         <div class="channel-actions">
+          <!-- Move Position Buttons -->
+          <button class="icon-btn-subtle move-left-btn" title="Mover panel a la izquierda (←)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button class="icon-btn-subtle move-right-btn" title="Mover panel a la derecha (→)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+
           <!-- Audio Toggle Button (Mute / Unmute) -->
           <button class="icon-btn-subtle audio-toggle-btn ${hasAudio ? 'active' : ''}" title="${hasAudio ? 'Silenciar Audio' : 'Activar Sonido (Unmute)'}">
             ${hasAudio ? `
@@ -345,6 +361,75 @@ export class ChannelCard {
       this.clearMessages();
       if (this.options.onToggleMode) {
         this.options.onToggleMode(this.channel, 'clear');
+      }
+    });
+
+    // Move Panel Position Buttons
+    this.element.querySelector('.move-left-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.options.onMoveStep) {
+        this.options.onMoveStep(this.channel.id, -1);
+      }
+    });
+
+    this.element.querySelector('.move-right-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.options.onMoveStep) {
+        this.options.onMoveStep(this.channel.id, 1);
+      }
+    });
+
+    // Drag and Drop Panel Reordering
+    const cardEl = this.element;
+    cardEl.setAttribute('draggable', 'true');
+
+    cardEl.addEventListener('dragstart', (e) => {
+      if (e.target.closest('input, button, select, textarea, .chat-messages-container, .player-mount-area, iframe')) {
+        e.preventDefault();
+        return;
+      }
+      cardEl.classList.add('is-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', this.channel.id);
+      window.__draggedChannelId = this.channel.id;
+    });
+
+    cardEl.addEventListener('dragend', () => {
+      cardEl.classList.remove('is-dragging');
+      document.querySelectorAll('.channel-card').forEach(el => {
+        el.classList.remove('drag-over-before', 'drag-over-after');
+      });
+      window.__draggedChannelId = null;
+    });
+
+    cardEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const draggedId = window.__draggedChannelId || e.dataTransfer.getData('text/plain');
+      if (draggedId === this.channel.id) return;
+
+      const rect = cardEl.getBoundingClientRect();
+      const midpoint = rect.left + rect.width / 2;
+      const isAfter = e.clientX > midpoint;
+
+      cardEl.classList.toggle('drag-over-before', !isAfter);
+      cardEl.classList.toggle('drag-over-after', isAfter);
+    });
+
+    cardEl.addEventListener('dragleave', () => {
+      cardEl.classList.remove('drag-over-before', 'drag-over-after');
+    });
+
+    cardEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      cardEl.classList.remove('drag-over-before', 'drag-over-after');
+      const sourceId = window.__draggedChannelId || e.dataTransfer.getData('text/plain');
+      if (!sourceId || sourceId === this.channel.id) return;
+
+      const rect = cardEl.getBoundingClientRect();
+      const isAfter = e.clientX > (rect.left + rect.width / 2);
+      if (this.options.onReorder) {
+        this.options.onReorder(sourceId, this.channel.id, isAfter);
       }
     });
 
