@@ -229,7 +229,13 @@
 .tw-transition,
 .ScTransitionBase-sc-hx4quq-0.fhZWme.tw-transition,
 [class*="ScTransitionBase"],
-[class*="fhZWme"] {
+[class*="fhZWme"],
+.Layout-sc-1xcs6mc-0,
+.video-player__default-player,
+.video-player__inactive,
+.Layout-sc-1xcs6mc-0.video-player__default-player.video-player__inactive,
+[class*="video-player__inactive"],
+[class*="video-player__default-player"] {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;

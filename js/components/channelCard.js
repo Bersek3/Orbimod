@@ -35,9 +35,53 @@ export class ChannelCard {
       }
       const parentParams = Array.from(parents).map(p => `parent=${encodeURIComponent(p)}`).join('&');
 
-      return `https://player.twitch.tv/?channel=${encodeURIComponent(cleanName)}&${parentParams}&autoplay=true&muted=${isMuted}&playsinline=true`;
+      // Twitch stream starts muted in URL for safe autoplay, then unmuted via JS API on user gesture
+      return `https://player.twitch.tv/?channel=${encodeURIComponent(cleanName)}&${parentParams}&autoplay=true&muted=true&playsinline=true`;
     } else {
       return `https://player.kick.com/${encodeURIComponent(cleanName)}?autoplay=true&muted=${isMuted}`;
+    }
+  }
+
+  _initTwitchEmbedPlayer(containerEl) {
+    if (!window.Twitch || !window.Twitch.Player) return false;
+    const cleanName = (this.channel.name || '').trim().toLowerCase().replace(/[@#]/g, '');
+    const hostname = window.location.hostname || 'localhost';
+    const parents = new Set([hostname]);
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      parents.add('localhost');
+      parents.add('127.0.0.1');
+    }
+    if (hostname.includes('github.io')) parents.add(hostname);
+
+    containerEl.innerHTML = '';
+    const targetDiv = document.createElement('div');
+    targetDiv.id = `twitch-player-target-${this.channel.id}`;
+    targetDiv.style.cssText = 'width:100%; height:100%; position:absolute; top:0; left:0;';
+    containerEl.appendChild(targetDiv);
+
+    try {
+      this.twitchPlayer = new window.Twitch.Player(targetDiv.id, {
+        channel: cleanName,
+        parent: Array.from(parents),
+        width: '100%',
+        height: '100%',
+        autoplay: true,
+        muted: !this.channel.audioEnabled,
+        playsinline: true
+      });
+
+      this.twitchPlayer.addEventListener(window.Twitch.Player.READY, () => {
+        if (this.channel.audioEnabled) {
+          this.twitchPlayer.setMuted(false);
+          this.twitchPlayer.setVolume(1.0);
+        } else {
+          this.twitchPlayer.setMuted(true);
+        }
+      });
+      return true;
+    } catch (e) {
+      console.warn('[Twitch SDK fallback]', e);
+      return false;
     }
   }
 
@@ -169,6 +213,12 @@ export class ChannelCard {
 
     const reloadPlayer = () => {
       if (!this.channel.videoEnabled) return;
+
+      if (this.channel.platform === 'twitch') {
+        const initialized = this._initTwitchEmbedPlayer(playerContainer);
+        if (initialized) return;
+      }
+
       const src = this._getPlayerIframeSrc();
       playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture;" allowfullscreen="true" frameborder="0" scrolling="no"></iframe>`;
       const iframe = playerContainer.querySelector('iframe');
@@ -193,6 +243,7 @@ export class ChannelCard {
           videoBtn.title = 'Ocultar Video Player';
         }
         playerContainer.classList.remove('collapsed');
+        reloadPlayer();
       }
 
       // Update Audio button icon & title
@@ -204,7 +255,33 @@ export class ChannelCard {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
       `;
 
-      reloadPlayer();
+      // Seamless in-place unmuting without destroying video context (prevents Error #1000)
+      if (this.channel.platform === 'twitch') {
+        if (this.twitchPlayer) {
+          try {
+            this.twitchPlayer.setMuted(!this.channel.audioEnabled);
+            if (this.channel.audioEnabled) {
+              this.twitchPlayer.setVolume(1.0);
+            }
+          } catch (e) {
+            console.warn('[Twitch setMuted error]', e);
+          }
+        } else {
+          // Fallback: try postMessage or lazy reload
+          const iframe = playerContainer.querySelector('iframe');
+          if (iframe && iframe.contentWindow) {
+            try {
+              iframe.contentWindow.postMessage({
+                eventName: 'setMuted',
+                params: { muted: !this.channel.audioEnabled }
+              }, '*');
+            } catch (e) {}
+          }
+        }
+      } else {
+        // Kick
+        reloadPlayer();
+      }
     });
 
     // 2. Video Toggle (Dynamic creation / destruction to prevent memory leaks and WebGL context limits)
@@ -219,6 +296,7 @@ export class ChannelCard {
       } else {
         // If video disabled, mute audio button as well
         this.channel.audioEnabled = false;
+        this.twitchPlayer = null;
         if (audioBtn) {
           audioBtn.classList.remove('active');
           audioBtn.title = 'Activar Sonido (Unmute)';
