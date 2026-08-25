@@ -1373,13 +1373,20 @@ export class UnifiedAccountHubModal {
   render() {
     const user = supabaseAuthService.getCurrentUser();
     const profiles = storageService.getProfiles();
+    const masterHub = storageService.getMasterHub();
 
-    const email = user ? user.email : 'No autenticado con correo';
-    const displayName = user ? (user.displayName || email.split('@')[0]) : 'Invitado';
-    const avatar = user ? user.avatar : 'https://api.dicebear.com/7.x/identicon/svg?seed=orbimod';
+    const activeGoogle = user || masterHub.google;
+    const email = activeGoogle ? activeGoogle.email : (profiles.twitch?.login ? `@${profiles.twitch.login}` : (profiles.kick?.username ? `@${profiles.kick.username}` : 'Perfil Maestro'));
+    const displayName = activeGoogle ? (activeGoogle.displayName || activeGoogle.name || email.split('@')[0]) : (profiles.twitch?.login ? `@${profiles.twitch.login}` : (profiles.kick?.username ? `@${profiles.kick.username}` : 'Moderador'));
+    const avatar = activeGoogle?.avatar || activeGoogle?.avatar_url || profiles.twitch?.avatar || profiles.kick?.avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=orbimod';
 
-    const twitchLinked = profiles.twitch && profiles.twitch.valid;
-    const kickLinked = profiles.kick && profiles.kick.valid;
+    const twitchLinked = !!(profiles.twitch?.valid || masterHub.twitch?.valid);
+    const twitchLogin = profiles.twitch?.login || masterHub.twitch?.login;
+
+    const kickLinked = !!(profiles.kick?.valid || masterHub.kick?.valid);
+    const kickUsername = profiles.kick?.username || masterHub.kick?.username;
+
+    const googleLinked = !!activeGoogle?.email;
 
     this.modal.innerHTML = `
       <div class="modal-container" style="max-width: 520px; border-radius: 12px; background: #11141e; border: 1px solid rgba(255,255,255,0.1); color: #fff;">
@@ -1394,19 +1401,34 @@ export class UnifiedAccountHubModal {
 
         <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
           <!-- Master Account Card -->
-          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px; display: flex; align-items: center; gap: 14px;">
-            <img src="${avatar}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3b82f6; object-fit: cover;" alt="Avatar">
-            <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
-              <div style="font-size: 15px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px;">
-                <span>${displayName}</span>
-                <img src="https://images.icon-icons.com/2642/PNG/512/google_logo_g_logo_icon_159348.png" style="width: 14px; height: 14px; object-fit: contain;" alt="Google" title="Cuenta Google / Supabase">
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+              <img src="${avatar}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid #3b82f6; object-fit: cover;" alt="Avatar">
+              <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+                <div style="font-size: 14px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px;">
+                  <span>${displayName}</span>
+                  <img src="https://images.icon-icons.com/2642/PNG/512/google_logo_g_logo_icon_159348.png" style="width: 13px; height: 13px; object-fit: contain;" alt="Google">
+                </div>
+                <div style="font-size: 11.5px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis;">${email}</div>
+                <div style="margin-top: 2px;">
+                  <span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 3px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                    ${googleLinked ? '☁️ GOOGLE CONECTADO' : 'PERFIL MAESTRO'}
+                  </span>
+                </div>
               </div>
-              <div style="font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis;">${email}</div>
-              <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px;">
-                <span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3);">
-                  ☁️ SUPABASE CLOUD SYNC ACTIVO
-                </span>
-              </div>
+            </div>
+
+            <div>
+              ${googleLinked ? `
+                <button id="btn-hub-unlink-google" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px; border-color: rgba(239, 68, 68, 0.4); color: #f87171;">
+                  Desvincular
+                </button>
+              ` : `
+                <button id="btn-hub-link-google" class="btn btn-secondary" style="font-size: 11px; padding: 4px 12px; display: flex; align-items: center; gap: 6px;">
+                  <img src="https://images.icon-icons.com/2642/PNG/512/google_logo_g_logo_icon_159348.png" style="width: 12px; height: 12px; object-fit: contain;" alt="Google">
+                  <span>Vincular Google</span>
+                </button>
+              `}
             </div>
           </div>
 
@@ -1423,7 +1445,7 @@ export class UnifiedAccountHubModal {
               <div>
                 <div style="font-size: 13px; font-weight: 700; color: #fff;">Twitch</div>
                 <div style="font-size: 11.5px; color: ${twitchLinked ? '#bf94ff' : 'var(--text-dim)'};">
-                  ${twitchLinked ? `@${profiles.twitch.login} (Vinculada)` : 'No vinculada'}
+                  ${twitchLinked ? `@${twitchLogin} (Vinculada)` : 'No vinculada'}
                 </div>
               </div>
             </div>
@@ -1450,7 +1472,7 @@ export class UnifiedAccountHubModal {
               <div>
                 <div style="font-size: 13px; font-weight: 700; color: #fff;">Kick</div>
                 <div style="font-size: 11.5px; color: ${kickLinked ? '#53fc18' : 'var(--text-dim)'};">
-                  ${kickLinked ? `@${profiles.kick.username} (Vinculada)` : 'No vinculada'}
+                  ${kickLinked ? `@${kickUsername} (Vinculada)` : 'No vinculada'}
                 </div>
               </div>
             </div>
@@ -1487,6 +1509,22 @@ export class UnifiedAccountHubModal {
   _bindEvents() {
     this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
 
+    // Link Google
+    this.modal.querySelector('#btn-hub-link-google')?.addEventListener('click', async () => {
+      await supabaseAuthService.signInWithGoogle();
+    });
+
+    // Unlink Google
+    this.modal.querySelector('#btn-hub-unlink-google')?.addEventListener('click', async () => {
+      if (confirm('¿Deseas desvincular tu cuenta de Google de tu perfil maestro?')) {
+        storageService.unlinkFromMasterHub('google');
+        supabaseAuthService.signOut();
+        if (this.showToast) this.showToast('Cuenta de Google desvinculada', 'info');
+        if (this.onUpdate) this.onUpdate();
+        this.render();
+      }
+    });
+
     // Link Twitch
     this.modal.querySelector('#btn-hub-link-twitch')?.addEventListener('click', () => {
       window.location.href = apiService.getTwitchAuthUrl();
@@ -1498,6 +1536,7 @@ export class UnifiedAccountHubModal {
         const profiles = storageService.getProfiles();
         delete profiles.twitch;
         storageService.saveProfiles(profiles);
+        storageService.unlinkFromMasterHub('twitch');
 
         const user = supabaseAuthService.getCurrentUser();
         if (user && user.id) {
@@ -1521,6 +1560,7 @@ export class UnifiedAccountHubModal {
         const profiles = storageService.getProfiles();
         delete profiles.kick;
         storageService.saveProfiles(profiles);
+        storageService.unlinkFromMasterHub('kick');
 
         const user = supabaseAuthService.getCurrentUser();
         if (user && user.id) {

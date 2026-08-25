@@ -305,6 +305,36 @@ class StorageService {
     }
   }
 
+  // =========================================================================
+  // MASTER UNIFIED IDENTITY HUB (Persistent Link between Google, Twitch, Kick)
+  // =========================================================================
+  getMasterHub() {
+    try {
+      const d = localStorage.getItem('orbimod_master_hub_v2');
+      return d ? JSON.parse(d) : { google: null, twitch: null, kick: null };
+    } catch (e) {
+      return { google: null, twitch: null, kick: null };
+    }
+  }
+
+  saveMasterHub(hub) {
+    try {
+      localStorage.setItem('orbimod_master_hub_v2', JSON.stringify(hub));
+    } catch (e) {}
+  }
+
+  updateMasterHubField(platform, data) {
+    const hub = this.getMasterHub();
+    hub[platform] = data;
+    this.saveMasterHub(hub);
+  }
+
+  unlinkFromMasterHub(platform) {
+    const hub = this.getMasterHub();
+    hub[platform] = null;
+    this.saveMasterHub(hub);
+  }
+
   clearAuth() {
     try {
       localStorage.removeItem(STORAGE_KEYS.AUTH_CREDS);

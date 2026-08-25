@@ -275,9 +275,17 @@ class OrbiModApp {
                 }
               };
               supabaseAuthService._saveSession(normalized);
+              storageService.updateMasterHubField('google', normalized.user);
             }
           } catch (e) {}
         }
+
+        // Restore any previously linked accounts from Master Hub
+        const hub = storageService.getMasterHub();
+        const profiles = storageService.getProfiles();
+        if (hub.twitch && hub.twitch.valid) profiles.twitch = hub.twitch;
+        if (hub.kick && hub.kick.valid) profiles.kick = hub.kick;
+        storageService.saveProfiles(profiles);
 
         window.history.replaceState(null, null, window.location.pathname);
         await this.syncFromSupabase();
@@ -304,6 +312,14 @@ class OrbiModApp {
             avatar: userProfile ? userProfile.profile_image_url : ''
           };
           storageService.saveProfiles(profiles);
+          storageService.updateMasterHubField('twitch', profiles.twitch);
+
+          // Restore Kick from Master Hub if present
+          const hub = storageService.getMasterHub();
+          if (hub.kick && hub.kick.valid) {
+            profiles.kick = hub.kick;
+            storageService.saveProfiles(profiles);
+          }
 
           const creds = storageService.getAuthCreds();
           creds.twitchToken = validation.token;
@@ -383,6 +399,14 @@ class OrbiModApp {
           avatar: kickAvatar
         };
         storageService.saveProfiles(profiles);
+        storageService.updateMasterHubField('kick', profiles.kick);
+
+        // Restore Twitch from Master Hub if present
+        const hub = storageService.getMasterHub();
+        if (hub.twitch && hub.twitch.valid) {
+          profiles.twitch = hub.twitch;
+          storageService.saveProfiles(profiles);
+        }
 
         const creds = storageService.getAuthCreds();
         creds.kickUsername = kickUser;
@@ -444,8 +468,12 @@ class OrbiModApp {
     // 1-Click Direct Entry Helper
     const enterIfAuthenticated = () => {
       const profiles = storageService.getProfiles();
-      const user = supabaseAuthService.getCurrentUser();
-      if (user || (profiles.twitch && profiles.twitch.valid) || (profiles.kick && profiles.kick.valid)) {
+      const masterHub = storageService.getMasterHub();
+      const user = supabaseAuthService.getCurrentUser() || masterHub.google;
+      if (user || (profiles.twitch && profiles.twitch.valid) || (masterHub.twitch && masterHub.twitch.valid) || (profiles.kick && profiles.kick.valid) || (masterHub.kick && masterHub.kick.valid)) {
+        if (masterHub.twitch && masterHub.twitch.valid) profiles.twitch = masterHub.twitch;
+        if (masterHub.kick && masterHub.kick.valid) profiles.kick = masterHub.kick;
+        storageService.saveProfiles(profiles);
         this.switchView('deck');
         return true;
       }
@@ -473,8 +501,13 @@ class OrbiModApp {
     // Quick 1-Click Platform Buttons on Landing
     document.getElementById('btn-quick-enter-twitch')?.addEventListener('click', () => {
       const profiles = storageService.getProfiles();
-      if (profiles.twitch && profiles.twitch.valid) {
-        this.showToast(`⚡ Bienvenido @${profiles.twitch.login}`, 'success');
+      const masterHub = storageService.getMasterHub();
+      const twitch = (profiles.twitch && profiles.twitch.valid) ? profiles.twitch : masterHub.twitch;
+      if (twitch && twitch.valid) {
+        if (masterHub.kick && masterHub.kick.valid) profiles.kick = masterHub.kick;
+        profiles.twitch = twitch;
+        storageService.saveProfiles(profiles);
+        this.showToast(`⚡ Bienvenido @${twitch.login}`, 'success');
         this.switchView('deck');
       } else {
         window.location.href = apiService.getTwitchAuthUrl();
@@ -483,8 +516,14 @@ class OrbiModApp {
 
     document.getElementById('btn-quick-enter-google')?.addEventListener('click', async () => {
       const user = supabaseAuthService.getCurrentUser();
-      if (user) {
-        this.showToast(`☁️ Sesión activa: ${user.displayName || user.email}`, 'success');
+      const masterHub = storageService.getMasterHub();
+      if (user || (masterHub.google && masterHub.google.email)) {
+        const profiles = storageService.getProfiles();
+        if (masterHub.twitch && masterHub.twitch.valid) profiles.twitch = masterHub.twitch;
+        if (masterHub.kick && masterHub.kick.valid) profiles.kick = masterHub.kick;
+        storageService.saveProfiles(profiles);
+        const name = user ? (user.displayName || user.email) : masterHub.google.displayName;
+        this.showToast(`☁️ Sesión activa: ${name}`, 'success');
         this.switchView('deck');
       } else {
         const res = await supabaseAuthService.signInWithGoogle();
@@ -497,8 +536,13 @@ class OrbiModApp {
 
     document.getElementById('btn-quick-enter-kick')?.addEventListener('click', async () => {
       const profiles = storageService.getProfiles();
-      if (profiles.kick && profiles.kick.valid) {
-        this.showToast(`🟢 Bienvenido @${profiles.kick.username}`, 'success');
+      const masterHub = storageService.getMasterHub();
+      const kick = (profiles.kick && profiles.kick.valid) ? profiles.kick : masterHub.kick;
+      if (kick && kick.valid) {
+        if (masterHub.twitch && masterHub.twitch.valid) profiles.twitch = masterHub.twitch;
+        profiles.kick = kick;
+        storageService.saveProfiles(profiles);
+        this.showToast(`🟢 Bienvenido @${kick.username}`, 'success');
         this.switchView('deck');
       } else {
         const url = await apiService.getKickAuthUrl();
@@ -542,44 +586,45 @@ class OrbiModApp {
   }
 
   logout() {
-    if (confirm('¿Estás seguro de que deseas cerrar tu sesión en OrbiMod?')) {
+    if (confirm('¿Estás seguro de que deseas salir al inicio?')) {
       localStorage.setItem('orbimod_active_view', 'landing');
-      storageService.clearAuth();
-      supabaseAuthService.signOut();
       try { this.twitchClient.disconnect?.(); } catch (e) {}
       try { this.kickClient.disconnect?.(); } catch (e) {}
       this.updateLandingAuthStatus();
       this.switchView('landing');
-      this.showToast('Has cerrado sesión correctamente', 'info');
+      this.showToast('Has salido al inicio. Tus cuentas siguen vinculadas para acceso rápido.', 'info');
     }
   }
 
   updateLandingAuthStatus() {
     const profiles = storageService.getProfiles();
-    const emailUser = supabaseAuthService.getCurrentUser();
+    const masterHub = storageService.getMasterHub();
+    const emailUser = supabaseAuthService.getCurrentUser() || masterHub.google;
 
     const cornerLoginBtn = document.getElementById('btn-landing-login-corner');
     const userProfileBadge = document.getElementById('landing-user-profile-badge');
     const userNameEl = document.getElementById('landing-user-name');
     const userAvatarEl = document.getElementById('landing-user-avatar');
 
-    const isTwitchAuth = profiles.twitch && profiles.twitch.valid;
-    const isKickAuth = profiles.kick && profiles.kick.valid;
+    const isTwitchAuth = !!((profiles.twitch && profiles.twitch.valid) || (masterHub.twitch && masterHub.twitch.valid));
+    const isKickAuth = !!((profiles.kick && profiles.kick.valid) || (masterHub.kick && masterHub.kick.valid));
     const isEmailAuth = !!emailUser;
 
     if (isTwitchAuth || isKickAuth || isEmailAuth) {
       if (cornerLoginBtn) cornerLoginBtn.style.display = 'none';
       if (userProfileBadge) {
         userProfileBadge.style.display = 'flex';
-        if (isTwitchAuth) {
-          if (userNameEl) userNameEl.textContent = `@${profiles.twitch.login}`;
-          if (userAvatarEl) userAvatarEl.src = profiles.twitch.avatar || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop';
+        if (isEmailAuth) {
+          if (userNameEl) userNameEl.textContent = emailUser.displayName || emailUser.name || (emailUser.email ? emailUser.email.split('@')[0] : 'Usuario');
+          if (userAvatarEl) userAvatarEl.src = emailUser.avatar || emailUser.avatar_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${emailUser.email || 'orbimod'}`;
+        } else if (isTwitchAuth) {
+          const tLogin = profiles.twitch?.login || masterHub.twitch?.login;
+          if (userNameEl) userNameEl.textContent = `@${tLogin}`;
+          if (userAvatarEl) userAvatarEl.src = profiles.twitch?.avatar || masterHub.twitch?.avatar || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop';
         } else if (isKickAuth) {
-          if (userNameEl) userNameEl.textContent = `@${profiles.kick.username} (Kick)`;
-          if (userAvatarEl) userAvatarEl.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop';
-        } else if (isEmailAuth) {
-          if (userNameEl) userNameEl.textContent = emailUser.displayName || emailUser.email.split('@')[0];
-          if (userAvatarEl) userAvatarEl.src = emailUser.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${emailUser.email}`;
+          const kUser = profiles.kick?.username || masterHub.kick?.username;
+          if (userNameEl) userNameEl.textContent = `@${kUser} (Kick)`;
+          if (userAvatarEl) userAvatarEl.src = profiles.kick?.avatar || masterHub.kick?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop';
         }
       }
     } else {
@@ -882,7 +927,8 @@ class OrbiModApp {
 
   _updateAccountPills() {
     const profiles = storageService.getProfiles();
-    const emailUser = supabaseAuthService.getCurrentUser();
+    const masterHub = storageService.getMasterHub();
+    const emailUser = supabaseAuthService.getCurrentUser() || masterHub.google;
 
     const nameEl = document.getElementById('deck-profile-name');
     const subEl = document.getElementById('deck-profile-sub');
@@ -890,19 +936,19 @@ class OrbiModApp {
     const twitchDot = document.getElementById('deck-profile-twitch-dot');
     const kickDot = document.getElementById('deck-profile-kick-dot');
 
-    const isTwitch = profiles.twitch && profiles.twitch.valid;
-    const isKick = profiles.kick && profiles.kick.valid;
+    const isTwitch = !!((profiles.twitch && profiles.twitch.valid) || (masterHub.twitch && masterHub.twitch.valid));
+    const isKick = !!((profiles.kick && profiles.kick.valid) || (masterHub.kick && masterHub.kick.valid));
 
     if (twitchDot) twitchDot.style.display = isTwitch ? 'block' : 'none';
     if (kickDot) kickDot.style.display = isKick ? 'block' : 'none';
 
     if (avatarEl) {
-      if (emailUser && emailUser.avatar) {
-        avatarEl.src = emailUser.avatar;
-      } else if (isTwitch && profiles.twitch.avatar) {
-        avatarEl.src = profiles.twitch.avatar;
-      } else if (isKick && profiles.kick.avatar) {
-        avatarEl.src = profiles.kick.avatar;
+      if (emailUser && (emailUser.avatar || emailUser.avatar_url)) {
+        avatarEl.src = emailUser.avatar || emailUser.avatar_url;
+      } else if (isTwitch && (profiles.twitch?.avatar || masterHub.twitch?.avatar)) {
+        avatarEl.src = profiles.twitch?.avatar || masterHub.twitch?.avatar;
+      } else if (isKick && (profiles.kick?.avatar || masterHub.kick?.avatar)) {
+        avatarEl.src = profiles.kick?.avatar || masterHub.kick?.avatar;
       } else {
         avatarEl.src = 'https://api.dicebear.com/7.x/identicon/svg?seed=orbimod';
       }
@@ -910,13 +956,15 @@ class OrbiModApp {
 
     if (nameEl && subEl) {
       if (emailUser) {
-        nameEl.textContent = emailUser.displayName || emailUser.email.split('@')[0];
+        nameEl.textContent = emailUser.displayName || emailUser.name || (emailUser.email ? emailUser.email.split('@')[0] : 'Usuario');
         const platforms = [];
         if (isTwitch) platforms.push('Twitch');
         if (isKick) platforms.push('Kick');
-        subEl.textContent = platforms.length > 0 ? platforms.join(' + ') : 'Vincular cuentas';
+        subEl.textContent = platforms.length > 0 ? platforms.join(' + ') : 'Google Mod';
       } else if (isTwitch || isKick) {
-        nameEl.textContent = isTwitch ? `@${profiles.twitch.login}` : `@${profiles.kick.username}`;
+        const tLogin = profiles.twitch?.login || masterHub.twitch?.login;
+        const kUser = profiles.kick?.username || masterHub.kick?.username;
+        nameEl.textContent = tLogin ? `@${tLogin}` : `@${kUser}`;
         subEl.textContent = (isTwitch && isKick) ? 'Twitch + Kick' : (isTwitch ? 'Twitch Mod' : 'Kick Mod');
       } else {
         nameEl.textContent = 'Vincular Cuentas';
