@@ -194,12 +194,14 @@ class OrbiModApp {
     // Apply layout
     this.setLayout(this.selectedLayout);
 
-    // Check URL hash for OAuth redirect token (#access_token=...)
+    // Check URL hash / params for OAuth redirect
     const didAuth = await this._checkOAuthRedirect();
-
     this.updateLandingAuthStatus();
 
-    if (didAuth) {
+    const savedView = localStorage.getItem('orbimod_active_view');
+    const hash = window.location.hash.toLowerCase();
+
+    if (didAuth || hash === '#deck' || savedView === 'deck') {
       this.switchView('deck');
     } else {
       this.switchView('landing');
@@ -320,6 +322,13 @@ class OrbiModApp {
   switchView(viewName) {
     if (viewName === 'selector') viewName = 'deck';
     this.currentView = viewName;
+    
+    // Persist current view state
+    localStorage.setItem('orbimod_active_view', viewName);
+    if (window.location.hash !== (viewName === 'deck' ? '#deck' : '#home')) {
+      window.history.replaceState(null, null, viewName === 'deck' ? '#deck' : '#home');
+    }
+
     document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
 
     const target = document.getElementById(`view-${viewName}`) || 
@@ -350,43 +359,34 @@ class OrbiModApp {
       this.unifiedAuthModal.open('twitch');
     });
 
-    document.getElementById('btn-hero-sandbox')?.addEventListener('click', () => {
+    document.getElementById('btn-hero-guest-deck')?.addEventListener('click', () => {
       this.switchView('deck');
     });
 
-    document.getElementById('btn-landing-sandbox-header')?.addEventListener('click', () => {
+    // Feature Cards
+    document.querySelectorAll('.btn-launch-demo').forEach(btn => {
+      btn.addEventListener('click', () => this.switchView('deck'));
+    });
+
+    // Nav Auth Button in Header
+    document.getElementById('landing-user-profile-badge')?.addEventListener('click', () => {
       this.switchView('deck');
     });
 
-    document.getElementById('btn-footer-start-auth')?.addEventListener('click', () => {
-      this.unifiedAuthModal.open('twitch');
+    // Footer Links & Brand Link
+    document.querySelectorAll('.landing-nav-brand, .footer-brand').forEach(el => {
+      el.addEventListener('click', () => this.switchView('landing'));
     });
 
-    document.getElementById('btn-landing-go-dashboard')?.addEventListener('click', () => {
-      this.switchView('deck');
-    });
-
-    // Interactive FAQ Accordion
-    document.querySelectorAll('.faq-question').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const item = btn.closest('.faq-item');
-        const isOpen = item.classList.contains('open');
-        document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
-        if (!isOpen) {
-          item.classList.add('open');
-        }
-      });
-    });
-
-    // Smooth In-Page Scrolling for Landing Navigation Links
-    document.querySelectorAll('.landing-nav-links .nav-link, .footer-links .footer-link').forEach(link => {
-      link.addEventListener('click', (e) => {
-        const href = link.getAttribute('href');
-        if (href && href.startsWith('#')) {
+    // Smooth Scroll for Navigation Anchor Links
+    document.querySelectorAll('.landing-nav-links a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', (e) => {
+        const targetId = anchor.getAttribute('href');
+        if (targetId && targetId !== '#') {
           e.preventDefault();
-          const targetEl = document.querySelector(href);
+          const targetEl = document.querySelector(targetId);
           if (targetEl) {
-            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            targetEl.scrollIntoView({ behavior: 'smooth' });
           }
         }
       });
@@ -395,6 +395,7 @@ class OrbiModApp {
 
   logout() {
     if (confirm('¿Estás seguro de que deseas cerrar tu sesión en OrbiMod?')) {
+      localStorage.setItem('orbimod_active_view', 'landing');
       storageService.clearAuth();
       supabaseAuthService.signOut();
       try { this.twitchClient.disconnect?.(); } catch (e) {}

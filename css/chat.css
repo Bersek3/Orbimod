@@ -162,27 +162,34 @@
   height: 14px;
 }
 
-/* Embedded Stream Player (Collapsible video) */
+/* Embedded Stream Player (Collapsible video with 16:9 stable embed) */
 .channel-player-container {
   width: 100%;
-  aspect-ratio: 16 / 9;
-  max-height: 200px;
-  background: #000;
   position: relative;
+  padding-top: 56.25%; /* 16:9 Aspect Ratio prevents black screen / player context loss on resize */
+  height: 0;
+  max-height: none;
+  background: #000;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
-  transition: all 0.25s ease;
+  transition: padding-top 0.25s ease;
   flex-shrink: 0;
 }
 
 .channel-player-container.collapsed {
   display: none !important;
+  padding-top: 0 !important;
+  height: 0 !important;
 }
 
 .channel-player-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   border: none;
+  background: #000;
 }
 
 /* Kick Embed Player - Hide Intrusive Top Header and Bottom Watermark Overlays */
