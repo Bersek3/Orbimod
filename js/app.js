@@ -209,17 +209,22 @@ class OrbiModApp {
           const modRes = await apiService.fetchModeratedChannels(validation.token, validation.clientId, validation.userId);
           if (modRes.success && modRes.channels.length > 0) {
             modRes.channels.forEach(ch => {
-              const id = `ch-${ch.broadcaster_login.toLowerCase()}`;
-              if (!this.allAvailableChannels.some(c => c.name.toLowerCase() === ch.broadcaster_login.toLowerCase())) {
+              const login = (ch.name || ch.broadcaster_login || '').toLowerCase();
+              const displayName = ch.displayName || ch.broadcaster_name || ch.name || login;
+              if (!login) return;
+
+              const id = `ch-${login}`;
+              const exists = this.allAvailableChannels.some(c => c && c.name && c.name.toLowerCase() === login);
+              if (!exists) {
                 this.allAvailableChannels.push({
                   id: id,
-                  name: ch.broadcaster_login,
-                  displayName: ch.broadcaster_name,
+                  name: login,
+                  displayName: displayName,
                   platform: 'twitch',
                   isModerator: true,
                   videoEnabled: true,
                   role: 'mod',
-                  avatar: ''
+                  avatar: ch.avatar || ''
                 });
               }
               this.selectedChannels.add(id);
@@ -353,19 +358,25 @@ class OrbiModApp {
       const res = await apiService.fetchModeratedChannels(profiles.twitch.token, profiles.twitch.clientId, profiles.twitch.userId);
       if (res.success && res.channels.length > 0) {
         res.channels.forEach(ch => {
-          if (!this.allAvailableChannels.some(c => c.name.toLowerCase() === ch.broadcaster_login.toLowerCase())) {
+          const login = (ch.name || ch.broadcaster_login || '').toLowerCase();
+          const displayName = ch.displayName || ch.broadcaster_name || ch.name || login;
+          if (!login) return;
+
+          const id = `ch-${login}`;
+          const exists = this.allAvailableChannels.some(c => c && c.name && c.name.toLowerCase() === login);
+          if (!exists) {
             this.allAvailableChannels.push({
-              id: `ch-${ch.broadcaster_login.toLowerCase()}`,
-              name: ch.broadcaster_login,
-              displayName: ch.broadcaster_name,
+              id: id,
+              name: login,
+              displayName: displayName,
               platform: 'twitch',
               isModerator: true,
               videoEnabled: true,
               role: 'mod',
-              avatar: ''
+              avatar: ch.avatar || ''
             });
-            this.selectedChannels.add(`ch-${ch.broadcaster_login.toLowerCase()}`);
           }
+          this.selectedChannels.add(id);
         });
         storageService.saveChannels(this.allAvailableChannels);
         this.renderChannelSelector();
