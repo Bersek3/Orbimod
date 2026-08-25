@@ -720,7 +720,27 @@ class OrbiModApp {
 
       // Alt + Shortcuts
       if (e.altKey) {
-        if (e.key.toLowerCase() === 'a') {
+        if (e.key === '1') {
+          e.preventDefault();
+          this.setLayout('layout-chat-wall');
+          this.showToast('Vista cambiada: 🧱 Muro de Chats', 'info');
+        } else if (e.key === '2') {
+          e.preventDefault();
+          this.setLayout('layout-grid-2x2');
+          this.showToast('Vista cambiada: 🎛️ Grid 2x2', 'info');
+        } else if (e.key === '3') {
+          e.preventDefault();
+          this.setLayout('layout-split-1-2');
+          this.showToast('Vista cambiada: ⚡ Split 1+2', 'info');
+        } else if (e.key === '4') {
+          e.preventDefault();
+          this.setLayout('layout-dual-columns');
+          this.showToast('Vista cambiada: 👥 Dual Stream', 'info');
+        } else if (e.key === '5') {
+          e.preventDefault();
+          this.setLayout('layout-single-focus');
+          this.showToast('Vista cambiada: 🎯 Focus 1', 'info');
+        } else if (e.key.toLowerCase() === 'a') {
           e.preventDefault();
           this.automodDrawer.open();
         } else if (e.key.toLowerCase() === 'l') {

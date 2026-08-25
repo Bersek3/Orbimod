@@ -82,16 +82,19 @@
 .header-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 4px;
+  gap: 4px;
+  background: rgba(14, 18, 28, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 4px 6px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
 }
 
 .layout-btn {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--text-muted);
   padding: 6px 12px;
   border-radius: var(--radius-sm);
@@ -101,24 +104,33 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: all var(--transition-fast);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  letter-spacing: 0.2px;
 }
 
 .layout-btn:hover {
-  color: var(--text-main);
-  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
 }
 
 .layout-btn.active {
-  background: var(--bg-tertiary);
-  color: #fff;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-medium);
+  background: linear-gradient(135deg, rgba(145, 70, 255, 0.3) 0%, rgba(30, 38, 56, 0.95) 100%);
+  color: #ffffff;
+  border: 1px solid rgba(145, 70, 255, 0.65);
+  box-shadow: 0 0 16px rgba(145, 70, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  font-weight: 700;
 }
 
 .layout-btn svg {
   width: 15px;
   height: 15px;
+  transition: transform 0.2s ease;
+}
+
+.layout-btn:hover svg {
+  transform: scale(1.1);
 }
 
 /* Header Right: Mod Action Controls */
@@ -332,39 +344,70 @@
 .channels-deck {
   flex: 1;
   height: 100%;
+  width: 100%;
   display: grid;
   gap: 12px;
   overflow: hidden;
-  transition: all var(--transition-normal);
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Layout Variations */
-.channels-deck.layout-grid-2x2 {
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-}
-
-.channels-deck.layout-split-1-2 {
-  grid-template-columns: 1.8fr 1.2fr;
-  grid-template-rows: repeat(2, 1fr);
-}
-
-.channels-deck.layout-split-1-2 .channel-card:first-child {
-  grid-row: span 2;
-}
-
+/* 1. Muro de Chats (Full Chat Wall - 100% Espacio para Chat Completo) */
 .channels-deck.layout-chat-wall {
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   grid-template-rows: 1fr;
 }
-
+.channels-deck.layout-chat-wall .channel-card {
+  height: 100%;
+}
 .channels-deck.layout-chat-wall .channel-player-container {
   display: none !important;
 }
 
-.channels-deck.layout-command-center {
-  grid-template-columns: 2fr 1fr;
+/* 2. Cuadrícula Pro (Grid 2x2 Dinámica Inteligente) */
+.channels-deck.layout-grid-2x2 {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+.channels-deck.layout-grid-2x2:has(.channel-card:only-of-type),
+.channels-deck.layout-grid-2x2:has(.channel-card:first-child:last-child) {
+  grid-template-columns: 1fr !important;
+  grid-template-rows: 1fr !important;
+}
+.channels-deck.layout-grid-2x2:has(.channel-card:first-child:nth-last-child(2)) {
+  grid-template-columns: 1fr 1fr !important;
+  grid-template-rows: 1fr !important;
+}
+
+/* 3. Split 1+2 (Canal Principal Destacado + Secundarios) */
+.channels-deck.layout-split-1-2 {
+  grid-template-columns: 1.65fr 1fr;
+  grid-template-rows: repeat(2, 1fr);
+}
+.channels-deck.layout-split-1-2 .channel-card:first-child {
+  grid-row: span 2;
+  height: 100%;
+}
+
+/* 4. Dual Stream (50/50 Lado a Lado Pantalla Completa) */
+.channels-deck.layout-dual-columns {
+  grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr;
+}
+.channels-deck.layout-dual-columns .channel-card {
+  height: 100%;
+}
+
+/* 5. Single Focus (1 Solo Canal Gigante con Chat Máximo) */
+.channels-deck.layout-single-focus {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+.channels-deck.layout-single-focus .channel-card:not(:first-child) {
+  display: none !important;
+}
+.channels-deck.layout-single-focus .channel-card:first-child {
+  height: 100%;
 }
 
 /* --- Onboarding / Quick Launchpad Hero Bar --- */
