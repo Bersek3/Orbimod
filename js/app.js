@@ -512,7 +512,8 @@ class OrbiModApp {
       const profiles = storageService.getProfiles();
       const masterHub = storageService.getMasterHub();
       const twitch = (profiles.twitch && profiles.twitch.valid) ? profiles.twitch : masterHub.twitch;
-      if (twitch && twitch.valid) {
+      const hasRealToken = twitch && twitch.valid && twitch.token && twitch.token !== 'linked' && twitch.token.length > 10;
+      if (hasRealToken) {
         if (masterHub.kick && masterHub.kick.valid) profiles.kick = masterHub.kick;
         profiles.twitch = twitch;
         storageService.saveProfiles(profiles);
@@ -547,7 +548,8 @@ class OrbiModApp {
       const profiles = storageService.getProfiles();
       const masterHub = storageService.getMasterHub();
       const kick = (profiles.kick && profiles.kick.valid) ? profiles.kick : masterHub.kick;
-      if (kick && kick.valid) {
+      const hasRealToken = kick && kick.valid && kick.token && kick.token !== 'linked' && kick.token.length > 10;
+      if (hasRealToken) {
         if (masterHub.twitch && masterHub.twitch.valid) profiles.twitch = masterHub.twitch;
         profiles.kick = kick;
         storageService.saveProfiles(profiles);
@@ -854,20 +856,26 @@ class OrbiModApp {
     const twitchText = document.getElementById('twitch-conn-text');
     const kickText = document.getElementById('kick-conn-text');
 
-    if (profiles.twitch && profiles.twitch.valid) {
+    const hasTwitch = profiles.twitch && (profiles.twitch.login || profiles.twitch.username);
+    const hasTwitchLive = !!(hasTwitch && profiles.twitch.token && profiles.twitch.token !== 'linked');
+
+    if (hasTwitch) {
       if (twitchDot) {
-        twitchDot.style.background = 'var(--success-green)';
-        twitchDot.style.boxShadow = '0 0 8px var(--success-green)';
+        twitchDot.style.background = hasTwitchLive ? 'var(--success-green)' : '#f59e0b';
+        twitchDot.style.boxShadow = hasTwitchLive ? '0 0 8px var(--success-green)' : '0 0 8px #f59e0b';
       }
-      if (twitchText) twitchText.innerHTML = `Twitch: <strong>@${profiles.twitch.login}</strong>`;
+      if (twitchText) twitchText.innerHTML = `Twitch: <strong>@${profiles.twitch.login || profiles.twitch.username}</strong>${hasTwitchLive ? '' : ' <small style="opacity:0.7;">(Vinculado)</small>'}`;
     }
 
-    if (profiles.kick && profiles.kick.valid) {
+    const hasKick = profiles.kick && (profiles.kick.username || profiles.kick.login);
+    const hasKickLive = !!(hasKick && profiles.kick.token && profiles.kick.token !== 'linked');
+
+    if (hasKick) {
       if (kickDot) {
-        kickDot.style.background = 'var(--success-green)';
-        kickDot.style.boxShadow = '0 0 8px var(--success-green)';
+        kickDot.style.background = hasKickLive ? 'var(--success-green)' : '#f59e0b';
+        kickDot.style.boxShadow = hasKickLive ? '0 0 8px var(--success-green)' : '0 0 8px #f59e0b';
       }
-      if (kickText) kickText.innerHTML = `Kick: <strong>@${profiles.kick.username}</strong>`;
+      if (kickText) kickText.innerHTML = `Kick: <strong>@${profiles.kick.username || profiles.kick.login}</strong>${hasKickLive ? '' : ' <small style="opacity:0.7;">(Vinculado)</small>'}`;
     }
   }
 

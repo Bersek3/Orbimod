@@ -1232,12 +1232,13 @@ export class UnifiedAuthModal {
   _bindEvents() {
     this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
 
-    // 1. Twitch Circle Click (1-Clic Instant Enter if linked, else Twitch OAuth)
+    // 1. Twitch Circle Click (1-Clic Instant Enter if OAuth token exists, else Twitch OAuth redirect)
     this.modal.querySelector('#btn-auth-circle-twitch')?.addEventListener('click', () => {
       const profiles = storageService.getProfiles();
       const hub = storageService.getMasterHub();
       const twitch = (profiles.twitch && profiles.twitch.valid) ? profiles.twitch : hub.twitch;
-      if (twitch && twitch.valid) {
+      const hasRealToken = twitch && twitch.valid && twitch.token && twitch.token !== 'linked' && twitch.token.length > 10;
+      if (hasRealToken) {
         profiles.twitch = twitch;
         if (hub.kick && hub.kick.valid) profiles.kick = hub.kick;
         storageService.saveProfiles(profiles);
@@ -1277,12 +1278,13 @@ export class UnifiedAuthModal {
       }
     });
 
-    // 3. Kick Circle Click (1-Clic Instant Enter if linked, else Kick OAuth 2.0 PKCE)
+    // 3. Kick Circle Click (1-Clic Instant Enter if OAuth token exists, else Kick OAuth 2.0 PKCE redirect)
     this.modal.querySelector('#btn-auth-circle-kick')?.addEventListener('click', async () => {
       const profiles = storageService.getProfiles();
       const hub = storageService.getMasterHub();
       const kick = (profiles.kick && profiles.kick.valid) ? profiles.kick : hub.kick;
-      if (kick && kick.valid) {
+      const hasRealToken = kick && kick.valid && kick.token && kick.token !== 'linked' && kick.token.length > 10;
+      if (hasRealToken) {
         profiles.kick = kick;
         if (hub.twitch && hub.twitch.valid) profiles.twitch = hub.twitch;
         storageService.saveProfiles(profiles);
