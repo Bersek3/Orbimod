@@ -922,9 +922,25 @@ class OrbiModApp {
       channel: channel.name
     });
 
-    // 2. Send command to platform IRC/Pusher
+    // 2. Send command to platform API / IRC
     if (channel.platform === 'twitch') {
       this.twitchClient.sendModCommand(channel.name, `/timeout ${username} ${duration} ${reason}`);
+    } else if (channel.platform === 'kick') {
+      const broadcasterId = channel.broadcasterId || channel.id?.replace('ch-kick-', '');
+      const targetUserId = userObj.id || userObj.userId;
+      if (broadcasterId && targetUserId) {
+        const durationMinutes = Math.max(1, Math.ceil(duration / 60));
+        apiService.kickBanOrTimeout({
+          broadcasterUserId: broadcasterId,
+          targetUserId: targetUserId,
+          durationMinutes: durationMinutes,
+          reason: reason
+        }).then(res => {
+          if (!res.success) {
+            console.warn('[Kick API timeout notice]', res.error);
+          }
+        });
+      }
     }
 
     this.showToast(`Timeout a @${username} por ${duration}s en #${channel.name}`, 'warning');
@@ -952,6 +968,20 @@ class OrbiModApp {
 
     if (channel.platform === 'twitch') {
       this.twitchClient.sendModCommand(channel.name, `/ban ${username} ${reason}`);
+    } else if (channel.platform === 'kick') {
+      const broadcasterId = channel.broadcasterId || channel.id?.replace('ch-kick-', '');
+      const targetUserId = userObj.id || userObj.userId;
+      if (broadcasterId && targetUserId) {
+        apiService.kickBanOrTimeout({
+          broadcasterUserId: broadcasterId,
+          targetUserId: targetUserId,
+          reason: reason
+        }).then(res => {
+          if (!res.success) {
+            console.warn('[Kick API ban notice]', res.error);
+          }
+        });
+      }
     }
 
     this.showToast(`@${username} BANEADO permanentemente de #${channel.name}`, 'danger');
@@ -970,6 +1000,15 @@ class OrbiModApp {
 
     if (channel.platform === 'twitch') {
       this.twitchClient.sendModCommand(channel.name, `/unban ${username}`);
+    } else if (channel.platform === 'kick') {
+      const broadcasterId = channel.broadcasterId || channel.id?.replace('ch-kick-', '');
+      const targetUserId = userObj.id || userObj.userId;
+      if (broadcasterId && targetUserId) {
+        apiService.kickUnban({
+          broadcasterUserId: broadcasterId,
+          targetUserId: targetUserId
+        });
+      }
     }
 
     this.showToast(`@${username} ha sido desbaneado en #${channel.name}`, 'success');

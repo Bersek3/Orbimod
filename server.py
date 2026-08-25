@@ -115,7 +115,43 @@ class RobustHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
             return
-        
+
+        if self.path.startswith('/api/kick-mod'):
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                import json
+                import urllib.request
+
+                req_data = json.loads(post_data.decode('utf-8'))
+                auth_token = req_data.get('token')
+                method = req_data.get('method', 'POST')
+                endpoint = req_data.get('endpoint', 'https://api.kick.com/public/v1/moderation/bans')
+                body_data = req_data.get('body', {})
+
+                req = urllib.request.Request(endpoint, data=json.dumps(body_data).encode('utf-8'), headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {auth_token}',
+                    'Accept': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                }, method=method)
+
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    res_data = response.read()
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(res_data)
+            except Exception as e:
+                import json
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+            return
+
         self.send_error(404, "Endpoint Not Found")
 
 def main():

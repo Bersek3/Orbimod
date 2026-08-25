@@ -411,7 +411,7 @@ export class ApiService {
   async getKickAuthUrl(clientId = null) {
     const cid = clientId || this.getKickClientId();
     const redirectUri = this.getKickRedirectUri();
-    const scopes = 'user:read channel:read chat:write';
+    const scopes = 'user:read channel:read channel:write chat:write moderation:ban events:subscribe';
 
     // Generate PKCE code_verifier and code_challenge (mandatory by Kick OAuth 2.1)
     const verifier = this._generatePKCEVerifier();
@@ -481,6 +481,111 @@ export class ApiService {
     }
 
     return { success: false, error: 'No se pudo intercambiar el código OAuth de Kick' };
+  }
+
+  /**
+   * Official Kick Moderation API: Ban or Timeout a user
+   * POST https://api.kick.com/public/v1/moderation/bans
+   * Body: { broadcaster_user_id, user_id, duration (optional minutes), reason (optional) }
+   */
+  async kickBanOrTimeout({ broadcasterUserId, targetUserId, durationMinutes = null, reason = 'Acción de moderación', token = null }) {
+    if (!broadcasterUserId || !targetUserId) {
+      return { success: false, error: 'Faltan IDs de usuario o canal' };
+    }
+
+    const profiles = JSON.parse(localStorage.getItem('nexus_mod_profiles_v1') || '{}');
+    const authToken = token || profiles.kick?.token;
+
+    const bodyPayload = {
+      broadcaster_user_id: Number(broadcasterUserId),
+      user_id: Number(targetUserId),
+      reason: reason ? String(reason).slice(0, 100) : 'Moderación'
+    };
+    if (durationMinutes && Number(durationMinutes) > 0) {
+      bodyPayload.duration = Math.min(10080, Math.max(1, Math.round(Number(durationMinutes))));
+    }
+
+    // 1. Try local proxy
+    try {
+      const proxyRes = await fetch('/api/kick-mod', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: authToken,
+          method: 'POST',
+          endpoint: 'https://api.kick.com/public/v1/moderation/bans',
+          body: bodyPayload
+        })
+      });
+      if (proxyRes.ok) {
+        const data = await proxyRes.json();
+        return { success: true, data };
+      }
+    } catch (e) {}
+
+    // 2. Direct API call fallback
+    try {
+      const res = await fetch('https://api.kick.com/public/v1/moderation/bans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(bodyPayload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return { success: true, data };
+      }
+      const errData = await res.json().catch(() => ({}));
+      return { success: false, error: errData.message || `Error HTTP ${res.status}` };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  /**
+   * Official Kick Moderation API: Unban a user
+   * DELETE https://api.kick.com/public/v1/moderation/bans
+   */
+  async kickUnban({ broadcasterUserId, targetUserId, token = null }) {
+    const profiles = JSON.parse(localStorage.getItem('nexus_mod_profiles_v1') || '{}');
+    const authToken = token || profiles.kick?.token;
+
+    const bodyPayload = {
+      broadcaster_user_id: Number(broadcasterUserId),
+      user_id: Number(targetUserId)
+    };
+
+    try {
+      const proxyRes = await fetch('/api/kick-mod', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: authToken,
+          method: 'DELETE',
+          endpoint: 'https://api.kick.com/public/v1/moderation/bans',
+          body: bodyPayload
+        })
+      });
+      if (proxyRes.ok) return { success: true };
+    } catch (e) {}
+
+    try {
+      const res = await fetch('https://api.kick.com/public/v1/moderation/bans', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(bodyPayload)
+      });
+      return { success: res.ok };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   }
 
   /**
