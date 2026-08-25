@@ -491,6 +491,9 @@ class OrbiModApp {
   async launchModDeck() {
     this.channels = storageService.getChannels() || [];
     
+    // Sync with Supabase cloud if user is authenticated
+    await this.syncFromSupabase();
+
     // Stop any simulated messages
     this.simulator.stop();
 
@@ -512,6 +515,68 @@ class OrbiModApp {
 
     // Refresh Channel Search & History Bar
     this.searchHistoryBar?.render();
+  }
+
+  async syncFromSupabase() {
+    const user = supabaseAuthService.getCurrentUser();
+    if (!user || !user.id) return;
+
+    try {
+      // 1. Sync User Layout
+      const layoutRes = await supabaseAuthService.loadUserLayout(user.id);
+      if (layoutRes.success && layoutRes.layout) {
+        if (layoutRes.layout.layout_type) {
+          this.selectedLayout = layoutRes.layout.layout_type;
+          this.setLayout(this.selectedLayout);
+        }
+        if (Array.isArray(layoutRes.layout.channels) && layoutRes.layout.channels.length > 0) {
+          this.channels = layoutRes.layout.channels;
+          storageService.saveChannels(this.channels);
+        }
+      }
+
+      // 2. Sync Moderated Channel History
+      const histRes = await supabaseAuthService.loadChannelHistory(user.id);
+      if (histRes.success && histRes.channels.length > 0) {
+        const localHistory = storageService.getChannelHistory();
+        const map = new Map();
+        histRes.channels.forEach(ch => {
+          map.set(ch.channel_id, {
+            id: ch.channel_id,
+            name: ch.name,
+            platform: ch.platform,
+            role: ch.role || 'mod',
+            avatar: ch.avatar || '',
+            addedAt: ch.added_at
+          });
+        });
+        localHistory.forEach(ch => map.set(ch.id, ch));
+        storageService.saveChannelHistory(Array.from(map.values()));
+      }
+    } catch (e) {
+      console.warn('[Supabase Cloud Sync Error]', e);
+    }
+  }
+
+  async syncToSupabase() {
+    const user = supabaseAuthService.getCurrentUser();
+    if (!user || !user.id) return;
+
+    try {
+      await supabaseAuthService.saveUserLayout(user.id, {
+        layoutType: this.selectedLayout || this.settings.layout || 'grid-4',
+        channels: this.channels,
+        activeWidgets: Array.from(this.activeWidgets),
+        preferences: { theme: 'cyber-dark' }
+      });
+
+      const history = storageService.getChannelHistory();
+      if (history.length > 0) {
+        await supabaseAuthService.saveChannelHistory(user.id, history);
+      }
+    } catch (e) {
+      console.warn('[Supabase Cloud Save Error]', e);
+    }
   }
 
   _updateAccountPills() {
@@ -1001,6 +1066,7 @@ class OrbiModApp {
     this.renderChannels();
     this.initConnections();
     this.searchHistoryBar?.render();
+    this.syncToSupabase();
     this.showToast(`Canal #${newChan.name} (${newChan.platform.toUpperCase()}) añadido al Deck`, 'success');
   }
 
@@ -1015,6 +1081,7 @@ class OrbiModApp {
     storageService.saveChannels(this.channels);
     this.renderChannels();
     this.searchHistoryBar?.render();
+    this.syncToSupabase();
     this.showToast('Canal removido del deck', 'warning');
   }
 
