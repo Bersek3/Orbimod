@@ -172,8 +172,12 @@ export class ChannelCard {
       const src = this._getPlayerIframeSrc();
       playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture;" allowfullscreen="true" frameborder="0" scrolling="no"></iframe>`;
       const iframe = playerContainer.querySelector('iframe');
-      if (iframe && this.channel.platform === 'kick') {
-        iframe.addEventListener('load', () => this._cleanKickIframe(iframe));
+      if (iframe) {
+        if (this.channel.platform === 'kick') {
+          iframe.addEventListener('load', () => this._cleanKickIframe(iframe));
+        } else if (this.channel.platform === 'twitch') {
+          iframe.addEventListener('load', () => this._cleanTwitchIframe(iframe));
+        }
       }
     };
 
@@ -506,6 +510,36 @@ export class ChannelCard {
           .absolute.right-4.bottom-12,
           [class*="right-4"][class*="bottom-12"],
           [class*="bg-neutral-950/70"] {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            height: 0 !important;
+          }
+        `;
+        doc.head?.appendChild(style);
+      }
+    } catch (e) {
+      // Handled gracefully via outer CSS styling
+    }
+  }
+
+  _cleanTwitchIframe(iframe) {
+    if (this.channel.platform !== 'twitch' || !iframe) return;
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) {
+        const overlay = doc.querySelector('.ScTransitionBase-sc-hx4quq-0, .fhZWme, .tw-transition, [class*="ScTransitionBase"], [class*="fhZWme"]');
+        if (overlay) overlay.style.display = 'none';
+
+        const style = doc.createElement('style');
+        style.textContent = `
+          .ScTransitionBase-sc-hx4quq-0,
+          .fhZWme,
+          .tw-transition,
+          .ScTransitionBase-sc-hx4quq-0.fhZWme.tw-transition,
+          [class*="ScTransitionBase"],
+          [class*="fhZWme"] {
             display: none !important;
             opacity: 0 !important;
             visibility: hidden !important;

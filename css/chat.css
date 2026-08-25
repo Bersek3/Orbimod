@@ -223,6 +223,20 @@
   height: 0 !important;
 }
 
+/* Twitch Embed Player - Hide Intrusive Transition and Overlay Classes */
+.ScTransitionBase-sc-hx4quq-0,
+.fhZWme,
+.tw-transition,
+.ScTransitionBase-sc-hx4quq-0.fhZWme.tw-transition,
+[class*="ScTransitionBase"],
+[class*="fhZWme"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+}
+
 /* Room Moderation Quick Modes Toolbar */
 .room-modes-bar {
   padding: 4px 12px;
