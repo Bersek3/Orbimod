@@ -26,15 +26,19 @@ export class ChannelCard {
     const isTwitch = this.channel.platform === 'twitch';
     const platformLabel = isTwitch ? 'Twitch' : 'Kick';
     const tagClass = isTwitch ? 'badge-twitch' : 'badge-kick';
-    const currentHost = window.location.hostname || 'localhost';
-
-    // Build embed player URL
+    const host = window.location.hostname || 'localhost';
+    // Build embed player URL with parent domains (support both localhost and github.io)
     let playerIframeSrc = '';
     if (isTwitch) {
-      playerIframeSrc = `https://player.twitch.tv/?channel=${this.channel.name}&parent=${currentHost}&autoplay=false&muted=true`;
+      const parentParam = host === 'localhost' || host === '127.0.0.1' 
+        ? `parent=localhost&parent=127.0.0.1` 
+        : `parent=${host}`;
+      playerIframeSrc = `https://player.twitch.tv/?channel=${this.channel.name}&${parentParam}&autoplay=false&muted=true`;
     } else {
       playerIframeSrc = `https://player.kick.com/${this.channel.name}?autoplay=false&muted=true`;
     }
+
+    const hasVideo = !!this.channel.videoEnabled;
 
     card.innerHTML = `
       <!-- Header -->
@@ -43,18 +47,18 @@ export class ChannelCard {
           <img src="${this.channel.avatar || 'https://via.placeholder.com/26'}" class="channel-avatar ${this.channel.platform}" alt="${this.channel.name}" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&h=100&fit=crop'">
           <div class="channel-name-block">
             <div class="channel-title">
-              <span>${this.channel.name}</span>
+              <span>#${this.channel.name}</span>
               <span class="channel-tag ${tagClass}">${platformLabel}</span>
             </div>
             <div class="channel-meta">
-              <span class="live-badge">● LIVE</span>
-              <span>${this.channel.viewers ? Number(this.channel.viewers).toLocaleString() : '12,400'} viewers</span>
+              <span class="live-badge">● LIVE CHAT</span>
+              <span>${this.channel.viewers ? Number(this.channel.viewers).toLocaleString() + ' viewers' : 'Moderación Activa'}</span>
             </div>
           </div>
         </div>
 
         <div class="channel-actions">
-          <button class="icon-btn-subtle video-toggle-btn ${this.channel.videoEnabled ? 'active' : ''}" title="Alternar Stream de Video">
+          <button class="icon-btn-subtle video-toggle-btn ${hasVideo ? 'active' : ''}" title="${hasVideo ? 'Ocultar Video Player' : 'Cargar Video Player'}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           </button>
           <button class="icon-btn-subtle clear-chat-btn" title="Limpiar Chat (/clear)">
@@ -66,9 +70,15 @@ export class ChannelCard {
         </div>
       </div>
 
-      <!-- Optional Stream Video Player -->
-      <div class="channel-player-container ${this.channel.videoEnabled ? '' : 'collapsed'}">
-        <iframe class="channel-player-iframe" src="${this.channel.videoEnabled ? playerIframeSrc : ''}" allowfullscreen="true" scrolling="no"></iframe>
+      <!-- Optional Stream Video Player with Lazy Load -->
+      <div class="channel-player-container ${hasVideo ? '' : 'collapsed'}">
+        ${hasVideo ? `
+          <iframe class="channel-player-iframe" src="${playerIframeSrc}" loading="lazy" allow="autoplay; fullscreen" allowfullscreen="true" scrolling="no"></iframe>
+        ` : `
+          <div class="video-placeholder-lazy" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); font-size: 11.5px; gap: 8px;">
+            <span>📹 Modo Chat Ligero (Haz clic en el ícono de cámara arriba para cargar video)</span>
+          </div>
+        `}
       </div>
 
       <!-- Room Moderation Modes Bar -->
@@ -100,29 +110,27 @@ export class ChannelCard {
         <button class="chat-filter-chip" data-filter="subs">⭐ Subs</button>
       </div>
 
-      <!-- Chat Feed Container -->
-      <div class="channel-chat-section">
-        <div class="chat-messages-container"></div>
-        <div class="chat-paused-pill ${this.channel.platform}" style="display: none;">
-          ↓ Mensajes nuevos (${this.unreadCountWhilePaused})
+      <!-- Live Chat Stream Box -->
+      <div class="chat-messages-container" id="chat-messages-${this.channel.id}">
+        <div class="messages-list"></div>
+        <div class="chat-paused-indicator">
+          <span>▼ Chat Pausado (Nuevos mensajes)</span>
         </div>
       </div>
 
-      <!-- Chat Composer & Quick Macros -->
-      <div class="chat-composer-section">
-        <div class="canned-macros-bar"></div>
-        <div class="chat-input-wrapper">
-          <input type="text" class="chat-input ${isTwitch ? '' : 'kick-input'}" placeholder="Enviar mensaje como Moderador a #${this.channel.name}...">
-          <button class="btn ${isTwitch ? 'btn-primary' : 'btn-kick'} btn-send-chat">
-            <span>Enviar</span>
-          </button>
-        </div>
+      <!-- Quick Canned Macro Chips Toolbar -->
+      <div class="macro-chips-bar"></div>
+
+      <!-- Quick Mod Message Composer -->
+      <div class="chat-composer-bar">
+        <input type="text" class="chat-input" placeholder="Enviar mensaje como moderador..." maxlength="500">
+        <button class="btn btn-primary send-msg-btn">Enviar</button>
       </div>
     `;
 
     this.element = card;
-    this.messagesContainer = card.querySelector('.chat-messages-container');
-    this.pausedIndicator = card.querySelector('.chat-paused-pill');
+    this.messagesContainer = card.querySelector('.messages-list');
+    this.pausedIndicator = card.querySelector('.chat-paused-indicator');
 
     this._bindEvents();
     this._renderMacros();
@@ -130,24 +138,32 @@ export class ChannelCard {
   }
 
   _bindEvents() {
-    // Video Toggle
+    // Video Toggle (Dynamic creation / destruction to prevent memory leaks and WebGL context limits)
     const videoBtn = this.element.querySelector('.video-toggle-btn');
     const playerContainer = this.element.querySelector('.channel-player-container');
-    const iframe = this.element.querySelector('.channel-player-iframe');
 
     videoBtn.addEventListener('click', () => {
       this.channel.videoEnabled = !this.channel.videoEnabled;
       videoBtn.classList.toggle('active', this.channel.videoEnabled);
+      videoBtn.title = this.channel.videoEnabled ? 'Ocultar Video Player' : 'Cargar Video Player';
       playerContainer.classList.toggle('collapsed', !this.channel.videoEnabled);
 
       if (this.channel.videoEnabled) {
         const isTwitch = this.channel.platform === 'twitch';
-        const currentHost = window.location.hostname || 'localhost';
-        iframe.src = isTwitch
-          ? `https://player.twitch.tv/?channel=${this.channel.name}&parent=${currentHost}&autoplay=false&muted=true`
+        const host = window.location.hostname || 'localhost';
+        const parentParam = host === 'localhost' || host === '127.0.0.1' 
+          ? `parent=localhost&parent=127.0.0.1` 
+          : `parent=${host}`;
+        const src = isTwitch
+          ? `https://player.twitch.tv/?channel=${this.channel.name}&${parentParam}&autoplay=false&muted=true`
           : `https://player.kick.com/${this.channel.name}?autoplay=false&muted=true`;
+        playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" loading="lazy" allow="autoplay; fullscreen" allowfullscreen="true" scrolling="no"></iframe>`;
       } else {
-        iframe.src = '';
+        playerContainer.innerHTML = `
+          <div class="video-placeholder-lazy" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); font-size: 11.5px; gap: 8px;">
+            <span>📹 Modo Chat Ligero (Haz clic en el ícono de cámara arriba para cargar video)</span>
+          </div>
+        `;
       }
     });
 
