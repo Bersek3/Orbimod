@@ -343,6 +343,9 @@ class OrbiModApp {
         this.showToast('Por favor selecciona al menos 1 canal para lanzar el Deck', 'warning');
         return;
       }
+      this.switchView('deck');
+    });
+
     // Clean List & Re-scan Button
     document.getElementById('btn-clean-rescan-channels')?.addEventListener('click', async () => {
       this.allAvailableChannels = [];
