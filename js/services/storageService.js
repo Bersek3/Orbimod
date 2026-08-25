@@ -6,6 +6,7 @@ import { DEFAULT_CHANNELS, DEFAULT_MACROS } from '../data/defaultMacros.js';
 
 const STORAGE_KEYS = {
   CHANNELS: 'nexus_mod_channels_v1',
+  CHANNEL_HISTORY: 'nexus_mod_channel_history_v1',
   SETTINGS: 'nexus_mod_settings_v1',
   MACROS: 'nexus_mod_macros_v1',
   AUTOMOD_RULES: 'nexus_mod_automod_v1',
@@ -33,6 +34,51 @@ class StorageService {
     } catch (e) {
       console.error('Failed to save channels', e);
     }
+  }
+
+  // Moderated Channel History
+  getChannelHistory() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CHANNEL_HISTORY);
+      if (data) return JSON.parse(data);
+      return this.getChannels();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  saveChannelHistory(history) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CHANNEL_HISTORY, JSON.stringify(history));
+    } catch (e) {
+      console.error('Failed to save channel history', e);
+    }
+  }
+
+  addToHistory(channel) {
+    if (!channel || !channel.name) return;
+    const history = this.getChannelHistory();
+    const cleanName = (channel.name || '').toLowerCase();
+    const existingIndex = history.findIndex(c => c && c.name && c.name.toLowerCase() === cleanName && c.platform === channel.platform);
+    if (existingIndex >= 0) {
+      history[existingIndex] = { ...history[existingIndex], ...channel, lastUsed: Date.now() };
+    } else {
+      history.unshift({ ...channel, lastUsed: Date.now() });
+    }
+    this.saveChannelHistory(history);
+    return history;
+  }
+
+  removeFromHistory(channelId) {
+    let history = this.getChannelHistory();
+    history = history.filter(c => c.id !== channelId);
+    this.saveChannelHistory(history);
+    return history;
+  }
+
+  clearHistory() {
+    this.saveChannelHistory([]);
+    return [];
   }
 
   // Settings

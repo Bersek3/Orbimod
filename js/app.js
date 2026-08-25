@@ -17,12 +17,14 @@ import { AuditLogDrawer } from './components/auditLog.js';
 import { EventRadarDrawer } from './components/eventRadar.js';
 import { MacroManagerModal } from './components/macroManager.js';
 import { ManageChannelsModal, AddChannelModal, AutoModSettingsModal, ConnectionHubModal, HotkeysModal, UnifiedAuthModal } from './components/modals.js';
+import { ChannelSearchHistoryBar } from './components/channelSearchHistoryBar.js';
 import { supabaseAuthService } from './services/supabaseAuthService.js';
 
 class OrbiModApp {
   constructor() {
     this.currentView = 'landing'; // 'landing' | 'deck'
     this.channels = storageService.getChannels() || []; // active in deck
+    this.searchHistoryBar = null;
     this.settings = storageService.getSettings();
     this.channelCards = new Map(); // id -> ChannelCard instance
     this.selectedLayout = this.settings.layout || 'layout-grid-2x2';
@@ -190,6 +192,22 @@ class OrbiModApp {
     // Sound toggle init & background keep-alive
     soundService.toggleSound(this.settings.soundEnabled);
     this._updateSoundBtnVisual(this.settings.soundEnabled);
+
+    // Initialize Top Bar Channel Search & Moderated History Component
+    this.searchHistoryBar = new ChannelSearchHistoryBar({
+      container: document.getElementById('deck-channel-search-container'),
+      getActiveChannels: () => this.channels,
+      onAddChannel: (chan) => {
+        this.addChannel(chan);
+      },
+      onRemoveChannel: (id) => {
+        this.removeChannel(id);
+      },
+      onChannelsUpdated: () => {
+        this.renderChannels();
+      },
+      showToast: (msg, type) => this.showToast(msg, type)
+    });
 
     // Keep streams active in background tabs without pausing
     const startKeepAlive = () => {
@@ -487,6 +505,9 @@ class OrbiModApp {
       storageService.saveChannels(this.channels);
       this.renderChannels();
     }
+
+    // Refresh Channel Search & History Bar
+    this.searchHistoryBar?.render();
   }
 
   _updateAccountPills() {
@@ -717,7 +738,7 @@ class OrbiModApp {
         this.renderChannels();
       });
       emptyNotice.querySelector('#btn-empty-add-chan')?.addEventListener('click', () => {
-        this.manageChannelsModal.open();
+        document.getElementById('deck-channel-search-input')?.focus();
       });
     } else {
       channelsToDisplay.forEach(ch => {
@@ -747,9 +768,9 @@ class OrbiModApp {
       emptySlot.innerHTML = `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
         <div style="font-weight: 600; font-size: 13px;">+ Añadir Canal al Deck</div>
-        <div style="font-size: 11px;">Twitch o Kick simultáneo</div>
+        <div style="font-size: 11px;">Escribe el nombre arriba o elige de tu historial</div>
       `;
-      emptySlot.addEventListener('click', () => this.manageChannelsModal.open());
+      emptySlot.addEventListener('click', () => document.getElementById('deck-channel-search-input')?.focus());
       deck.appendChild(emptySlot);
     }
 
@@ -972,8 +993,10 @@ class OrbiModApp {
 
     this.channels.push(newChan);
     storageService.saveChannels(this.channels);
+    storageService.addToHistory(newChan);
     this.renderChannels();
     this.initConnections();
+    this.searchHistoryBar?.render();
     this.showToast(`Canal #${newChan.name} (${newChan.platform.toUpperCase()}) añadido al Deck`, 'success');
   }
 
@@ -987,6 +1010,7 @@ class OrbiModApp {
     this.channels = this.channels.filter(c => c.id !== channelId);
     storageService.saveChannels(this.channels);
     this.renderChannels();
+    this.searchHistoryBar?.render();
     this.showToast('Canal removido del deck', 'warning');
   }
 
