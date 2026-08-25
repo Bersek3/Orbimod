@@ -484,6 +484,37 @@ export class ApiService {
   }
 
   /**
+   * Fetches Authenticated User Profile from Kick Public API
+   * GET https://api.kick.com/public/v1/users
+   */
+  async fetchKickAuthenticatedUser(token) {
+    if (!token) return { success: false };
+
+    try {
+      const res = await fetch('https://api.kick.com/public/v1/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const user = data.data || data;
+        return {
+          success: true,
+          username: user.name || user.username || 'Bersek',
+          id: user.user_id || user.id,
+          email: user.email,
+          avatar: user.profile_picture || user.profile_pic
+        };
+      }
+    } catch (e) {
+      console.warn('[fetchKickAuthenticatedUser fallback]', e);
+    }
+    return { success: false };
+  }
+
+  /**
    * Official Kick Moderation API: Ban or Timeout a user
    * POST https://api.kick.com/public/v1/moderation/bans
    * Body: { broadcaster_user_id, user_id, duration (optional minutes), reason (optional) }

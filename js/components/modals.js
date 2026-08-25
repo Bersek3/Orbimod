@@ -1500,24 +1500,11 @@ export class UnifiedAccountHubModal {
                 </button>
               ` : `
                 <button id="btn-hub-link-kick" class="btn btn-primary" style="background: #53FC18; color: #000; font-weight: 800; font-size: 11px; padding: 4px 12px;">
-                  + Vincular Kick
+                  🟢 Vincular con Kick OAuth
                 </button>
               `}
             </div>
           </div>
-
-          <!-- Kick Fast Username Connect Box if not linked -->
-          ${!kickLinked ? `
-            <div id="kick-quick-link-box" style="display:none; background: rgba(255,255,255,0.02); border: 1px dashed rgba(83, 252, 24, 0.3); border-radius: 8px; padding: 10px 12px; gap: 8px; flex-direction: column;">
-              <label style="font-size: 11px; color: var(--text-dim);">Escribe tu nombre de usuario en Kick:</label>
-              <div style="display: flex; gap: 6px;">
-                <input type="text" id="hub-kick-username-input" class="minimal-input" placeholder="ej. Bersek" value="Bersek" style="font-size: 12px;">
-                <button id="btn-hub-save-kick" class="btn btn-primary" style="background: #53FC18; color: #000; font-weight: 800; font-size: 11.5px; white-space: nowrap;">
-                  Guardar
-                </button>
-              </div>
-            </div>
-          ` : ''}
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
             <button id="btn-hub-logout-global" class="btn btn-secondary" style="font-size: 11.5px; color: #ef4444; border-color: rgba(239,68,68,0.3);">
@@ -1559,36 +1546,10 @@ export class UnifiedAccountHubModal {
       }
     });
 
-    // Toggle Kick Quick Link Box
-    const linkKickBtn = this.modal.querySelector('#btn-hub-link-kick');
-    const quickBox = this.modal.querySelector('#kick-quick-link-box');
-    linkKickBtn?.addEventListener('click', () => {
-      if (quickBox) {
-        quickBox.style.display = quickBox.style.display === 'none' ? 'flex' : 'none';
-      }
-    });
-
-    // Save Kick username
-    this.modal.querySelector('#btn-hub-save-kick')?.addEventListener('click', async () => {
-      const username = this.modal.querySelector('#hub-kick-username-input')?.value.trim().toLowerCase().replace(/[@#]/g, '');
-      if (!username) return;
-
-      const profiles = storageService.getProfiles();
-      profiles.kick = {
-        valid: true,
-        username: username,
-        token: 'dev_configured'
-      };
-      storageService.saveProfiles(profiles);
-
-      const user = supabaseAuthService.getCurrentUser();
-      if (user && user.id) {
-        await supabaseAuthService.saveLinkedAccounts(user.id, { kick: { username, token: 'dev_configured' } });
-      }
-
-      if (this.showToast) this.showToast(`🟢 Cuenta de Kick @${username} vinculada a tu perfil maestro`, 'success');
-      if (this.onUpdate) this.onUpdate();
-      this.render();
+    // Link Kick (Direct OAuth 2.0 PKCE Flow)
+    this.modal.querySelector('#btn-hub-link-kick')?.addEventListener('click', async () => {
+      const url = await apiService.getKickAuthUrl();
+      window.location.href = url;
     });
 
     // Unlink Kick

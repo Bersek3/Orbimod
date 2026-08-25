@@ -315,7 +315,6 @@ class OrbiModApp {
     if (window.location.search) {
       const urlParams = new URLSearchParams(window.location.search);
       const kickCode = urlParams.get('code') || urlParams.get('kick_code');
-      const kickUser = urlParams.get('username') || urlParams.get('kick_user') || 'kick_moderator';
 
       if (kickCode) {
         this.showToast('🟢 Procesando autenticación de Kick Developer OAuth 2.0...', 'success');
@@ -323,13 +322,23 @@ class OrbiModApp {
         const tokenRes = await apiService.exchangeKickAuthCode(kickCode);
         const accessToken = tokenRes.success && tokenRes.tokenData?.access_token ? tokenRes.tokenData.access_token : kickCode;
 
+        let kickUser = 'Bersek';
+        let kickAvatar = 'https://files.kick.com/images/user/default/profile_image.png';
+
+        // Auto-fetch authentic Kick user details
+        const uRes = await apiService.fetchKickAuthenticatedUser(accessToken);
+        if (uRes.success && uRes.username) {
+          kickUser = uRes.username;
+          if (uRes.avatar) kickAvatar = uRes.avatar;
+        }
+
         const profiles = storageService.getProfiles();
         profiles.kick = {
           valid: true,
           username: kickUser,
           token: accessToken,
           clientId: apiService.getKickClientId(),
-          avatar: 'https://files.kick.com/images/user/default/profile_image.png'
+          avatar: kickAvatar
         };
         storageService.saveProfiles(profiles);
 
@@ -338,18 +347,17 @@ class OrbiModApp {
         creds.kickToken = accessToken;
         storageService.saveAuthCreds(creds);
 
-        // Fetch user avatar if available
-        try {
-          const kRes = await apiService.fetchKickChannel(kickUser);
-          if (kRes.success && kRes.channel.avatar) {
-            profiles.kick.avatar = kRes.channel.avatar;
-            storageService.saveProfiles(profiles);
-          }
-        } catch (e) {}
+        // Sync to Supabase Master Account if authenticated
+        const curUser = supabaseAuthService.getCurrentUser();
+        if (curUser && curUser.id) {
+          await supabaseAuthService.saveLinkedAccounts(curUser.id, { kick: profiles.kick });
+        }
 
         // Clean URL search without reloading
         window.history.replaceState(null, null, window.location.pathname);
-        this.showToast(`¡Cuenta de Kick vinculada con éxito vía Kick OAuth 2.0!`, 'success');
+        this._updateAccountPills();
+        this.updateLandingAuthStatus();
+        this.showToast(`¡Cuenta de Kick @${kickUser} vinculada con éxito vía OAuth 2.0!`, 'success');
         return true;
       }
     }
