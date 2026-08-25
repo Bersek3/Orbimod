@@ -161,6 +161,19 @@
   border-color: rgba(145, 70, 255, 0.4);
 }
 
+.channel-card.kick .icon-btn-subtle.active {
+  color: #53fc18;
+  background: rgba(83, 252, 24, 0.2);
+  border-color: rgba(83, 252, 24, 0.4);
+}
+
+.icon-btn-subtle.audio-toggle-btn.active {
+  color: #00d2d3;
+  background: rgba(0, 210, 211, 0.2);
+  border-color: rgba(0, 210, 211, 0.4);
+  box-shadow: 0 0 10px rgba(0, 210, 211, 0.25);
+}
+
 .icon-btn-subtle svg {
   width: 14px;
   height: 14px;

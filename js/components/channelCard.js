@@ -7,7 +7,7 @@ import { renderBadgesHTML } from '../data/defaultBadges.js';
 
 export class ChannelCard {
   constructor(channel, options = {}) {
-    this.channel = channel; // { id, name, platform, avatar, viewers, isLive, videoEnabled, slowMode, subOnly, followOnly, emoteOnly }
+    this.channel = channel; // { id, name, platform, avatar, viewers, isLive, videoEnabled, audioEnabled, slowMode, subOnly, followOnly, emoteOnly }
     this.options = options; // { onTimeout, onBan, onDelete, onInspect, onSendMessage, onToggleMode, onRemoveChannel }
     this.element = null;
     this.messagesContainer = null;
@@ -18,6 +18,21 @@ export class ChannelCard {
     this.messages = [];
   }
 
+  _getPlayerIframeSrc() {
+    const isTwitch = this.channel.platform === 'twitch';
+    const host = window.location.hostname || 'localhost';
+    const isMuted = !this.channel.audioEnabled;
+
+    if (isTwitch) {
+      const parentParam = host === 'localhost' || host === '127.0.0.1' 
+        ? `parent=localhost&parent=127.0.0.1` 
+        : `parent=${host}`;
+      return `https://player.twitch.tv/?channel=${this.channel.name}&${parentParam}&autoplay=true&muted=${isMuted}`;
+    } else {
+      return `https://player.kick.com/${this.channel.name}?autoplay=true&muted=${isMuted}`;
+    }
+  }
+
   render() {
     const card = document.createElement('div');
     card.className = `channel-card ${this.channel.platform}`;
@@ -26,19 +41,9 @@ export class ChannelCard {
     const isTwitch = this.channel.platform === 'twitch';
     const platformLabel = isTwitch ? 'Twitch' : 'Kick';
     const tagClass = isTwitch ? 'badge-twitch' : 'badge-kick';
-    const host = window.location.hostname || 'localhost';
-    // Build embed player URL with parent domains (support both localhost and github.io)
-    let playerIframeSrc = '';
-    if (isTwitch) {
-      const parentParam = host === 'localhost' || host === '127.0.0.1' 
-        ? `parent=localhost&parent=127.0.0.1` 
-        : `parent=${host}`;
-      playerIframeSrc = `https://player.twitch.tv/?channel=${this.channel.name}&${parentParam}&autoplay=false&muted=true`;
-    } else {
-      playerIframeSrc = `https://player.kick.com/${this.channel.name}?autoplay=false&muted=true`;
-    }
-
+    const playerIframeSrc = this._getPlayerIframeSrc();
     const hasVideo = !!this.channel.videoEnabled;
+    const hasAudio = !!this.channel.audioEnabled;
 
     card.innerHTML = `
       <!-- Header -->
@@ -60,12 +65,26 @@ export class ChannelCard {
         </div>
 
         <div class="channel-actions">
+          <!-- Audio Toggle Button (Mute / Unmute) -->
+          <button class="icon-btn-subtle audio-toggle-btn ${hasAudio ? 'active' : ''}" title="${hasAudio ? 'Silenciar Audio' : 'Activar Sonido (Unmute)'}">
+            ${hasAudio ? `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            ` : `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+            `}
+          </button>
+
+          <!-- Video Toggle Button -->
           <button class="icon-btn-subtle video-toggle-btn ${hasVideo ? 'active' : ''}" title="${hasVideo ? 'Ocultar Video Player' : 'Cargar Video Player'}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           </button>
+
+          <!-- Clear Chat -->
           <button class="icon-btn-subtle clear-chat-btn" title="Limpiar Chat (/clear)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>
           </button>
+
+          <!-- Remove Channel -->
           <button class="icon-btn-subtle remove-channel-btn" title="Cerrar Canal de la Vista">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
@@ -75,7 +94,7 @@ export class ChannelCard {
       <!-- Optional Stream Video Player with Lazy Load -->
       <div class="channel-player-container ${hasVideo ? '' : 'collapsed'}">
         ${hasVideo ? `
-          <iframe class="channel-player-iframe" src="${playerIframeSrc}" loading="lazy" allow="autoplay; fullscreen" scrolling="no"></iframe>
+          <iframe class="channel-player-iframe" src="${playerIframeSrc}" loading="lazy" allow="autoplay; fullscreen; encrypted-media; picture-in-picture;" scrolling="no"></iframe>
         ` : `
           <div class="video-placeholder-lazy" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); font-size: 11.5px; gap: 8px;">
             <span>📹 Modo Chat Ligero (Haz clic en el ícono de cámara arriba para cargar video)</span>
@@ -130,31 +149,66 @@ export class ChannelCard {
   }
 
   _bindEvents() {
-    // Video Toggle (Dynamic creation / destruction to prevent memory leaks and WebGL context limits)
-    const videoBtn = this.element.querySelector('.video-toggle-btn');
     const playerContainer = this.element.querySelector('.channel-player-container');
+    const videoBtn = this.element.querySelector('.video-toggle-btn');
+    const audioBtn = this.element.querySelector('.audio-toggle-btn');
 
-    videoBtn.addEventListener('click', () => {
+    // 1. Audio Toggle (Mute / Unmute stream on Kick and Twitch)
+    audioBtn?.addEventListener('click', () => {
+      this.channel.audioEnabled = !this.channel.audioEnabled;
+
+      // If video was collapsed/disabled, enable video so user can hear the audio
+      if (this.channel.audioEnabled && !this.channel.videoEnabled) {
+        this.channel.videoEnabled = true;
+        if (videoBtn) {
+          videoBtn.classList.add('active');
+          videoBtn.title = 'Ocultar Video Player';
+        }
+        playerContainer.classList.remove('collapsed');
+      }
+
+      // Update Audio button icon & title
+      audioBtn.classList.toggle('active', this.channel.audioEnabled);
+      audioBtn.title = this.channel.audioEnabled ? 'Silenciar Audio' : 'Activar Sonido (Unmute)';
+      audioBtn.innerHTML = this.channel.audioEnabled ? `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      ` : `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+      `;
+
+      // Reload/update player iframe with current audio state
+      if (this.channel.videoEnabled) {
+        const src = this._getPlayerIframeSrc();
+        playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture;" scrolling="no"></iframe>`;
+        const iframe = playerContainer.querySelector('iframe');
+        if (iframe && this.channel.platform === 'kick') {
+          iframe.addEventListener('load', () => this._cleanKickIframe(iframe));
+        }
+      }
+    });
+
+    // 2. Video Toggle (Dynamic creation / destruction to prevent memory leaks and WebGL context limits)
+    videoBtn?.addEventListener('click', () => {
       this.channel.videoEnabled = !this.channel.videoEnabled;
       videoBtn.classList.toggle('active', this.channel.videoEnabled);
       videoBtn.title = this.channel.videoEnabled ? 'Ocultar Video Player' : 'Cargar Video Player';
       playerContainer.classList.toggle('collapsed', !this.channel.videoEnabled);
 
       if (this.channel.videoEnabled) {
-        const isTwitch = this.channel.platform === 'twitch';
-        const host = window.location.hostname || 'localhost';
-        const parentParam = host === 'localhost' || host === '127.0.0.1' 
-          ? `parent=localhost&parent=127.0.0.1` 
-          : `parent=${host}`;
-        const src = isTwitch
-          ? `https://player.twitch.tv/?channel=${this.channel.name}&${parentParam}&autoplay=false&muted=true`
-          : `https://player.kick.com/${this.channel.name}?autoplay=false&muted=true`;
-        playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" loading="lazy" allow="autoplay; fullscreen" scrolling="no"></iframe>`;
+        const src = this._getPlayerIframeSrc();
+        playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" loading="lazy" allow="autoplay; fullscreen; encrypted-media; picture-in-picture;" scrolling="no"></iframe>`;
         const iframe = playerContainer.querySelector('iframe');
         if (iframe && this.channel.platform === 'kick') {
           iframe.addEventListener('load', () => this._cleanKickIframe(iframe));
         }
       } else {
+        // If video disabled, mute audio button as well
+        this.channel.audioEnabled = false;
+        if (audioBtn) {
+          audioBtn.classList.remove('active');
+          audioBtn.title = 'Activar Sonido (Unmute)';
+          audioBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+        }
         playerContainer.innerHTML = `
           <div class="video-placeholder-lazy" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); font-size: 11.5px; gap: 8px;">
             <span>📹 Modo Chat Ligero (Haz clic en el ícono de cámara arriba para cargar video)</span>
