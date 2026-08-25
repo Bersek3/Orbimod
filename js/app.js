@@ -343,7 +343,19 @@ class OrbiModApp {
         this.showToast('Por favor selecciona al menos 1 canal para lanzar el Deck', 'warning');
         return;
       }
-      this.switchView('deck');
+    // Clean List & Re-scan Button
+    document.getElementById('btn-clean-rescan-channels')?.addEventListener('click', async () => {
+      this.allAvailableChannels = [];
+      this.selectedChannels.clear();
+      storageService.saveChannels([]);
+      this.renderChannelSelector();
+      this.showToast('Lista de canales limpiada', 'info');
+
+      // If Twitch is connected, automatically scan real moderated channels
+      const profiles = storageService.getProfiles();
+      if (profiles.twitch?.valid && profiles.twitch?.token) {
+        document.getElementById('btn-scan-mod-channels')?.click();
+      }
     });
 
     document.getElementById('btn-scan-mod-channels')?.addEventListener('click', async () => {
@@ -357,32 +369,28 @@ class OrbiModApp {
       this.showToast('⚡ Escaneando canales donde eres moderador en Twitch...', 'twitch');
       const res = await apiService.fetchModeratedChannels(profiles.twitch.token, profiles.twitch.clientId, profiles.twitch.userId);
       if (res.success && res.channels.length > 0) {
-        res.channels.forEach(ch => {
+        // Keep ONLY the fresh list of verified moderated channels
+        this.allAvailableChannels = res.channels.map(ch => {
           const login = (ch.name || ch.broadcaster_login || '').toLowerCase();
           const displayName = ch.displayName || ch.broadcaster_name || ch.name || login;
-          if (!login) return;
+          return {
+            id: `ch-${login}`,
+            name: login,
+            displayName: displayName,
+            platform: 'twitch',
+            isModerator: true,
+            videoEnabled: true,
+            role: 'mod',
+            avatar: ch.avatar || ''
+          };
+        }).filter(c => c.name);
 
-          const id = `ch-${login}`;
-          const exists = this.allAvailableChannels.some(c => c && c.name && c.name.toLowerCase() === login);
-          if (!exists) {
-            this.allAvailableChannels.push({
-              id: id,
-              name: login,
-              displayName: displayName,
-              platform: 'twitch',
-              isModerator: true,
-              videoEnabled: true,
-              role: 'mod',
-              avatar: ch.avatar || ''
-            });
-          }
-          this.selectedChannels.add(id);
-        });
+        this.selectedChannels = new Set(this.allAvailableChannels.map(c => c.id));
         storageService.saveChannels(this.allAvailableChannels);
         this.renderChannelSelector();
-        this.showToast(`¡Se agregaron ${res.channels.length} canales moderados a tu lista!`, 'success');
+        this.showToast(`¡Se cargaron tus ${this.allAvailableChannels.length} canales moderados de Twitch!`, 'success');
       } else {
-        this.showToast('No se encontraron nuevos canales moderados o la lista ya está actualizada', 'info');
+        this.showToast('No se encontraron canales moderados en tu cuenta de Twitch', 'info');
       }
     });
 
@@ -440,8 +448,8 @@ class OrbiModApp {
       grid.innerHTML = `
         <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: var(--text-dim); background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle);">
           <div style="font-size: 28px; margin-bottom: 8px;">📡</div>
-          <div style="font-size: 14px; font-weight: 700; color: #fff;">No hay canales moderados detectados todavía</div>
-          <div style="font-size: 12px; margin-top: 4px;">Haz clic en <strong>"⚡ Re-escanear Canales Moderados"</strong> o vincula tu cuenta de Twitch/Kick arriba.</div>
+          <div style="font-size: 14px; font-weight: 700; color: #fff;">No hay canales moderados en la lista</div>
+          <div style="font-size: 12px; margin-top: 4px;">Haz clic en <strong>"⚡ Escanear Canales Moderados"</strong> para sincronizar tus canales reales de Twitch.</div>
         </div>
       `;
       return;
@@ -459,14 +467,17 @@ class OrbiModApp {
           <div class="channel-select-info">
             <img src="${ch.avatar || defaultAvatar}" class="channel-select-avatar" alt="${ch.name}">
             <div style="min-width: 0;">
-              <div class="channel-select-name">${ch.displayName || ch.name}</div>
+              <div class="channel-select-name">#${ch.displayName || ch.name}</div>
               <div class="channel-select-meta">
                 <span class="channel-tag badge-${ch.platform}">${ch.platform.toUpperCase()}</span>
                 <span>${ch.role === 'mod' ? '🛡️ MOD' : 'Canal'}</span>
               </div>
             </div>
           </div>
-          <input type="checkbox" class="channel-select-checkbox" ${isSelected ? 'checked' : ''} data-channel-id="${ch.id}">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" class="channel-select-checkbox" ${isSelected ? 'checked' : ''} data-channel-id="${ch.id}">
+            <button class="btn-remove-channel" data-channel-id="${ch.id}" title="Quitar de mi lista" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:12px; padding:2px 4px;">✕</button>
+          </div>
         </div>
       `;
     }).join('');
@@ -475,6 +486,16 @@ class OrbiModApp {
     grid.querySelectorAll('.channel-select-card').forEach(card => {
       const chId = card.dataset.channelId;
       card.addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn-remove-channel')) {
+          e.stopPropagation();
+          this.allAvailableChannels = this.allAvailableChannels.filter(c => c.id !== chId);
+          this.selectedChannels.delete(chId);
+          storageService.saveChannels(this.allAvailableChannels);
+          this.renderChannelSelector();
+          this.showToast('Canal quitado de la lista', 'info');
+          return;
+        }
+
         if (e.target.tagName !== 'INPUT') {
           const cb = card.querySelector('.channel-select-checkbox');
           cb.checked = !cb.checked;

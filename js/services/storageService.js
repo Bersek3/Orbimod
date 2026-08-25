@@ -21,9 +21,9 @@ class StorageService {
   getChannels() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CHANNELS);
-      return data ? JSON.parse(data) : DEFAULT_CHANNELS;
+      return data ? JSON.parse(data) : [];
     } catch (e) {
-      return DEFAULT_CHANNELS;
+      return [];
     }
   }
 
