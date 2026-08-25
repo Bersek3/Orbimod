@@ -192,24 +192,33 @@ export class ManageChannelsModal {
     // Add manual channel
     const addInput = this.modal.querySelector('#modal-add-channel-input');
     const submitAdd = this.modal.querySelector('#btn-modal-submit-add');
-    const handleAdd = () => {
-      const name = addInput?.value.trim().toLowerCase().replace('@', '');
+    const handleAdd = async () => {
+      const name = addInput?.value.trim().toLowerCase().replace(/[@#]/g, '');
       if (!name) return;
-      const newChan = {
-        id: `ch-${this.selectedPlatform}-${name}`,
-        name: name,
-        platform: this.selectedPlatform,
-        avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop',
-        viewers: 0,
-        isLive: true,
-        videoEnabled: true,
-        slowMode: 0,
-        subOnly: false,
-        followOnly: false,
-        emoteOnly: false
-      };
+
+      if (submitAdd) {
+        submitAdd.disabled = true;
+        submitAdd.textContent = 'Verificando en vivo...';
+      }
+
+      let res;
+      if (this.selectedPlatform === 'twitch') {
+        res = await apiService.fetchTwitchChannel(name);
+      } else {
+        res = await apiService.fetchKickChannel(name);
+      }
+
+      if (!res.success) {
+        alert(res.error || `No se pudo encontrar el canal #${name} en ${this.selectedPlatform.toUpperCase()}`);
+        if (submitAdd) {
+          submitAdd.disabled = false;
+          submitAdd.textContent = '+ Añadir';
+        }
+        return;
+      }
+
       if (this.onAddChannel) {
-        this.onAddChannel(newChan);
+        this.onAddChannel(res.channel);
       }
       this.render();
     };
@@ -1031,28 +1040,59 @@ export class UnifiedAuthModal {
   render() {
     const currentUser = supabaseAuthService.getCurrentUser();
 
-    if (this.emailMode === 'config') {
+    if (this.emailMode === 'kick') {
+      const savedKickClientId = apiService.getKickClientId();
+      const profiles = storageService.getProfiles?.() || {};
+      const savedUsername = profiles.kick?.username || '';
+
       this.modal.innerHTML = `
-        <div class="modal-container auth-minimal-card" style="max-width: 380px;">
+        <div class="modal-container auth-minimal-card" style="max-width: 420px;">
           <div class="auth-minimal-header">
-            <h3 class="auth-minimal-title">Configurar Supabase</h3>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="background: #53FC18; color: #000; font-weight: 900; font-size: 13px; padding: 2px 7px; border-radius: 4px;">KICK DEV</span>
+              <h3 class="auth-minimal-title" style="margin: 0;">Conectar con Kick</h3>
+            </div>
             <button class="auth-minimal-close close-modal-btn" title="Cerrar">✕</button>
           </div>
-          <div style="font-size: 12px; color: #7f8c8d; margin-bottom: 16px; line-height: 1.4;">
-            Ingresa los datos de tu proyecto Supabase para autenticación en la nube.
+
+          <div style="font-size: 12px; color: #7f8c8d; margin-bottom: 14px; line-height: 1.4;">
+            Conecta tu cuenta de Kick usando OAuth 2.0 o tus credenciales de <strong>Kick Developer</strong>.
           </div>
+
           <div style="display:flex; flex-direction:column; gap:12px;">
-            <div>
-              <label style="font-size: 11px; font-weight:700; color:#2d3436; margin-bottom:4px; display:block;">Project URL</label>
-              <input type="text" id="supabase-url-input" class="minimal-input" placeholder="https://xyzcompany.supabase.co" value="${supabaseAuthService.supabaseConfig.url || ''}">
+            <!-- Kick OAuth 2.0 Direct Button -->
+            <button id="btn-start-kick-oauth" class="minimal-submit-btn" style="background: #53FC18; color: #000; font-weight: 800; font-size: 12.5px; border-radius: 6px; box-shadow: 0 4px 14px rgba(83, 252, 24, 0.25);">
+              🟢 INICIAR CON KICK OAUTH 2.0
+            </button>
+
+            <div class="auth-or-divider" style="margin: 4px 0;">
+              <div class="divider-line"></div>
+              <span class="divider-text">o con tu cuenta / App</span>
+              <div class="divider-line"></div>
             </div>
+
             <div>
-              <label style="font-size: 11px; font-weight:700; color:#2d3436; margin-bottom:4px; display:block;">Anon Public Key</label>
-              <input type="password" id="supabase-key-input" class="minimal-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI..." value="${supabaseAuthService.supabaseConfig.anonKey || ''}">
+              <label style="font-size: 11px; font-weight:700; color:#2d3436; margin-bottom:4px; display:block;">Tu Nombre de Usuario en Kick</label>
+              <input type="text" id="kick-user-input" class="minimal-input" placeholder="ej. tu_canal_kick" value="${savedUsername}">
             </div>
-            <button id="btn-save-supabase-config" class="minimal-submit-btn" style="margin-top:8px;">GUARDAR CONFIGURACIÓN</button>
-            <div style="text-align: center; margin-top: 10px;">
-              <a href="#" id="btn-cancel-supabase-config" style="font-size: 12px; color: #00a8ff; text-decoration: none;">← Volver al Login</a>
+
+            <div>
+              <label style="font-size: 11px; font-weight:700; color:#2d3436; margin-bottom:4px; display:block;">Kick Dev App Client ID (Opcional)</label>
+              <input type="text" id="kick-client-id-input" class="minimal-input" placeholder="orbimod_kick_app_..." value="${savedKickClientId === 'orbimod_kick_dev' ? '' : savedKickClientId}">
+            </div>
+
+            <div id="kick-auth-feedback" class="minimal-auth-feedback" style="display:none;"></div>
+
+            <button id="btn-save-kick-auth" class="minimal-submit-btn" style="background: #2f3640; color: #fff; font-size: 12px;">
+              VINCULAR CUENTA DE KICK
+            </button>
+
+            <div style="background: rgba(0,0,0,0.04); border-radius: 6px; padding: 8px 10px; font-size: 11px; color: #636e72; line-height: 1.4;">
+              💡 <strong>¿Tienes una App en Kick Dev?</strong> Puedes crear tus credenciales en <a href="https://kick.com/settings/developer" target="_blank" rel="noopener" style="color: #00a8ff; font-weight: 600;">kick.com/settings/developer</a>.
+            </div>
+
+            <div style="text-align: center; margin-top: 4px;">
+              <a href="#" id="btn-cancel-kick-config" style="font-size: 12px; color: #00a8ff; text-decoration: none;">← Volver a opciones de inicio</a>
             </div>
           </div>
         </div>
@@ -1150,23 +1190,77 @@ export class UnifiedAuthModal {
       window.location.href = url;
     });
 
-    // 3. Kick Circle Click
+    // 3. Kick Circle Click -> Open Kick Developer Login Form
     this.modal.querySelector('#btn-auth-circle-kick')?.addEventListener('click', () => {
-      const username = prompt('Ingresa tu nombre de usuario en Kick:')?.trim();
-      if (!username) return;
+      this.emailMode = 'kick';
+      this.render();
+    });
+
+    // Kick Mode Buttons
+    this.modal.querySelector('#btn-start-kick-oauth')?.addEventListener('click', () => {
+      const clientId = this.modal.querySelector('#kick-client-id-input')?.value.trim();
+      if (clientId) apiService.saveKickClientId(clientId);
+      const url = apiService.getKickAuthUrl(clientId);
+      window.location.href = url;
+    });
+
+    this.modal.querySelector('#btn-save-kick-auth')?.addEventListener('click', async () => {
+      const userInput = this.modal.querySelector('#kick-user-input')?.value.trim().toLowerCase().replace(/[@#]/g, '');
+      const clientId = this.modal.querySelector('#kick-client-id-input')?.value.trim();
+      const feedback = this.modal.querySelector('#kick-auth-feedback');
+      const saveBtn = this.modal.querySelector('#btn-save-kick-auth');
+
+      if (!userInput) {
+        if (feedback) {
+          feedback.style.display = 'block';
+          feedback.textContent = 'Por favor ingresa tu nombre de usuario en Kick';
+        }
+        return;
+      }
+
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'VALIDANDO EN KICK...';
+      }
+
+      if (clientId) apiService.saveKickClientId(clientId);
+
+      const kRes = await apiService.fetchKickChannel(userInput);
+      if (!kRes.success) {
+        if (feedback) {
+          feedback.style.display = 'block';
+          feedback.textContent = kRes.error || `El usuario @${userInput} no fue encontrado en Kick`;
+        }
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'VINCULAR CUENTA DE KICK';
+        }
+        return;
+      }
 
       const creds = storageService.getAuthCreds();
-      creds.kickUsername = username;
+      creds.kickUsername = userInput;
       storageService.saveAuthCreds(creds);
 
       const profiles = storageService.getProfiles();
-      profiles.kick = { valid: true, username: username, token: '' };
+      profiles.kick = {
+        valid: true,
+        username: userInput,
+        avatar: kRes.channel.avatar || '',
+        token: 'dev_configured'
+      };
       storageService.saveProfiles(profiles);
 
       if (this.onLoginSuccess) {
-        this.onLoginSuccess({ platform: 'kick', username: username });
+        this.onLoginSuccess({ platform: 'kick', username: userInput });
       }
       this.close();
+    });
+
+    this.modal.querySelector('#btn-cancel-kick-config')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.emailMode = 'login';
+      this.render();
     });
 
     // Mode Toggle (Login <-> Register)

@@ -186,15 +186,138 @@ export class ApiService {
     }
   }
 
+  /**
+   * Fetches accurate Twitch channel profile & real-time live status
+   */
+  async fetchTwitchChannel(channelLogin) {
+    const clean = channelLogin.trim().toLowerCase().replace(/[@#]/g, '');
+    if (!clean) return { success: false, error: 'Nombre de canal no proporcionado' };
+
+    let token = '';
+    let clientId = this.getTwitchClientId();
+    try {
+      const p = JSON.parse(localStorage.getItem('nexus_stream_profiles') || '{}');
+      const c = JSON.parse(localStorage.getItem('nexus_mod_credentials') || '{}');
+      token = p.twitch?.token || c.twitchToken || '';
+      if (p.twitch?.clientId) clientId = p.twitch.clientId;
+    } catch (e) {}
+
+    let displayName = clean;
+    let avatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop';
+    let isLive = false;
+    let viewers = 0;
+    let found = false;
+
+    // 1. Try Twitch Helix if token is available
+    if (token) {
+      try {
+        const uRes = await fetch(`https://api.twitch.tv/helix/users?login=${encodeURIComponent(clean)}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': clientId }
+        });
+        if (uRes.ok) {
+          const uData = await uRes.json();
+          if (uData.data && uData.data.length > 0) {
+            found = true;
+            displayName = uData.data[0].display_name || clean;
+            avatar = uData.data[0].profile_image_url || avatar;
+          }
+        }
+
+        const sRes = await fetch(`https://api.twitch.tv/helix/streams?user_login=${encodeURIComponent(clean)}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': clientId }
+        });
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          if (sData.data && sData.data.length > 0) {
+            isLive = true;
+            viewers = sData.data[0].viewer_count || 0;
+          }
+        }
+      } catch (e) {
+        console.warn('Helix lookup error:', e);
+      }
+    }
+
+    // 2. Decapi fallback if Helix wasn't authenticated or didn't find
+    if (!found) {
+      try {
+        const uptimeRes = await fetch(`https://decapi.me/twitch/uptime/${clean}`);
+        if (uptimeRes.ok) {
+          const uptimeTxt = await uptimeRes.text();
+          if (uptimeTxt.toLowerCase().includes('channel not found') || uptimeTxt.toLowerCase().includes('user not found')) {
+            return { success: false, error: `Canal de Twitch #${clean} no existe` };
+          }
+          found = true;
+          if (!uptimeTxt.toLowerCase().includes('offline') && !uptimeTxt.toLowerCase().includes('error')) {
+            isLive = true;
+            const viewRes = await fetch(`https://decapi.me/twitch/viewercount/${clean}`);
+            if (viewRes.ok) {
+              const viewTxt = await viewRes.text();
+              viewers = parseInt(viewTxt, 10) || 0;
+            }
+          }
+        }
+      } catch (e) {}
+
+      try {
+        const avRes = await fetch(`https://decapi.me/twitch/avatar/${clean}`);
+        if (avRes.ok) {
+          const avUrl = await avRes.text();
+          if (avUrl.startsWith('http')) avatar = avUrl.trim();
+        }
+      } catch (e) {}
+    }
+
+    return {
+      success: true,
+      channel: {
+        id: `ch-twitch-${clean}`,
+        name: clean,
+        displayName: displayName,
+        platform: 'twitch',
+        avatar: avatar,
+        viewers: viewers,
+        isLive: isLive,
+        videoEnabled: true,
+        slowMode: 0,
+        subOnly: false,
+        followOnly: false,
+        emoteOnly: false
+      }
+    };
+  }
+
   // ==========================================
-  // KICK API & CHANNEL LOOKUP
+  // KICK API & OAUTH 2.0 / DEV INTEGRATION
   // ==========================================
+
+  getKickClientId() {
+    return localStorage.getItem('nexus_kick_custom_client_id') || 'orbimod_kick_dev';
+  }
+
+  saveKickClientId(clientId) {
+    if (clientId) {
+      localStorage.setItem('nexus_kick_custom_client_id', clientId.trim());
+    } else {
+      localStorage.removeItem('nexus_kick_custom_client_id');
+    }
+  }
+
+  /**
+   * Generates official Kick Developer OAuth 2.0 URL
+   */
+  getKickAuthUrl(clientId = null) {
+    const cid = clientId || this.getKickClientId();
+    const redirectUri = window.location.origin + window.location.pathname;
+    const scopes = ['user:read', 'channel:read', 'chat:write', 'stream:read'].join('+');
+    return `https://id.kick.com/oauth/authorize?client_id=${encodeURIComponent(cid)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scopes}`;
+  }
 
   /**
    * Fetches public channel information from Kick API (chatroom ID, live status, avatar, viewers)
    */
   async fetchKickChannel(channelSlug) {
-    const cleanSlug = channelSlug.trim().toLowerCase().replace('@', '');
+    const cleanSlug = channelSlug.trim().toLowerCase().replace(/[@#]/g, '');
     try {
       const res = await fetch(`https://kick.com/api/v2/channels/${cleanSlug}`, {
         headers: { 'Accept': 'application/json' }
@@ -203,7 +326,7 @@ export class ApiService {
       if (!res.ok) {
         return {
           success: false,
-          error: `Canal de Kick no encontrado (${res.status})`
+          error: `Canal de Kick #${cleanSlug} no encontrado (${res.status})`
         };
       }
 
@@ -248,30 +371,16 @@ export class ApiService {
     const twitchChannels = channels.filter(c => c.platform === 'twitch');
     const kickChannels = channels.filter(c => c.platform === 'kick');
 
-    // 1. Check Twitch Helix Streams
-    if (twitchChannels.length > 0) {
-      const logins = twitchChannels.map(c => `user_login=${encodeURIComponent(c.name)}`).slice(0, 100).join('&');
-      const clientId = this.getTwitchClientId();
+    // 1. Check Twitch Streams
+    for (const tc of twitchChannels) {
       try {
-        // Try with helix users/streams endpoint
-        const res = await fetch(`https://api.twitch.tv/helix/streams?${logins}`, {
-          headers: {
-            'Client-Id': clientId
-          }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const liveLogins = new Set((data.data || []).map(s => s.user_login.toLowerCase()));
-          const viewerMap = new Map((data.data || []).map(s => [s.user_login.toLowerCase(), s.viewer_count]));
-          twitchChannels.forEach(c => {
-            const isLive = liveLogins.has(c.name.toLowerCase());
-            c.isLive = isLive;
-            c.viewers = isLive ? (viewerMap.get(c.name.toLowerCase()) || 0) : 0;
-          });
+        const res = await this.fetchTwitchChannel(tc.name);
+        if (res.success) {
+          tc.isLive = res.channel.isLive;
+          tc.viewers = res.channel.viewers;
+          if (res.channel.avatar && !tc.avatar) tc.avatar = res.channel.avatar;
         }
-      } catch (e) {
-        console.warn('Twitch live check failed:', e);
-      }
+      } catch (e) {}
     }
 
     // 2. Check Kick Streams
@@ -281,7 +390,7 @@ export class ApiService {
         if (kRes.success) {
           kc.isLive = kRes.channel.isLive;
           kc.viewers = kRes.channel.viewers;
-          kc.avatar = kRes.channel.avatar || kc.avatar;
+          if (kRes.channel.avatar) kc.avatar = kRes.channel.avatar;
         }
       } catch (e) {}
     }

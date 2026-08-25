@@ -270,6 +270,46 @@ class OrbiModApp {
         }
       }
     }
+
+    // 2. Check URL search params for Kick OAuth redirect (?code=... or ?kick_token=...)
+    if (window.location.search) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const kickCode = urlParams.get('code') || urlParams.get('kick_code');
+      const kickUser = urlParams.get('username') || urlParams.get('kick_user') || 'kick_moderator';
+
+      if (kickCode) {
+        this.showToast('🟢 Procesando autenticación de Kick Developer...', 'success');
+
+        const profiles = storageService.getProfiles();
+        profiles.kick = {
+          valid: true,
+          username: kickUser,
+          token: kickCode,
+          avatar: 'https://files.kick.com/images/user/default/profile_image.png'
+        };
+        storageService.saveProfiles(profiles);
+
+        const creds = storageService.getAuthCreds();
+        creds.kickUsername = kickUser;
+        creds.kickToken = kickCode;
+        storageService.saveAuthCreds(creds);
+
+        // Fetch user avatar if available
+        try {
+          const kRes = await apiService.fetchKickChannel(kickUser);
+          if (kRes.success && kRes.channel.avatar) {
+            profiles.kick.avatar = kRes.channel.avatar;
+            storageService.saveProfiles(profiles);
+          }
+        } catch (e) {}
+
+        // Clean URL search without reloading
+        window.history.replaceState(null, null, window.location.pathname);
+        this.showToast(`¡Cuenta de Kick vinculada con éxito vía Kick OAuth!`, 'success');
+        return true;
+      }
+    }
+
     return false;
   }
 
