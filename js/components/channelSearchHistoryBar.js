@@ -39,7 +39,7 @@ export class ChannelSearchHistoryBar {
               <span>Twitch</span>
             </button>
             <button type="button" class="btn-platform-chip ${this.selectedPlatform === 'kick' ? 'active kick' : ''}" data-platform="kick" title="Buscar en Kick">
-              <span style="font-weight:900; line-height: 1;">K</span>
+              <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/kick-streaming-platform-logo-icon.png" style="width: 14px; height: 14px; object-fit: contain;" alt="Kick">
               <span>Kick</span>
             </button>
           </div>

@@ -400,18 +400,65 @@ class OrbiModApp {
   // ==========================================
 
   _bindLandingControls() {
+    // 1-Click Direct Entry Helper
+    const enterIfAuthenticated = () => {
+      const profiles = storageService.getProfiles();
+      const user = supabaseAuthService.getCurrentUser();
+      if (user || (profiles.twitch && profiles.twitch.valid) || (profiles.kick && profiles.kick.valid)) {
+        this.switchView('deck');
+        return true;
+      }
+      return false;
+    };
+
     // Top-Corner Login Button
     document.getElementById('btn-landing-login-corner')?.addEventListener('click', () => {
-      this.unifiedAuthModal.open('twitch');
+      if (!enterIfAuthenticated()) {
+        this.unifiedAuthModal.open('twitch');
+      }
     });
 
     // Hero CTA Buttons
     document.getElementById('btn-hero-start-auth')?.addEventListener('click', () => {
-      this.unifiedAuthModal.open('twitch');
+      if (!enterIfAuthenticated()) {
+        this.unifiedAuthModal.open('twitch');
+      }
     });
 
     document.getElementById('btn-hero-guest-deck')?.addEventListener('click', () => {
       this.switchView('deck');
+    });
+
+    // Quick 1-Click Platform Buttons on Landing
+    document.getElementById('btn-quick-enter-twitch')?.addEventListener('click', () => {
+      const profiles = storageService.getProfiles();
+      if (profiles.twitch && profiles.twitch.valid) {
+        this.showToast(`⚡ Bienvenido @${profiles.twitch.login}`, 'success');
+        this.switchView('deck');
+      } else {
+        window.location.href = apiService.getTwitchAuthUrl();
+      }
+    });
+
+    document.getElementById('btn-quick-enter-google')?.addEventListener('click', async () => {
+      const user = supabaseAuthService.getCurrentUser();
+      if (user) {
+        this.showToast(`☁️ Sesión activa: ${user.displayName || user.email}`, 'success');
+        this.switchView('deck');
+      } else {
+        await supabaseAuthService.signInWithGoogle();
+      }
+    });
+
+    document.getElementById('btn-quick-enter-kick')?.addEventListener('click', async () => {
+      const profiles = storageService.getProfiles();
+      if (profiles.kick && profiles.kick.valid) {
+        this.showToast(`🟢 Bienvenido @${profiles.kick.username}`, 'success');
+        this.switchView('deck');
+      } else {
+        const url = await apiService.getKickAuthUrl();
+        window.location.href = url;
+      }
     });
 
     // Feature Cards

@@ -91,7 +91,7 @@ export class ChannelCard {
     card.id = `channel-card-${this.channel.id}`;
 
     const isTwitch = this.channel.platform === 'twitch';
-    const platformLabel = isTwitch ? 'Twitch' : 'Kick';
+    const platformLabel = isTwitch ? 'Twitch' : `<img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/kick-streaming-platform-logo-icon.png" style="width: 10px; height: 10px; object-fit: contain; vertical-align: middle; margin-right: 3px;" alt="Kick" />Kick`;
     const tagClass = isTwitch ? 'badge-twitch' : 'badge-kick';
     const playerIframeSrc = this._getPlayerIframeSrc();
     const hasVideo = !!this.channel.videoEnabled;

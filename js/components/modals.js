@@ -1166,18 +1166,18 @@ export class UnifiedAuthModal {
         <!-- 3 Circular Social Login Buttons -->
         <div class="auth-social-row">
           <!-- 1. Twitch Circle -->
-          <button class="auth-social-circle circle-twitch" id="btn-auth-circle-twitch" title="Conectar con Twitch OAuth (1-Clic)">
+          <button class="auth-social-circle circle-twitch" id="btn-auth-circle-twitch" title="Twitch (1-Clic si ya estás vinculado)">
             <svg viewBox="0 0 24 24" class="social-svg-icon"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
           </button>
 
-          <!-- 2. Google / Custom OAuth Circle -->
-          <button class="auth-social-circle circle-google" id="btn-auth-circle-google" title="Iniciar sesión con Google">
-            <span style="font-family:'Inter',sans-serif;font-weight:700;font-size:18px;line-height:1;">g<sup>+</sup></span>
+          <!-- 2. Google OAuth Circle -->
+          <button class="auth-social-circle circle-google" id="btn-auth-circle-google" title="Iniciar sesión con Google (1-Clic)">
+            <img src="https://images.icon-icons.com/2642/PNG/512/google_logo_g_logo_icon_159348.png" style="width:22px;height:22px;object-fit:contain;" alt="Google">
           </button>
 
           <!-- 3. Kick Circle -->
-          <button class="auth-social-circle circle-kick" id="btn-auth-circle-kick" title="Conectar con Kick">
-            <span style="font-family:'Inter',sans-serif;font-weight:900;font-size:20px;line-height:1;">K</span>
+          <button class="auth-social-circle circle-kick" id="btn-auth-circle-kick" title="Kick (1-Clic si ya estás vinculado)">
+            <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/kick-streaming-platform-logo-icon.png" style="width:22px;height:22px;object-fit:contain;" alt="Kick">
           </button>
         </div>
 
@@ -1232,93 +1232,45 @@ export class UnifiedAuthModal {
   _bindEvents() {
     this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
 
-    // 1. Twitch Circle Click
+    // 1. Twitch Circle Click (1-Clic Instant Enter if linked, else OAuth)
     this.modal.querySelector('#btn-auth-circle-twitch')?.addEventListener('click', () => {
-      const url = apiService.getTwitchAuthUrl();
-      window.location.href = url;
-    });
-
-    // 2. Google Circle Click
-    this.modal.querySelector('#btn-auth-circle-google')?.addEventListener('click', () => {
-      const url = apiService.getTwitchAuthUrl();
-      window.location.href = url;
-    });
-
-    // 3. Kick Circle Click -> Open Kick Developer Login Form
-    this.modal.querySelector('#btn-auth-circle-kick')?.addEventListener('click', () => {
-      this.emailMode = 'kick';
-      this.render();
-    });
-
-    // Kick Mode Buttons
-    this.modal.querySelector('#btn-start-kick-oauth')?.addEventListener('click', async () => {
-      const clientId = this.modal.querySelector('#kick-client-id-input')?.value.trim();
-      const clientSecret = this.modal.querySelector('#kick-client-secret-input')?.value.trim();
-      if (clientId) apiService.saveKickClientId(clientId);
-      if (clientSecret) apiService.saveKickClientSecret(clientSecret);
-      const url = await apiService.getKickAuthUrl(clientId);
-      window.location.href = url;
-    });
-
-    this.modal.querySelector('#btn-save-kick-auth')?.addEventListener('click', async () => {
-      const userInput = this.modal.querySelector('#kick-user-input')?.value.trim().toLowerCase().replace(/[@#]/g, '');
-      const clientId = this.modal.querySelector('#kick-client-id-input')?.value.trim();
-      const clientSecret = this.modal.querySelector('#kick-client-secret-input')?.value.trim();
-      const feedback = this.modal.querySelector('#kick-auth-feedback');
-      const saveBtn = this.modal.querySelector('#btn-save-kick-auth');
-
-      if (!userInput) {
-        if (feedback) {
-          feedback.style.display = 'block';
-          feedback.textContent = 'Por favor ingresa tu nombre de usuario en Kick';
-        }
-        return;
-      }
-
-      if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'VALIDANDO EN KICK...';
-      }
-
-      if (clientId) apiService.saveKickClientId(clientId);
-      if (clientSecret) apiService.saveKickClientSecret(clientSecret);
-
-      const kRes = await apiService.fetchKickChannel(userInput);
-      if (!kRes.success) {
-        if (feedback) {
-          feedback.style.display = 'block';
-          feedback.textContent = kRes.error || `El usuario @${userInput} no fue encontrado en Kick`;
-        }
-        if (saveBtn) {
-          saveBtn.disabled = false;
-          saveBtn.textContent = 'VINCULAR CUENTA DE KICK';
-        }
-        return;
-      }
-
-      const creds = storageService.getAuthCreds();
-      creds.kickUsername = userInput;
-      storageService.saveAuthCreds(creds);
-
       const profiles = storageService.getProfiles();
-      profiles.kick = {
-        valid: true,
-        username: userInput,
-        avatar: kRes.channel.avatar || '',
-        token: 'dev_configured'
-      };
-      storageService.saveProfiles(profiles);
-
-      if (this.onLoginSuccess) {
-        this.onLoginSuccess({ platform: 'kick', username: userInput });
+      if (profiles.twitch && profiles.twitch.valid) {
+        if (this.onLoginSuccess) {
+          this.onLoginSuccess({ platform: 'twitch', username: profiles.twitch.login });
+        }
+        this.close();
+      } else {
+        const url = apiService.getTwitchAuthUrl();
+        window.location.href = url;
       }
-      this.close();
     });
 
-    this.modal.querySelector('#btn-cancel-kick-config')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.emailMode = 'login';
-      this.render();
+    // 2. Google Circle Click (1-Clic Instant Enter if logged in, else Google OAuth via Supabase)
+    this.modal.querySelector('#btn-auth-circle-google')?.addEventListener('click', async () => {
+      const curUser = supabaseAuthService.getCurrentUser();
+      if (curUser) {
+        if (this.onLoginSuccess) {
+          this.onLoginSuccess({ platform: 'google', user: curUser });
+        }
+        this.close();
+      } else {
+        await supabaseAuthService.signInWithGoogle();
+      }
+    });
+
+    // 3. Kick Circle Click (1-Clic Instant Enter if linked, else Kick OAuth 2.0 PKCE)
+    this.modal.querySelector('#btn-auth-circle-kick')?.addEventListener('click', async () => {
+      const profiles = storageService.getProfiles();
+      if (profiles.kick && profiles.kick.valid) {
+        if (this.onLoginSuccess) {
+          this.onLoginSuccess({ platform: 'kick', username: profiles.kick.username });
+        }
+        this.close();
+      } else {
+        const url = await apiService.getKickAuthUrl();
+        window.location.href = url;
+      }
     });
 
     // Mode Toggle (Login <-> Register)
@@ -1438,7 +1390,10 @@ export class UnifiedAccountHubModal {
           <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px; display: flex; align-items: center; gap: 14px;">
             <img src="${avatar}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3b82f6; object-fit: cover;" alt="Avatar">
             <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
-              <div style="font-size: 15px; font-weight: 800; color: #fff;">${displayName}</div>
+              <div style="font-size: 15px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px;">
+                <span>${displayName}</span>
+                <img src="https://images.icon-icons.com/2642/PNG/512/google_logo_g_logo_icon_159348.png" style="width: 14px; height: 14px; object-fit: contain;" alt="Google" title="Cuenta Google / Supabase">
+              </div>
               <div style="font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis;">${email}</div>
               <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px;">
                 <span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3);">
@@ -1455,8 +1410,8 @@ export class UnifiedAccountHubModal {
           <!-- 1. Twitch Account Card -->
           <div style="background: rgba(145, 70, 255, 0.06); border: 1px solid ${twitchLinked ? 'rgba(145, 70, 255, 0.4)' : 'rgba(255,255,255,0.08)'}; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 10px;">
-              <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(145, 70, 255, 0.2); display: flex; align-items: center; justify-content: center; color: #bf94ff; font-weight: 900; font-size: 14px;">
-                🟣
+              <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(145, 70, 255, 0.2); display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; fill: #bf94ff;"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
               </div>
               <div>
                 <div style="font-size: 13px; font-weight: 700; color: #fff;">Twitch</div>
@@ -1482,8 +1437,8 @@ export class UnifiedAccountHubModal {
           <!-- 2. Kick Account Card -->
           <div style="background: rgba(83, 252, 24, 0.05); border: 1px solid ${kickLinked ? 'rgba(83, 252, 24, 0.4)' : 'rgba(255,255,255,0.08)'}; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 10px;">
-              <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(83, 252, 24, 0.2); display: flex; align-items: center; justify-content: center; color: #53fc18; font-weight: 900; font-size: 14px;">
-                🟢
+              <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(83, 252, 24, 0.2); display: flex; align-items: center; justify-content: center;">
+                <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/kick-streaming-platform-logo-icon.png" style="width: 18px; height: 18px; object-fit: contain;" alt="Kick">
               </div>
               <div>
                 <div style="font-size: 13px; font-weight: 700; color: #fff;">Kick</div>
@@ -1499,8 +1454,9 @@ export class UnifiedAccountHubModal {
                   Desvincular
                 </button>
               ` : `
-                <button id="btn-hub-link-kick" class="btn btn-primary" style="background: #53FC18; color: #000; font-weight: 800; font-size: 11px; padding: 4px 12px;">
-                  🟢 Vincular con Kick OAuth
+                <button id="btn-hub-link-kick" class="btn btn-primary" style="background: #53FC18; color: #000; font-weight: 800; font-size: 11px; padding: 4px 12px; display: flex; align-items: center; gap: 6px;">
+                  <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/kick-streaming-platform-logo-icon.png" style="width: 14px; height: 14px; object-fit: contain;" alt="Kick">
+                  <span>Vincular Kick</span>
                 </button>
               `}
             </div>

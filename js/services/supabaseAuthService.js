@@ -286,6 +286,41 @@ class SupabaseAuthService {
   }
 
   /**
+   * Sign In with Google OAuth via Supabase
+   */
+  async signInWithGoogle() {
+    const client = this.getClient();
+    const redirectTo = window.location.origin + window.location.pathname;
+
+    if (client) {
+      try {
+        const { data, error } = await client.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectTo,
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent'
+            }
+          }
+        });
+
+        if (error) {
+          return { success: false, error: error.message };
+        }
+        return { success: true, data };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    }
+
+    // Direct OAuth redirect URL fallback
+    const url = this.supabaseConfig.url || DEFAULT_SUPABASE_URL;
+    window.location.href = `${url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`;
+    return { success: true };
+  }
+
+  /**
    * Save User Panel Layout & Channel Deck Preferences in Supabase
    */
   async saveUserLayout(userId, layoutData) {
