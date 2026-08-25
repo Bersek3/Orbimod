@@ -3,7 +3,7 @@
    High-performance message list, badges, emotes, hover mod actions, embeds
    ========================================================================== */
 
-/* Channel Card (Fully Resizable & Responsive) */
+/* Channel Card (Fixed size 505px x 794px for Twitch and Kick) */
 .channel-card {
   background: linear-gradient(180deg, rgba(18, 23, 35, 0.88) 0%, rgba(10, 13, 20, 0.96) 100%);
   backdrop-filter: blur(18px);
@@ -16,10 +16,14 @@
   overflow: hidden;
   position: relative;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  min-height: 220px;
-  min-width: 260px;
-  height: 100%;
-  resize: both; /* Permite arrastrar la esquina inferior derecha para ajustar ancho y alto */
+  width: 505px !important;
+  height: 794px !important;
+  min-width: 505px !important;
+  max-width: 505px !important;
+  min-height: 794px !important;
+  max-height: 794px !important;
+  flex-shrink: 0 !important;
+  resize: none !important; /* Tamaño fijo, no redimensionable */
 }
 
 .channel-card:hover {
@@ -555,7 +559,13 @@
   gap: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-height: 200px;
+  width: 505px !important;
+  height: 794px !important;
+  min-width: 505px !important;
+  max-width: 505px !important;
+  min-height: 794px !important;
+  max-height: 794px !important;
+  flex-shrink: 0 !important;
   background: rgba(255, 255, 255, 0.01);
 }
 

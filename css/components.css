@@ -340,14 +340,18 @@
   padding: 12px;
 }
 
-/* --- Channels Grid Container --- */
+/* --- Channels Deck Container --- */
 .channels-deck {
   flex: 1;
   height: 100%;
   width: 100%;
-  display: grid;
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: 16px;
   overflow: auto;
+  padding: 12px;
   position: relative;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
