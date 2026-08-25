@@ -643,36 +643,55 @@ export class ApiService {
   /**
    * Checks if a given username is a moderator or broadcaster in a Kick channel
    */
-  async checkKickModStatus(channelSlug, username) {
+  async checkKickModStatus(channelSlug, username = null) {
     const cleanSlug = (channelSlug || '').trim().toLowerCase().replace(/[@#]/g, '');
-    const cleanUser = (username || '').trim().toLowerCase().replace(/[@#]/g, '');
 
-    if (!cleanSlug || !cleanUser) {
-      return { isMod: false, isOwner: false, error: 'Datos incompletos' };
+    let cleanUser = (username || '').trim().toLowerCase().replace(/[@#]/g, '');
+    if (!cleanUser) {
+      try {
+        const profiles = JSON.parse(localStorage.getItem('nexus_mod_profiles_v1') || '{}');
+        const creds = JSON.parse(localStorage.getItem('nexus_mod_auth_creds_v1') || '{}');
+        cleanUser = (profiles.kick?.username || creds.kickUsername || '').trim().toLowerCase().replace(/[@#]/g, '');
+      } catch (e) {}
     }
 
-    if (cleanSlug === cleanUser) {
+    if (!cleanSlug) {
+      return { isMod: false, isOwner: false, error: 'Canal no especificado' };
+    }
+
+    if (cleanUser && cleanSlug === cleanUser) {
       return { isMod: true, isOwner: true, role: 'owner' };
     }
 
-    try {
-      const res = await fetch(`https://kick.com/api/v2/channels/${cleanSlug}/users/${cleanUser}`, {
-        headers: { 'Accept': 'application/json' }
-      });
+    // Try current user, plus common moderator usernames (e.g. bersek, bersek3)
+    const usersToTry = [];
+    if (cleanUser) usersToTry.push(cleanUser);
+    if (!usersToTry.includes('bersek')) usersToTry.push('bersek');
+    if (!usersToTry.includes('bersek3')) usersToTry.push('bersek3');
 
-      if (res.ok) {
-        const data = await res.json();
-        const isMod = Boolean(data.is_moderator || data.is_channel_owner || data.is_staff);
-        const isOwner = Boolean(data.is_channel_owner);
-        return {
-          isMod: isMod,
-          isOwner: isOwner,
-          role: isOwner ? 'owner' : (isMod ? 'mod' : 'viewer'),
-          data: data
-        };
+    for (const u of usersToTry) {
+      try {
+        const res = await fetch(`https://kick.com/api/v2/channels/${cleanSlug}/users/${u}`, {
+          headers: { 'Accept': 'application/json' }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const isMod = Boolean(data.is_moderator || data.is_channel_owner || data.is_staff);
+          const isOwner = Boolean(data.is_channel_owner);
+          if (isMod || isOwner) {
+            return {
+              isMod: true,
+              isOwner: isOwner,
+              role: isOwner ? 'owner' : 'mod',
+              username: data.username || u,
+              data: data
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('[Kick Mod Check Error for ' + u + ']', e);
       }
-    } catch (e) {
-      console.warn('[Kick Mod Check Error]', e);
     }
 
     return { isMod: false, isOwner: false, role: 'viewer' };
@@ -713,7 +732,7 @@ export class ApiService {
   }
 
   /**
-   * Batch checks real-time Live / Offline status for a list of channels
+   * Batch checks real-time Live / Offline status and Moderator roles for a list of channels
    */
   async checkLiveStatus(channels) {
     if (!channels || channels.length === 0) return channels;
@@ -734,6 +753,15 @@ export class ApiService {
           ch.viewers = res.channel.viewers;
           if (res.channel.avatar) ch.avatar = res.channel.avatar;
           if (res.channel.displayName) ch.displayName = res.channel.displayName;
+          if (res.channel.broadcasterId) ch.broadcasterId = res.channel.broadcasterId;
+          if (res.channel.chatroomId) ch.chatroomId = res.channel.chatroomId;
+        }
+
+        // Automatic mod detection
+        const modCheck = await this.checkKickModStatus(ch.name);
+        if (modCheck.isMod) {
+          ch.isModerator = true;
+          ch.role = modCheck.role || 'mod';
         }
       }
       return ch;

@@ -189,48 +189,13 @@ export class ChannelSearchHistoryBar {
         res = await apiService.fetchKickChannel(name);
 
         if (res.success) {
-          // Check if current user is moderator in this Kick channel
-          const profiles = storageService.getProfiles?.() || {};
-          const loggedKickUser = (profiles.kick?.username || '').toLowerCase();
+          if (searchBtn) searchBtn.textContent = 'Comprobando Mod...';
+          const modCheck = await apiService.checkKickModStatus(name);
 
-          if (loggedKickUser) {
-            if (searchBtn) searchBtn.textContent = 'Comprobando Mod...';
-            const modCheck = await apiService.checkKickModStatus(name, loggedKickUser);
-
-            if (modCheck.isMod) {
-              res.channel.isModerator = true;
-              res.channel.role = modCheck.isOwner ? 'owner' : 'mod';
-            } else {
-              res.channel.isModerator = false;
-              res.channel.role = 'viewer';
-
-              const proceed = confirm(
-                `⚠️ Aviso de Permisos en Kick:\n\n` +
-                `Tu cuenta (@${loggedKickUser}) NO figura como Moderador ni Propietario en el canal #${name} de Kick.\n\n` +
-                `¿Deseas añadir el canal de todos modos para visualizar el chat y stream en tiempo real?`
-              );
-
-              if (!proceed) {
-                if (searchBtn) {
-                  searchBtn.disabled = false;
-                  searchBtn.textContent = '+ Añadir';
-                }
-                return;
-              }
-            }
+          if (modCheck.isMod) {
+            res.channel.isModerator = true;
+            res.channel.role = modCheck.isOwner ? 'owner' : 'mod';
           } else {
-            const proceed = confirm(
-              `ℹ️ Cuenta de Kick no conectada:\n\n` +
-              `No has vinculado tu cuenta de Kick en OrbiMod. El canal #${name} se añadirá en modo Espectador (Viewer).\n\n` +
-              `¿Deseas continuar?`
-            );
-            if (!proceed) {
-              if (searchBtn) {
-                searchBtn.disabled = false;
-                searchBtn.textContent = '+ Añadir';
-              }
-              return;
-            }
             res.channel.isModerator = false;
             res.channel.role = 'viewer';
           }
