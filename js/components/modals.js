@@ -1530,11 +1530,8 @@ export class UnifiedAccountHubModal {
             </div>
           </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
-            <button id="btn-hub-logout-global" class="btn btn-secondary" style="font-size: 11.5px; color: #ef4444; border-color: rgba(239,68,68,0.3);">
-              🚪 Cerrar Sesión Global
-            </button>
-            <button class="btn btn-secondary close-modal-btn" style="font-size: 11.5px;">
+          <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
+            <button class="btn btn-secondary close-modal-btn" style="font-size: 11.5px; padding: 6px 16px;">
               Cerrar
             </button>
           </div>
@@ -1609,12 +1606,6 @@ export class UnifiedAccountHubModal {
         if (this.onUpdate) this.onUpdate();
         this.render();
       }
-    });
-
-    // Logout Global
-    this.modal.querySelector('#btn-hub-logout-global')?.addEventListener('click', () => {
-      this.close();
-      if (this.onLogout) this.onLogout();
     });
   }
 }

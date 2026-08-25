@@ -600,6 +600,9 @@ class OrbiModApp {
   }
 
   logout() {
+    if (!confirm('¿Estás seguro de que deseas cerrar sesión y volver a la pantalla de inicio?')) {
+      return;
+    }
     localStorage.setItem('orbimod_active_view', 'landing');
     storageService.saveProfiles({ twitch: null, kick: null });
     supabaseAuthService.signOut();
