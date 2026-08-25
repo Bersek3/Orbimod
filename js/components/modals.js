@@ -1232,12 +1232,17 @@ export class UnifiedAuthModal {
   _bindEvents() {
     this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
 
-    // 1. Twitch Circle Click (1-Clic Instant Enter if linked, else OAuth)
+    // 1. Twitch Circle Click (1-Clic Instant Enter if linked, else Twitch OAuth)
     this.modal.querySelector('#btn-auth-circle-twitch')?.addEventListener('click', () => {
       const profiles = storageService.getProfiles();
-      if (profiles.twitch && profiles.twitch.valid) {
+      const hub = storageService.getMasterHub();
+      const twitch = (profiles.twitch && profiles.twitch.valid) ? profiles.twitch : hub.twitch;
+      if (twitch && twitch.valid) {
+        profiles.twitch = twitch;
+        if (hub.kick && hub.kick.valid) profiles.kick = hub.kick;
+        storageService.saveProfiles(profiles);
         if (this.onLoginSuccess) {
-          this.onLoginSuccess({ platform: 'twitch', username: profiles.twitch.login });
+          this.onLoginSuccess({ platform: 'twitch', username: twitch.login });
         }
         this.close();
       } else {
@@ -1249,9 +1254,15 @@ export class UnifiedAuthModal {
     // 2. Google Circle Click (1-Clic Instant Enter if logged in, else Google OAuth via Supabase)
     this.modal.querySelector('#btn-auth-circle-google')?.addEventListener('click', async () => {
       const curUser = supabaseAuthService.getCurrentUser();
-      if (curUser) {
+      const hub = storageService.getMasterHub();
+      const google = curUser || hub.google;
+      if (google && google.email) {
+        const profiles = storageService.getProfiles();
+        if (hub.twitch && hub.twitch.valid) profiles.twitch = hub.twitch;
+        if (hub.kick && hub.kick.valid) profiles.kick = hub.kick;
+        storageService.saveProfiles(profiles);
         if (this.onLoginSuccess) {
-          this.onLoginSuccess({ platform: 'google', user: curUser });
+          this.onLoginSuccess({ platform: 'google', user: google });
         }
         this.close();
       } else {
@@ -1269,9 +1280,14 @@ export class UnifiedAuthModal {
     // 3. Kick Circle Click (1-Clic Instant Enter if linked, else Kick OAuth 2.0 PKCE)
     this.modal.querySelector('#btn-auth-circle-kick')?.addEventListener('click', async () => {
       const profiles = storageService.getProfiles();
-      if (profiles.kick && profiles.kick.valid) {
+      const hub = storageService.getMasterHub();
+      const kick = (profiles.kick && profiles.kick.valid) ? profiles.kick : hub.kick;
+      if (kick && kick.valid) {
+        profiles.kick = kick;
+        if (hub.twitch && hub.twitch.valid) profiles.twitch = hub.twitch;
+        storageService.saveProfiles(profiles);
         if (this.onLoginSuccess) {
-          this.onLoginSuccess({ platform: 'kick', username: profiles.kick.username });
+          this.onLoginSuccess({ platform: 'kick', username: kick.username });
         }
         this.close();
       } else {
@@ -1335,6 +1351,18 @@ export class UnifiedAuthModal {
         submitBtn.textContent = this.emailMode === 'register' ? 'REGISTER' : 'LOGIN';
 
         if (res.success) {
+          storageService.updateMasterHubField('google', {
+            id: res.user.id,
+            email: res.user.email,
+            displayName: res.user.displayName,
+            avatar: res.user.avatar
+          });
+          const hub = storageService.getMasterHub();
+          const profiles = storageService.getProfiles();
+          if (hub.twitch && hub.twitch.valid) profiles.twitch = hub.twitch;
+          if (hub.kick && hub.kick.valid) profiles.kick = hub.kick;
+          storageService.saveProfiles(profiles);
+
           if (this.onLoginSuccess) {
             this.onLoginSuccess({ platform: 'email', user: res.user });
           }

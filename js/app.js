@@ -550,6 +550,22 @@ class OrbiModApp {
       }
     });
 
+    document.getElementById('btn-quick-enter-email')?.addEventListener('click', () => {
+      const user = supabaseAuthService.getCurrentUser();
+      const masterHub = storageService.getMasterHub();
+      if (user || (masterHub.google && masterHub.google.email)) {
+        const profiles = storageService.getProfiles();
+        if (masterHub.twitch && masterHub.twitch.valid) profiles.twitch = masterHub.twitch;
+        if (masterHub.kick && masterHub.kick.valid) profiles.kick = masterHub.kick;
+        storageService.saveProfiles(profiles);
+        const name = user ? (user.displayName || user.email) : masterHub.google.displayName;
+        this.showToast(`✉️ Sesión activa: ${name}`, 'success');
+        this.switchView('deck');
+      } else {
+        this.unifiedAuthModal.open('login');
+      }
+    });
+
     // Feature Cards
     document.querySelectorAll('.btn-launch-demo').forEach(btn => {
       btn.addEventListener('click', () => this.switchView('deck'));
