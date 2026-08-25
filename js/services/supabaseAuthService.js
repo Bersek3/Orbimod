@@ -415,20 +415,16 @@ class SupabaseAuthService {
     };
     if (twitch !== undefined) {
       updateObj.twitch_login = twitch ? twitch.login : null;
-      updateObj.twitch_token = twitch ? twitch.token : null;
     }
     if (kick !== undefined) {
       updateObj.kick_username = kick ? kick.username : null;
-      updateObj.kick_token = kick ? kick.token : null;
     }
 
     try {
       const { data, error } = await client
         .from('profiles')
-        .upsert({
-          id: userId,
-          ...updateObj
-        }, { onConflict: 'id' });
+        .update(updateObj)
+        .eq('id', userId);
 
       if (error) {
         console.warn('[Supabase saveLinkedAccounts error]', error);

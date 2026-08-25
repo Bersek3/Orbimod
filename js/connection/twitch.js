@@ -77,16 +77,20 @@ export class TwitchClient {
   }
 
   _sendJoin(channel) {
-    if (this.ws && this.connected) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       const cleanChan = channel.toLowerCase().replace('#', '');
-      this.ws.send(`JOIN #${cleanChan}\r\n`);
+      try {
+        this.ws.send(`JOIN #${cleanChan}\r\n`);
+      } catch (e) {
+        console.warn('[Twitch join error]', e);
+      }
     }
   }
 
   joinChannel(channel) {
     const cleanChan = channel.toLowerCase().replace('#', '');
     this.channels.add(cleanChan);
-    if (this.connected) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this._sendJoin(cleanChan);
     }
   }
@@ -94,8 +98,10 @@ export class TwitchClient {
   partChannel(channel) {
     const cleanChan = channel.toLowerCase().replace('#', '');
     this.channels.delete(cleanChan);
-    if (this.connected) {
-      this.ws.send(`PART #${cleanChan}\r\n`);
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(`PART #${cleanChan}\r\n`);
+      } catch (e) {}
     }
   }
 

@@ -29,9 +29,10 @@ class OrbiModApp {
     this.channelCards = new Map(); // id -> ChannelCard instance
     this.selectedLayout = this.settings.layout || 'layout-grid-2x2';
 
-    // Metrics state
+    // Metrics & Widget state
     this.totalMessagesCount = 0;
     this.uniqueChatters = new Set();
+    this.activeWidgets = new Set();
     this.msgVelocityTimer = null;
     this.msgVelocity = 0;
     this.recentMsgCount = 0;
@@ -620,7 +621,7 @@ class OrbiModApp {
       await supabaseAuthService.saveUserLayout(user.id, {
         layoutType: this.selectedLayout || this.settings.layout || 'grid-4',
         channels: this.channels,
-        activeWidgets: Array.from(this.activeWidgets),
+        activeWidgets: Array.from(this.activeWidgets || []),
         preferences: { theme: 'cyber-dark' }
       });
 

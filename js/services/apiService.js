@@ -432,26 +432,30 @@ export class ApiService {
     const redirectUri = this.getKickRedirectUri();
     const verifier = sessionStorage.getItem('kick_pkce_verifier') || '';
 
-    try {
-      // 1. Try local proxy first
-      const proxyRes = await fetch('/api/kick-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: code,
-          client_id: cid,
-          client_secret: secret,
-          redirect_uri: redirectUri,
-          code_verifier: verifier
-        })
-      });
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-      if (proxyRes.ok) {
-        const tokenData = await proxyRes.json();
-        return { success: true, tokenData };
+    if (isLocal) {
+      try {
+        // 1. Try local proxy first
+        const proxyRes = await fetch('/api/kick-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: code,
+            client_id: cid,
+            client_secret: secret,
+            redirect_uri: redirectUri,
+            code_verifier: verifier
+          })
+        });
+
+        if (proxyRes.ok) {
+          const tokenData = await proxyRes.json();
+          return { success: true, tokenData };
+        }
+      } catch (e) {
+        console.warn('[Kick token proxy fallback]', e);
       }
-    } catch (e) {
-      console.warn('[Kick token proxy fallback]', e);
     }
 
     try {
