@@ -110,27 +110,29 @@ export class ChannelCard {
         <button class="chat-filter-chip" data-filter="subs">⭐ Subs</button>
       </div>
 
-      <!-- Live Chat Stream Box -->
-      <div class="chat-messages-container" id="chat-messages-${this.channel.id}">
-        <div class="messages-list"></div>
-        <div class="chat-paused-indicator">
-          <span>▼ Chat Pausado (Nuevos mensajes)</span>
+      <!-- Chat Feed Container -->
+      <div class="channel-chat-section">
+        <div class="chat-messages-container"></div>
+        <div class="chat-paused-pill ${this.channel.platform}" style="display: none;">
+          ↓ Mensajes nuevos (${this.unreadCountWhilePaused})
         </div>
       </div>
 
-      <!-- Quick Canned Macro Chips Toolbar -->
-      <div class="macro-chips-bar"></div>
-
-      <!-- Quick Mod Message Composer -->
-      <div class="chat-composer-bar">
-        <input type="text" class="chat-input" placeholder="Enviar mensaje como moderador..." maxlength="500">
-        <button class="btn btn-primary send-msg-btn">Enviar</button>
+      <!-- Chat Composer & Quick Macros -->
+      <div class="chat-composer-section">
+        <div class="canned-macros-bar"></div>
+        <div class="chat-input-wrapper">
+          <input type="text" class="chat-input ${isTwitch ? '' : 'kick-input'}" placeholder="Enviar mensaje como Moderador a #${this.channel.name}..." maxlength="500">
+          <button class="btn ${isTwitch ? 'btn-primary' : 'btn-kick'} btn-send-chat">
+            <span>Enviar</span>
+          </button>
+        </div>
       </div>
     `;
 
     this.element = card;
-    this.messagesContainer = card.querySelector('.messages-list');
-    this.pausedIndicator = card.querySelector('.chat-paused-indicator');
+    this.messagesContainer = card.querySelector('.chat-messages-container');
+    this.pausedIndicator = card.querySelector('.chat-paused-pill');
 
     this._bindEvents();
     this._renderMacros();

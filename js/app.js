@@ -1004,9 +1004,13 @@ class OrbiModApp {
 
   initConnections() {
     const creds = storageService.getAuthCreds();
+    const profiles = storageService.getProfiles();
+
+    const twitchToken = profiles.twitch?.token || creds.twitchToken || null;
+    const twitchUsername = profiles.twitch?.login || creds.twitchUsername || null;
 
     // Twitch
-    this.twitchClient.connect(creds.twitchToken, creds.twitchUsername);
+    this.twitchClient.connect(twitchToken, twitchUsername);
     this.channels.filter(c => c.platform === 'twitch').forEach(c => {
       this.twitchClient.joinChannel(c.name);
     });
