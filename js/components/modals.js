@@ -12,13 +12,14 @@ import { supabaseAuthService } from '../services/supabaseAuthService.js';
 // 1. MANAGE CHANNELS MODAL (DIRECT DECK CONTROL)
 // ==========================================
 export class ManageChannelsModal {
-  constructor(modalElement, { getChannels, onAddChannel, onRemoveChannel, onScanChannels, onClearChannels }) {
+  constructor(modalElement, { getChannels, onAddChannel, onRemoveChannel, onScanChannels, onClearChannels, onRefreshLive }) {
     this.modal = modalElement;
     this.getChannels = getChannels;
     this.onAddChannel = onAddChannel;
     this.onRemoveChannel = onRemoveChannel;
     this.onScanChannels = onScanChannels;
     this.onClearChannels = onClearChannels;
+    this.onRefreshLive = onRefreshLive;
     this.selectedPlatform = 'twitch';
   }
 
@@ -33,72 +34,110 @@ export class ManageChannelsModal {
 
   render() {
     const channels = this.getChannels() || [];
+    const liveChannels = channels.filter(c => c.isLive !== false);
+    const offlineChannels = channels.filter(c => c.isLive === false);
+
     this.modal.innerHTML = `
-      <div class="modal-container" style="max-width: 600px;">
+      <div class="modal-container" style="max-width: 640px;">
         <div class="modal-header">
           <div class="modal-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            <span>Gestión de Canales del Deck (${channels.length})</span>
+            <span>Gestión de Canales (${channels.length})</span>
           </div>
           <button class="icon-btn-subtle close-modal-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
 
-        <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
-          <!-- Quick Auto-Scan Action from Twitch Helix -->
-          <div style="background: rgba(145, 70, 255, 0.1); border: 1px solid rgba(145, 70, 255, 0.35); border-radius: var(--radius-sm); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px; max-height: 70vh; overflow-y: auto;">
+          <!-- Top Action Bar: Sync & Refresh -->
+          <div style="background: rgba(145, 70, 255, 0.08); border: 1px solid rgba(145, 70, 255, 0.3); border-radius: var(--radius-sm); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
             <div>
-              <div style="font-weight: 700; font-size: 13px; color: #fff;">Sincronizar Canales Moderados</div>
-              <div style="font-size: 11px; color: var(--text-dim);">Escanear tu cuenta de Twitch para cargar automáticamente tus canales</div>
+              <div style="font-weight: 700; font-size: 12.5px; color: #fff;">Sincronizar Moderaciones</div>
+              <div style="font-size: 11px; color: var(--text-dim);">Escanear automáticamente canales de Twitch</div>
             </div>
-            <button id="btn-modal-scan-twitch" class="btn btn-primary" style="font-size: 11.5px; padding: 6px 14px; white-space: nowrap;">
-              <span>⚡ Escanear Twitch</span>
-            </button>
+            <div style="display: flex; gap: 6px;">
+              <button id="btn-modal-refresh-live" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" title="Verificar quién está transmitiendo ahora">
+                <span>🔄 Comprobar En Vivo</span>
+              </button>
+              <button id="btn-modal-scan-twitch" class="btn btn-primary" style="font-size: 11px; padding: 5px 12px; white-space: nowrap;">
+                <span>⚡ Escanear Twitch</span>
+              </button>
+            </div>
           </div>
 
           <!-- Add New Channel Section -->
           <div style="background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px 14px;">
-            <div style="font-weight: 700; font-size: 12.5px; color: #fff; margin-bottom: 8px;">Añadir Canal Manualmente</div>
+            <div style="font-weight: 700; font-size: 12px; color: #fff; margin-bottom: 8px;">Añadir Canal Manualmente</div>
             <div style="display: flex; gap: 6px; margin-bottom: 8px;">
               <button class="btn btn-secondary platform-toggle-btn ${this.selectedPlatform === 'twitch' ? 'active' : ''}" data-plat="twitch" style="font-size: 11px; padding: 4px 10px;">🟣 Twitch</button>
               <button class="btn btn-secondary platform-toggle-btn ${this.selectedPlatform === 'kick' ? 'active' : ''}" data-plat="kick" style="font-size: 11px; padding: 4px 10px;">🟢 Kick</button>
             </div>
             <div style="display: flex; gap: 6px;">
-              <input type="text" id="modal-add-channel-input" class="form-input" placeholder="ej. ibai, westcol, auronplay..." style="flex: 1; font-size: 12.5px;">
-              <button id="btn-modal-submit-add" class="btn ${this.selectedPlatform === 'twitch' ? 'btn-primary' : 'btn-kick'}" style="font-size: 12px; padding: 6px 14px;">+ Añadir al Deck</button>
+              <input type="text" id="modal-add-channel-input" class="form-input" placeholder="Nombre del streamer (ej. ibai, westcol...)" style="flex: 1; font-size: 12.5px;">
+              <button id="btn-modal-submit-add" class="btn ${this.selectedPlatform === 'twitch' ? 'btn-primary' : 'btn-kick'}" style="font-size: 12px; padding: 6px 14px;">+ Añadir</button>
             </div>
           </div>
 
-          <!-- Active Channels List -->
+          <!-- SECTION 1: LIVE CHANNELS -->
           <div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-weight: 700; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Canales Activos en el Deck</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="metric-dot pulse" style="background: var(--danger-red); width: 8px; height: 8px;"></span>
+                <span style="font-weight: 800; font-size: 12px; color: #fff; text-transform: uppercase; letter-spacing: 0.5px;">Transmitiendo En Vivo (${liveChannels.length})</span>
+              </div>
               ${channels.length > 0 ? `<button id="btn-modal-clear-all" style="background: transparent; border: none; color: var(--danger-red); font-size: 11px; cursor: pointer;">🗑️ Quitar todos</button>` : ''}
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; padding-right: 4px;">
-              ${channels.length === 0 ? `
-                <div style="text-align: center; padding: 24px; color: var(--text-dim); font-size: 12px; background: rgba(0,0,0,0.2); border-radius: var(--radius-xs);">
-                  No hay canales en el Deck. Añade uno arriba o sincroniza con Twitch.
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              ${liveChannels.length === 0 ? `
+                <div style="text-align: center; padding: 14px; color: var(--text-dim); font-size: 11.5px; background: rgba(0,0,0,0.2); border-radius: var(--radius-xs);">
+                  Ningún canal en tu lista está transmitiendo en vivo actualmente.
                 </div>
-              ` : channels.map(ch => `
-                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border-subtle); border-radius: var(--radius-xs); padding: 8px 12px;">
+              ` : liveChannels.map(ch => `
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(18, 24, 38, 0.65); border: 1px solid rgba(255, 51, 102, 0.25); border-left: 3px solid var(--danger-red); border-radius: var(--radius-xs); padding: 8px 12px;">
                   <div style="display: flex; align-items: center; gap: 10px;">
                     <span class="badge-${ch.platform}" style="font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 3px;">${ch.platform === 'twitch' ? 'TW' : 'KC'}</span>
-                    <span style="font-weight: 700; font-size: 13.5px; color: #fff;">#${ch.name}</span>
+                    <div>
+                      <div style="font-weight: 700; font-size: 13px; color: #fff;">#${ch.name}</div>
+                      <div style="font-size: 10.5px; color: var(--danger-red); font-weight: 600;">🔴 EN VIVO ${ch.viewers ? `(${ch.viewers.toLocaleString()} viewers)` : ''}</div>
+                    </div>
                   </div>
                   <button class="btn-remove-deck-channel" data-id="${ch.id}" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; padding: 4px;" title="Quitar canal">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 15px; height: 15px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                   </button>
                 </div>
               `).join('')}
             </div>
           </div>
+
+          <!-- SECTION 2: OFFLINE CHANNELS -->
+          ${offlineChannels.length > 0 ? `
+            <div style="border-top: 1px solid var(--border-subtle); padding-top: 10px;">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                <span class="metric-dot" style="background: var(--text-dim); width: 8px; height: 8px;"></span>
+                <span style="font-weight: 700; font-size: 11.5px; color: var(--text-muted); text-transform: uppercase;">Fuera de Línea (${offlineChannels.length})</span>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 5px;">
+                ${offlineChannels.map(ch => `
+                  <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-subtle); opacity: 0.7; border-radius: var(--radius-xs); padding: 6px 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <span class="badge-${ch.platform}" style="font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 3px;">${ch.platform === 'twitch' ? 'TW' : 'KC'}</span>
+                      <span style="font-weight: 600; font-size: 12.5px; color: var(--text-main);">#${ch.name} <span style="font-size: 10px; color: var(--text-dim);">(Offline)</span></span>
+                    </div>
+                    <button class="btn-remove-deck-channel" data-id="${ch.id}" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; padding: 4px;" title="Quitar canal">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
         </div>
 
         <div class="modal-footer">
-          <button class="btn btn-secondary close-modal-btn" style="width: 100%;">Guardar y Continuar</button>
+          <button class="btn btn-secondary close-modal-btn" style="width: 100%;">Listo</button>
         </div>
       </div>
     `;
@@ -114,6 +153,19 @@ export class ManageChannelsModal {
         this.selectedPlatform = btn.dataset.plat;
         this.render();
       });
+    });
+
+    // Refresh live status
+    this.modal.querySelector('#btn-modal-refresh-live')?.addEventListener('click', async () => {
+      const btn = this.modal.querySelector('#btn-modal-refresh-live');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Comprobando...';
+      }
+      if (this.onRefreshLive) {
+        await this.onRefreshLive();
+      }
+      this.render();
     });
 
     // Auto scan Twitch
@@ -148,7 +200,7 @@ export class ManageChannelsModal {
         name: name,
         platform: this.selectedPlatform,
         avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop',
-        viewers: 1200,
+        viewers: 0,
         isLive: true,
         videoEnabled: true,
         slowMode: 0,

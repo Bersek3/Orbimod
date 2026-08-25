@@ -97,12 +97,17 @@ class OrbiModApp {
       }
     );
 
+    this.showOnlyLive = true;
+
     this.manageChannelsModal = new ManageChannelsModal(
       document.getElementById('generic-modal'),
       {
         getChannels: () => this.channels,
         onAddChannel: (chan) => this.addChannel(chan),
         onRemoveChannel: (id) => this.removeChannel(id),
+        onRefreshLive: async () => {
+          await this.refreshChannelsLiveStatus();
+        },
         onScanChannels: async () => {
           const profiles = storageService.getProfiles();
           if (!profiles.twitch || !profiles.twitch.token) {
@@ -121,7 +126,7 @@ class OrbiModApp {
                   displayName: ch.displayName || login,
                   platform: 'twitch',
                   avatar: ch.avatar || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop',
-                  viewers: 1200,
+                  viewers: 0,
                   isLive: true,
                   videoEnabled: true,
                   slowMode: 0,
@@ -131,6 +136,7 @@ class OrbiModApp {
                 });
               }
             });
+            await this.refreshChannelsLiveStatus();
             this.showToast(`¡Se agregaron ${res.channels.length} canales moderados!`, 'success');
           } else {
             this.showToast('No se encontraron canales donde seas moderador', 'info');
@@ -447,6 +453,9 @@ class OrbiModApp {
 
     // Update Profile pills
     this._updateAccountPills();
+
+    // Check live streams status in background
+    this.refreshChannelsLiveStatus();
   }
 
   _updateAccountPills() {
@@ -509,6 +518,14 @@ class OrbiModApp {
     document.getElementById('btn-automod-queue')?.addEventListener('click', () => this.automodDrawer.open());
     document.getElementById('btn-audit-log')?.addEventListener('click', () => this.auditLogDrawer.open());
 
+    // Live vs All Filter Toggle
+    document.getElementById('btn-toggle-live-filter')?.addEventListener('click', () => {
+      this.showOnlyLive = !this.showOnlyLive;
+      this._updateLiveFilterButton();
+      this.renderChannels();
+      this.showToast(this.showOnlyLive ? 'Mostrando solo canales EN VIVO' : 'Mostrando TODOS los canales (en vivo y offline)', 'info');
+    });
+
     // Sound Toggle
     document.getElementById('btn-toggle-sound')?.addEventListener('click', () => {
       this.settings.soundEnabled = !this.settings.soundEnabled;
@@ -517,6 +534,20 @@ class OrbiModApp {
       this._updateSoundBtnVisual(this.settings.soundEnabled);
       this.showToast(this.settings.soundEnabled ? 'Sonidos activados' : 'Sonidos silenciados', 'info');
     });
+  }
+
+  _updateLiveFilterButton() {
+    const btn = document.getElementById('btn-toggle-live-filter');
+    const label = document.getElementById('live-filter-label');
+    if (!btn || !label) return;
+    btn.classList.toggle('active', this.showOnlyLive);
+    label.textContent = this.showOnlyLive ? '🔴 Solo En Vivo' : '⚪ Todos los Canales';
+  }
+
+  async refreshChannelsLiveStatus() {
+    this.channels = await apiService.checkLiveStatus(this.channels);
+    storageService.saveChannels(this.channels);
+    this.renderChannels();
   }
 
   _updateSoundBtnVisual(enabled) {
@@ -631,27 +662,55 @@ class OrbiModApp {
     deck.innerHTML = '';
     this.channelCards.clear();
 
-    this.channels.forEach(ch => {
-      const cardInstance = new ChannelCard(ch, {
-        getMacros: () => storageService.getMacros(),
-        onTimeout: (channel, msgObj, dur) => this.handleTimeout(channel, msgObj, dur, 'Acción rápida en mensaje'),
-        onBan: (channel, msgObj) => this.handleBan(channel, msgObj, 'Baneo rápido en mensaje'),
-        onDelete: (channel, msgObj) => this.handleDelete(channel, msgObj, 'Mensaje eliminado manualmente'),
-        onInspect: (userObj, channel, sessionMsgs) => this.inspectorDrawer.open(userObj, channel, sessionMsgs),
-        onSendMessage: (channel, text) => this.sendMessage(channel, text),
-        onToggleMode: (channel, mode, active) => this.handleRoomModeChange(channel, mode, active),
-        onRemoveChannel: (id) => this.removeChannel(id)
-      });
+    const channelsToDisplay = this.showOnlyLive
+      ? this.channels.filter(c => c.isLive !== false)
+      : this.channels;
 
-      this.channelCards.set(ch.id, cardInstance);
-      deck.appendChild(cardInstance.render());
-    });
+    if (channelsToDisplay.length === 0 && this.channels.length > 0) {
+      const emptyNotice = document.createElement('div');
+      emptyNotice.style.cssText = 'grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); text-align: center; padding: 40px; gap: 14px;';
+      emptyNotice.innerHTML = `
+        <div style="font-size: 36px;">📡</div>
+        <div style="font-size: 15px; font-weight: 700; color: #fff;">Tus canales están fuera de línea (Offline)</div>
+        <div style="font-size: 12px; max-width: 440px; color: var(--text-dim);">Actualmente ningún canal en tu lista está transmitiendo en vivo. Puedes alternar a ver canales offline, añadir un canal en vivo o esperar a que comiencen su directo.</div>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <button id="btn-empty-show-all" class="btn btn-secondary" style="font-size: 12px;">Mostrar Canales Offline</button>
+          <button id="btn-empty-add-chan" class="btn btn-primary" style="font-size: 12px;">+ Añadir Canal en Vivo</button>
+        </div>
+      `;
+      deck.appendChild(emptyNotice);
+
+      emptyNotice.querySelector('#btn-empty-show-all')?.addEventListener('click', () => {
+        this.showOnlyLive = false;
+        this._updateLiveFilterButton();
+        this.renderChannels();
+      });
+      emptyNotice.querySelector('#btn-empty-add-chan')?.addEventListener('click', () => {
+        this.manageChannelsModal.open();
+      });
+    } else {
+      channelsToDisplay.forEach(ch => {
+        const cardInstance = new ChannelCard(ch, {
+          getMacros: () => storageService.getMacros(),
+          onTimeout: (channel, msgObj, dur) => this.handleTimeout(channel, msgObj, dur, 'Acción rápida en mensaje'),
+          onBan: (channel, msgObj) => this.handleBan(channel, msgObj, 'Baneo rápido en mensaje'),
+          onDelete: (channel, msgObj) => this.handleDelete(channel, msgObj, 'Mensaje eliminado manualmente'),
+          onInspect: (userObj, channel, sessionMsgs) => this.inspectorDrawer.open(userObj, channel, sessionMsgs),
+          onSendMessage: (channel, text) => this.sendMessage(channel, text),
+          onToggleMode: (channel, mode, active) => this.handleRoomModeChange(channel, mode, active),
+          onRemoveChannel: (id) => this.removeChannel(id)
+        });
+
+        this.channelCards.set(ch.id, cardInstance);
+        deck.appendChild(cardInstance.render());
+      });
+    }
 
     const headerCount = document.getElementById('header-channels-count');
-    if (headerCount) headerCount.textContent = this.channels.length;
+    if (headerCount) headerCount.textContent = `${channelsToDisplay.length}/${this.channels.length}`;
 
     // Add empty placeholder card to invite adding more channels if < 4
-    if (this.channels.length < 4) {
+    if (channelsToDisplay.length > 0 && channelsToDisplay.length < 4) {
       const emptySlot = document.createElement('div');
       emptySlot.className = 'empty-channel-slot';
       emptySlot.innerHTML = `

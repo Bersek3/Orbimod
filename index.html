@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ORBIMOD — Twitch & Kick Multi-Channel Moderation Control Station</title>
-  <meta name="description" content="OrbiMod: Software profesional de alta velocidad para moderar múltiples canales simultáneos de Twitch y Kick con AutoMod, Inspector de Usuarios y Registro de Auditoría.">
+  <meta name="description"
+    content="OrbiMod: Software profesional de alta velocidad para moderar múltiples canales simultáneos de Twitch y Kick con AutoMod, Inspector de Usuarios y Registro de Auditoría.">
 
   <!-- CSS Design System (Relative paths for GitHub Pages compatibility) -->
   <link rel="stylesheet" href="./css/main.css?v=4.8">
@@ -12,8 +14,10 @@
   <link rel="stylesheet" href="./css/chat.css?v=4.8">
   <link rel="stylesheet" href="./css/responsive.css?v=4.8">
 
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239146FF'><polygon points='12 2 2 7 12 12 22 7 12 2'/><polyline points='2 17 12 22 22 17'/><polyline points='2 12 12 17 22 12'/></svg>">
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239146FF'><polygon points='12 2 2 7 12 12 22 7 12 2'/><polyline points='2 17 12 22 22 17'/><polyline points='2 12 12 17 22 12'/></svg>">
 </head>
+
 <body>
   <div id="app-root">
 
@@ -28,7 +32,11 @@
           <div class="landing-nav-container">
             <div class="brand-section">
               <div class="brand-logo">
-                <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                <svg viewBox="0 0 24 24">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                  <polyline points="2 17 12 22 22 17" />
+                  <polyline points="2 12 12 17 22 12" />
+                </svg>
               </div>
               <div class="brand-title">
                 <h1>ORBIMOD</h1>
@@ -46,13 +54,16 @@
 
             <!-- Right Corner Auth Area -->
             <div class="landing-nav-actions">
-              <button id="btn-landing-sandbox-header" class="btn btn-secondary btn-sm" title="Probar simulador con chats en vivo">
-                <span>⚡ Sandbox Demo</span>
-              </button>
 
               <!-- Not Logged In State -->
-              <button id="btn-landing-login-corner" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px; box-shadow: 0 0 15px var(--twitch-purple-glow);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+              <button id="btn-landing-login-corner" class="btn btn-primary btn-sm"
+                style="display: flex; align-items: center; gap: 6px; box-shadow: 0 0 15px var(--twitch-purple-glow);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="width:14px;height:14px;">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                  <polyline points="10 17 15 12 10 7" />
+                  <line x1="15" y1="12" x2="3" y2="12" />
+                </svg>
                 <span>🔑 Iniciar Sesión</span>
               </button>
 
@@ -80,16 +91,22 @@
             </div>
 
             <h1 class="hero-main-title">
-              Modera múltiples canales de <span class="gradient-text-twitch">Twitch</span> y <span class="gradient-text-kick">Kick</span> en <span class="gradient-text">tiempo real</span>.
+              Modera múltiples canales de <span class="gradient-text-twitch">Twitch</span> y <span
+                class="gradient-text-kick">Kick</span> en <span class="gradient-text">tiempo real</span>.
             </h1>
 
             <p class="hero-main-sub">
-              OrbiMod centraliza tus chats en una estación de mando de alta velocidad: auto-detecta todos los canales donde eres moderador, filtra spam con AutoMod avanzado y ejecuta sanciones instantáneas en 1-clic.
+              OrbiMod centraliza tus chats en una estación de mando de alta velocidad: auto-detecta todos los canales
+              donde eres moderador, filtra spam con AutoMod avanzado y ejecuta sanciones instantáneas en 1-clic.
             </p>
 
             <div class="hero-cta-group">
-              <button id="btn-hero-start-auth" class="btn btn-primary btn-lg" style="box-shadow: 0 4px 25px var(--twitch-purple-glow);">
-                <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor;"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+              <button id="btn-hero-start-auth" class="btn btn-primary btn-lg"
+                style="box-shadow: 0 4px 25px var(--twitch-purple-glow);">
+                <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor;">
+                  <path
+                    d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+                </svg>
                 <span>Conectar Cuenta & Comenzar Gratis</span>
               </button>
 
@@ -124,9 +141,13 @@
                       <span style="font-size:10px;color:var(--text-dim);">● 28,400 viewers</span>
                     </div>
                     <div class="mock-chat-feed">
-                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user" style="color:#bf94ff;">GamerPro:</span> ¡Bienvenidos a la transmisión!</div>
-                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user" style="color:#53fc18;">Lucia_tv:</span> Sub hypeee ⭐</div>
-                      <div class="mock-msg highlight"><span class="m-time">14:03</span> <span class="m-user" style="color:#ff4757;">SpamBot:</span> Gana premios en http://... <span class="m-action">[AutoMod Bloqueó]</span></div>
+                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user"
+                          style="color:#bf94ff;">GamerPro:</span> ¡Bienvenidos a la transmisión!</div>
+                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user"
+                          style="color:#53fc18;">Lucia_tv:</span> Sub hypeee ⭐</div>
+                      <div class="mock-msg highlight"><span class="m-time">14:03</span> <span class="m-user"
+                          style="color:#ff4757;">SpamBot:</span> Gana premios en http://... <span
+                          class="m-action">[AutoMod Bloqueó]</span></div>
                     </div>
                   </div>
 
@@ -142,8 +163,10 @@
                       <span style="font-size:10px;color:var(--text-dim);">● 14,200 viewers</span>
                     </div>
                     <div class="mock-chat-feed">
-                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user" style="color:#eccc68;">KarinFan:</span> ¡Qué partida tan épica!</div>
-                      <div class="mock-msg"><span class="m-time">14:03</span> <span class="m-user" style="color:#2ed573;">Tú (Mod):</span> 🛡️ Mantengan el respeto en el chat.</div>
+                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user"
+                          style="color:#eccc68;">KarinFan:</span> ¡Qué partida tan épica!</div>
+                      <div class="mock-msg"><span class="m-time">14:03</span> <span class="m-user"
+                          style="color:#2ed573;">Tú (Mod):</span> 🛡️ Mantengan el respeto en el chat.</div>
                     </div>
                   </div>
 
@@ -159,8 +182,10 @@
                       <span style="font-size:10px;color:var(--text-dim);">● 9,800 viewers</span>
                     </div>
                     <div class="mock-chat-feed">
-                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user" style="color:#53fc18;">ArenaFan:</span> Saludos a todos en el chat 👋</div>
-                      <div class="mock-msg"><span class="m-time">14:03</span> <span class="m-user" style="color:#70a1ff;">VipMember:</span> GG ese clutch 🔥</div>
+                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user"
+                          style="color:#53fc18;">ArenaFan:</span> Saludos a todos en el chat 👋</div>
+                      <div class="mock-msg"><span class="m-time">14:03</span> <span class="m-user"
+                          style="color:#70a1ff;">VipMember:</span> GG ese clutch 🔥</div>
                     </div>
                   </div>
 
@@ -176,8 +201,10 @@
                       <span style="font-size:10px;color:var(--text-dim);">● 6,300 viewers</span>
                     </div>
                     <div class="mock-chat-feed">
-                      <div class="mock-msg"><span class="m-time">14:01</span> <span class="m-user" style="color:#ffa502;">HubMod:</span> ¡Bienvenidos a la comunidad!</div>
-                      <div class="mock-msg"><span class="m-time">14:03</span> <span class="m-user" style="color:#bf94ff;">Viewer_42:</span> Excelente transmisión hoy</div>
+                      <div class="mock-msg"><span class="m-time">14:01</span> <span class="m-user"
+                          style="color:#ffa502;">HubMod:</span> ¡Bienvenidos a la comunidad!</div>
+                      <div class="mock-msg"><span class="m-time">14:03</span> <span class="m-user"
+                          style="color:#bf94ff;">Viewer_42:</span> Excelente transmisión hoy</div>
                     </div>
                   </div>
                 </div>
@@ -217,7 +244,8 @@
             <div class="section-header-center">
               <span class="section-tag">FLUJO DE TRABAJO EN 3 PASOS</span>
               <h2 class="section-title">¿Cómo Funciona OrbiMod?</h2>
-              <p class="section-sub">Diseñado para moderadores profesionales y streamers que requieren máxima agilidad sin fricción.</p>
+              <p class="section-sub">Diseñado para moderadores profesionales y streamers que requieren máxima agilidad
+                sin fricción.</p>
             </div>
 
             <div class="steps-grid">
@@ -226,7 +254,8 @@
                 <div class="step-icon">🔑</div>
                 <h3 class="step-title">Vincula tu Cuenta Oficial</h3>
                 <p class="step-desc">
-                  Conéctate con tu cuenta de Twitch (1-clic OAuth oficial) o Kick Pusher. Sin necesidad de registrar contraseñas en servidores externos.
+                  Conéctate con tu cuenta de Twitch (1-clic OAuth oficial) o Kick Pusher. Sin necesidad de registrar
+                  contraseñas en servidores externos.
                 </p>
               </div>
 
@@ -235,7 +264,8 @@
                 <div class="step-icon">⚡</div>
                 <h3 class="step-title">Auto-Detección Inteligente</h3>
                 <p class="step-desc">
-                  La API Helix escanea en tiempo real todas las salas donde tienes privilegios de moderador y te permite seleccionar con qué canales trabajar hoy.
+                  La API Helix escanea en tiempo real todas las salas donde tienes privilegios de moderador y te permite
+                  seleccionar con qué canales trabajar hoy.
                 </p>
               </div>
 
@@ -244,7 +274,8 @@
                 <div class="step-icon">🎛️</div>
                 <h3 class="step-title">Lanza tu Deck & Modera</h3>
                 <p class="step-desc">
-                  Accede a la estación con chats simultáneos, timeouts en 1-clic, macros con teclas rápidas (Ctrl+1..5), radar de raids y escudo anti-spam.
+                  Accede a la estación con chats simultáneos, timeouts en 1-clic, macros con teclas rápidas (Ctrl+1..5),
+                  radar de raids y escudo anti-spam.
                 </p>
               </div>
             </div>
@@ -257,7 +288,8 @@
             <div class="section-header-center">
               <span class="section-tag">HERRAMIENTAS DE ÉLITE</span>
               <h2 class="section-title">Todo lo que necesitas para moderar streams gigantes</h2>
-              <p class="section-sub">Creado para mantener el orden, proteger la comunidad y responder en milisegundos.</p>
+              <p class="section-sub">Creado para mantener el orden, proteger la comunidad y responder en milisegundos.
+              </p>
             </div>
 
             <div class="features-detailed-grid">
@@ -266,7 +298,9 @@
                 <div class="feature-detailed-icon" style="background:rgba(145,70,255,0.15);color:#bf94ff;">⊞</div>
                 <h3 class="feature-detailed-title">Layouts Multi-Deck Inteligentes</h3>
                 <p class="feature-detailed-desc">
-                  Cambia al instante entre cuadrícula equilibrada <strong>Grid 2x2</strong>, canal prioritario <strong>Split 1+2</strong>, <strong>Chat Wall</strong> ultra-rápido de alta densidad para 6+ canales, o <strong>Single Focus</strong>.
+                  Cambia al instante entre cuadrícula equilibrada <strong>Grid 2x2</strong>, canal prioritario
+                  <strong>Split 1+2</strong>, <strong>Chat Wall</strong> ultra-rápido de alta densidad para 6+ canales,
+                  o <strong>Single Focus</strong>.
                 </p>
               </div>
 
@@ -275,7 +309,8 @@
                 <div class="feature-detailed-icon" style="background:rgba(46,213,115,0.15);color:#2ed573;">🛡️</div>
                 <h3 class="feature-detailed-title">AutoMod & Escudo Anti-Spam</h3>
                 <p class="feature-detailed-desc">
-                  Motor de reglas regex, bloqueo de enlaces sospechosos, detector de spam de mayúsculas y cola de aprobación manual antes de que los mensajes lleguen al chat.
+                  Motor de reglas regex, bloqueo de enlaces sospechosos, detector de spam de mayúsculas y cola de
+                  aprobación manual antes de que los mensajes lleguen al chat.
                 </p>
               </div>
 
@@ -284,7 +319,8 @@
                 <div class="feature-detailed-icon" style="background:rgba(255,71,87,0.15);color:#ff4757;">⏱️</div>
                 <h3 class="feature-detailed-title">Sanciones Rápidas en 1-Clic</h3>
                 <p class="feature-detailed-desc">
-                  Aplica purgas instantáneas (1s), timeouts escalonados (60s, 5m, 10m, 24h), eliminación de mensajes y baneos permanentes con menú contextual flotante.
+                  Aplica purgas instantáneas (1s), timeouts escalonados (60s, 5m, 10m, 24h), eliminación de mensajes y
+                  baneos permanentes con menú contextual flotante.
                 </p>
               </div>
 
@@ -293,7 +329,8 @@
                 <div class="feature-detailed-icon" style="background:rgba(255,165,2,0.15);color:#ffa502;">📡</div>
                 <h3 class="feature-detailed-title">Radar de Raids & Eventos</h3>
                 <p class="feature-detailed-desc">
-                  Detecta ráfagas repentinas de mensajes, sub bombs y raids entrantes. Activa el <strong>Modo Escudo Global (Alt+S)</strong> para blindar todos tus canales a la vez.
+                  Detecta ráfagas repentinas de mensajes, sub bombs y raids entrantes. Activa el <strong>Modo Escudo
+                    Global (Alt+S)</strong> para blindar todos tus canales a la vez.
                 </p>
               </div>
 
@@ -302,7 +339,8 @@
                 <div class="feature-detailed-icon" style="background:rgba(112,161,255,0.15);color:#70a1ff;">🔍</div>
                 <h3 class="feature-detailed-title">Inspector de Usuarios Consolidado</h3>
                 <p class="feature-detailed-desc">
-                  Examina el historial de mensajes de cualquier espectador en la sesión, añade notas privadas compartidas y consulta su historial de sanciones previas.
+                  Examina el historial de mensajes de cualquier espectador en la sesión, añade notas privadas
+                  compartidas y consulta su historial de sanciones previas.
                 </p>
               </div>
 
@@ -311,7 +349,8 @@
                 <div class="feature-detailed-icon" style="background:rgba(236,204,104,0.15);color:#eccc68;">📋</div>
                 <h3 class="feature-detailed-title">Registro de Auditoría Exportable</h3>
                 <p class="feature-detailed-desc">
-                  Historial inmutable con marca de tiempo de cada acción tomada por moderadores o AutoMod. Exportación con 1-clic a formatos <strong>CSV y JSON</strong> para reportes.
+                  Historial inmutable con marca de tiempo de cada acción tomada por moderadores o AutoMod. Exportación
+                  con 1-clic a formatos <strong>CSV y JSON</strong> para reportes.
                 </p>
               </div>
             </div>
@@ -324,9 +363,14 @@
             <div class="security-box-wrapper">
               <div class="security-icon-large">🔒</div>
               <div class="security-text-content">
-                <h2 style="font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 8px;">Arquitectura Segura y Respetuosa con tu Privacidad</h2>
+                <h2 style="font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 8px;">Arquitectura Segura y
+                  Respetuosa con tu Privacidad</h2>
                 <p style="font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 16px;">
-                  OrbiMod funciona de forma 100% Client-Side en tu navegador web. Tu token OAuth de Twitch y credenciales de Kick se almacenan de manera local y cifrada en tu propio dispositivo (<code style="color:var(--twitch-purple);">localStorage</code>). Las conexiones se realizan de forma directa mediante WebSockets oficiales a los servidores de Twitch y Kick, garantizando cero intermediarios y cero almacenamiento de tus datos privados.
+                  OrbiMod funciona de forma 100% Client-Side en tu navegador web. Tu token OAuth de Twitch y
+                  credenciales de Kick se almacenan de manera local y cifrada en tu propio dispositivo (<code
+                    style="color:var(--twitch-purple);">localStorage</code>). Las conexiones se realizan de forma
+                  directa mediante WebSockets oficiales a los servidores de Twitch y Kick, garantizando cero
+                  intermediarios y cero almacenamiento de tus datos privados.
                 </p>
                 <div class="security-badges-list">
                   <div class="sec-badge"><span>✓</span> Cero servidores intermediarios</div>
@@ -355,7 +399,8 @@
                   <span class="faq-arrow">+</span>
                 </button>
                 <div class="faq-answer">
-                  <p>No. OrbiMod se ejecuta 100% en la web a través de tu navegador moderno (Chrome, Edge, Firefox, Brave, Safari). No requiere extensiones pesadas ni instalaciones complejas.</p>
+                  <p>No. OrbiMod se ejecuta 100% en la web a través de tu navegador moderno (Chrome, Edge, Firefox,
+                    Brave, Safari). No requiere extensiones pesadas ni instalaciones complejas.</p>
                 </div>
               </div>
 
@@ -365,7 +410,9 @@
                   <span class="faq-arrow">+</span>
                 </button>
                 <div class="faq-answer">
-                  <p>Totalmente seguro. La conexión se realiza a través del protocolo oficial OAuth de Twitch. Tu contraseña nunca se comparte con OrbiMod y el token generado se guarda exclusivamente en la memoria local de tu navegador.</p>
+                  <p>Totalmente seguro. La conexión se realiza a través del protocolo oficial OAuth de Twitch. Tu
+                    contraseña nunca se comparte con OrbiMod y el token generado se guarda exclusivamente en la memoria
+                    local de tu navegador.</p>
                 </div>
               </div>
 
@@ -375,7 +422,9 @@
                   <span class="faq-arrow">+</span>
                 </button>
                 <div class="faq-answer">
-                  <p>Al autenticarte con Twitch, OrbiMod consulta el endpoint oficial de la API Helix (<code>/helix/moderation/channels</code>) con tu ID de usuario, obteniendo al instante la lista verificada de todos los canales donde tienes rango de moderador.</p>
+                  <p>Al autenticarte con Twitch, OrbiMod consulta el endpoint oficial de la API Helix
+                    (<code>/helix/moderation/channels</code>) con tu ID de usuario, obteniendo al instante la lista
+                    verificada de todos los canales donde tienes rango de moderador.</p>
                 </div>
               </div>
 
@@ -385,7 +434,8 @@
                   <span class="faq-arrow">+</span>
                 </button>
                 <div class="faq-answer">
-                  <p>¡Sí! OrbiMod fue diseñado específicamente como una estación unificada. Puedes tener canales de Twitch y canales de Kick en la misma cuadrícula respondiendo a los chats de forma simultánea.</p>
+                  <p>¡Sí! OrbiMod fue diseñado específicamente como una estación unificada. Puedes tener canales de
+                    Twitch y canales de Kick en la misma cuadrícula respondiendo a los chats de forma simultánea.</p>
                 </div>
               </div>
 
@@ -395,7 +445,9 @@
                   <span class="faq-arrow">+</span>
                 </button>
                 <div class="faq-answer">
-                  <p>Sí. Puedes desactivar los reproductores de video en vivo desde el configurador o usar el modo bajo demanda con el botón de cámara (📹) en cada tarjeta para disfrutar de un modo chat ligero de máxima velocidad.</p>
+                  <p>Sí. Puedes desactivar los reproductores de video en vivo desde el configurador o usar el modo bajo
+                    demanda con el botón de cámara (📹) en cada tarjeta para disfrutar de un modo chat ligero de máxima
+                    velocidad.</p>
                 </div>
               </div>
             </div>
@@ -406,9 +458,11 @@
         <section class="landing-final-cta">
           <div class="final-cta-container">
             <h2 class="final-cta-title">¿Listo para transformar tu experiencia de moderación?</h2>
-            <p class="final-cta-sub">Únete a los moderadores que gestionan múltiples salas con máxima velocidad y control total.</p>
+            <p class="final-cta-sub">Únete a los moderadores que gestionan múltiples salas con máxima velocidad y
+              control total.</p>
             <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-              <button id="btn-footer-start-auth" class="btn btn-primary btn-lg" style="box-shadow:0 0 25px var(--twitch-purple-glow);">
+              <button id="btn-footer-start-auth" class="btn btn-primary btn-lg"
+                style="box-shadow:0 0 25px var(--twitch-purple-glow);">
                 <span>🚀 Iniciar Sesión y Lanzar OrbiMod →</span>
               </button>
             </div>
@@ -421,7 +475,11 @@
             <div class="footer-brand">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <div class="brand-logo" style="width: 22px; height: 22px; font-size: 11px;">
-                  <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                  <svg viewBox="0 0 24 24">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                    <polyline points="2 17 12 22 22 17" />
+                    <polyline points="2 12 12 17 22 12" />
+                  </svg>
                 </div>
                 <span style="font-weight: 800; color: #fff; font-size: 14px;">ORBIMOD SUITE</span>
               </div>
@@ -431,7 +489,8 @@
             </div>
 
             <div class="footer-links">
-              <a href="https://github.com/Bersek3/Orbimod" target="_blank" rel="noreferrer" class="footer-link">GitHub Repository</a>
+              <a href="https://github.com/Bersek3/Orbimod" target="_blank" rel="noreferrer" class="footer-link">GitHub
+                Repository</a>
               <a href="#landing-features" class="footer-link">Funcionalidades</a>
               <a href="#landing-security" class="footer-link">Seguridad</a>
               <a href="#landing-faq" class="footer-link">FAQ</a>
@@ -455,7 +514,11 @@
         <!-- Brand & Title -->
         <div class="brand-section">
           <div class="brand-logo" id="header-logo-home-btn" title="Ir al Inicio / Landing" style="cursor: pointer;">
-            <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            <svg viewBox="0 0 24 24">
+              <polygon points="12 2 2 7 12 12 22 7 12 2" />
+              <polyline points="2 17 12 22 22 17" />
+              <polyline points="2 12 12 17 22 12" />
+            </svg>
           </div>
           <div class="brand-title">
             <h1>ORBIMOD <span class="brand-version-pill">DECK</span></h1>
@@ -467,24 +530,44 @@
 
         <!-- Center: Layout View Switchers (5 Instant Switcher Modes) -->
         <nav class="header-nav" aria-label="Selector de Vistas del Deck">
-          <button class="layout-btn" data-layout="layout-chat-wall" title="🧱 Muro de Chats (100% Pantalla para Chat Completo)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="16" y2="21"/><rect x="2" y="3" width="20" height="18" rx="2"/></svg>
+          <button class="layout-btn" data-layout="layout-chat-wall"
+            title="🧱 Muro de Chats (100% Pantalla para Chat Completo)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="3" x2="8" y2="21" />
+              <line x1="16" y1="3" x2="16" y2="21" />
+              <rect x="2" y="3" width="20" height="18" rx="2" />
+            </svg>
             <span>Muro Chats</span>
           </button>
           <button class="layout-btn active" data-layout="layout-grid-2x2" title="🎛️ Cuadrícula 2x2 (Equilibrada)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+            </svg>
             <span>Grid 2x2</span>
           </button>
           <button class="layout-btn" data-layout="layout-split-1-2" title="⚡ Split 1+2 (Canal Principal + Secundarios)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="9" height="18"/><rect x="14" y="3" width="7" height="8"/><rect x="14" y="13" width="7" height="8"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="9" height="18" />
+              <rect x="14" y="3" width="7" height="8" />
+              <rect x="14" y="13" width="7" height="8" />
+            </svg>
             <span>Split 1+2</span>
           </button>
           <button class="layout-btn" data-layout="layout-dual-columns" title="👥 Dual Stream (50/50 Pantalla Completa)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="18"/><rect x="13" y="3" width="8" height="18"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="8" height="18" />
+              <rect x="13" y="3" width="8" height="18" />
+            </svg>
             <span>Dual Stream</span>
           </button>
-          <button class="layout-btn" data-layout="layout-single-focus" title="🎯 Modo Focus (Canal Individual de Máxima Altura)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          <button class="layout-btn" data-layout="layout-single-focus"
+            title="🎯 Modo Focus (Canal Individual de Máxima Altura)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+            </svg>
             <span>Focus 1</span>
           </button>
         </nav>
@@ -492,32 +575,49 @@
         <!-- Right: Mod Action Controls -->
         <div class="header-actions">
           <!-- Manage Channels Button (Control Center for Channels) -->
-          <button id="btn-header-manage-channels" class="btn btn-secondary" title="Gestionar y añadir canales moderados">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <button id="btn-header-manage-channels" class="btn btn-secondary"
+            title="Gestionar y añadir canales moderados">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+            </svg>
             <span>⚙️ Canales (<span id="header-channels-count">0</span>)</span>
           </button>
 
           <!-- AutoMod Queue -->
           <button id="btn-automod-queue" class="btn btn-secondary btn-badge-container" title="Cola AutoMod (Alt+A)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
             <span>AutoMod</span>
             <span id="automod-badge-count" class="pill-count" style="display: none;">0</span>
           </button>
 
           <!-- Audit Log -->
           <button id="btn-audit-log" class="btn btn-secondary" title="Registro de Auditoría (Alt+L)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
             <span>Auditoría</span>
           </button>
 
           <!-- Sound Toggle -->
           <button id="btn-toggle-sound" class="btn btn-secondary btn-icon active" title="Alternar Audio">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
+            </svg>
           </button>
 
           <!-- Logout Button -->
-          <button id="btn-deck-logout" class="btn btn-secondary btn-icon" title="Cerrar Sesión" style="color: var(--danger-red);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          <button id="btn-deck-logout" class="btn btn-secondary btn-icon" title="Cerrar Sesión"
+            style="color: var(--danger-red);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+            </svg>
           </button>
         </div>
       </header>
@@ -544,29 +644,25 @@
           <!-- Platform Status Lights -->
           <div class="metric-item" style="gap: 14px; margin-left: 10px;">
             <span style="display: flex; align-items: center; gap: 6px;">
-              <span id="twitch-conn-dot" class="metric-dot" style="background: var(--twitch-purple); box-shadow: 0 0 8px var(--twitch-purple);"></span>
+              <span id="twitch-conn-dot" class="metric-dot"
+                style="background: var(--twitch-purple); box-shadow: 0 0 8px var(--twitch-purple);"></span>
               <span id="twitch-conn-text">Twitch API</span>
             </span>
             <span style="display: flex; align-items: center; gap: 6px;">
-              <span id="kick-conn-dot" class="metric-dot" style="background: var(--kick-green); box-shadow: 0 0 8px var(--kick-green);"></span>
+              <span id="kick-conn-dot" class="metric-dot"
+                style="background: var(--kick-green); box-shadow: 0 0 8px var(--kick-green);"></span>
               <span id="kick-conn-text">Kick Pusher</span>
             </span>
           </div>
         </div>
 
-        <div class="status-ticker-right">
-          <div class="hotkey-hint">
-            <span>Cambiar Vistas:</span>
-            <span class="kbd-badge">Alt + 1..5</span>
-          </div>
-          <div class="hotkey-hint">
-            <span>Inspector:</span>
-            <span class="kbd-badge">Clic en Usuario</span>
-          </div>
-          <div class="hotkey-hint">
-            <span>AutoMod:</span>
-            <span class="kbd-badge">Alt + A</span>
-          </div>
+        <div class="status-ticker-right" style="display: flex; align-items: center; gap: 8px;">
+          <button id="btn-toggle-live-filter" class="btn btn-secondary"
+            style="font-size: 11.5px; padding: 3px 10px; display: flex; align-items: center; gap: 6px;"
+            title="Alternar entre ver solo canales en vivo o todos">
+            <span class="metric-dot pulse" style="background: var(--danger-red); width: 7px; height: 7px;"></span>
+            <span id="live-filter-label">🔴 Solo En Vivo</span>
+          </button>
         </div>
       </div>
 
@@ -594,6 +690,7 @@
   </div>
 
   <!-- Main ES Module Entry Point with Cache Buster -->
-  <script type="module" src="./js/app.js?v=4.8"></script>
+  <script type="module" src="./js/app.js?v=4.9"></script>
 </body>
+
 </html>

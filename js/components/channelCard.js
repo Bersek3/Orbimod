@@ -51,8 +51,10 @@ export class ChannelCard {
               <span class="channel-tag ${tagClass}">${platformLabel}</span>
             </div>
             <div class="channel-meta">
-              <span class="live-badge">● LIVE CHAT</span>
-              <span>${this.channel.viewers ? Number(this.channel.viewers).toLocaleString() + ' viewers' : 'Moderación Activa'}</span>
+              ${this.channel.isLive !== false 
+                ? `<span class="live-badge">● EN VIVO</span><span>${this.channel.viewers ? Number(this.channel.viewers).toLocaleString() + ' viewers' : 'Moderación Activa'}</span>`
+                : `<span class="live-badge" style="background: rgba(255,255,255,0.08); color: var(--text-dim); border-color: rgba(255,255,255,0.15);">⚪ OFFLINE</span><span>Canal en espera</span>`
+              }
             </div>
           </div>
         </div>

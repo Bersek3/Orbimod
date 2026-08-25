@@ -330,10 +330,10 @@
   color: var(--text-main);
 }
 
-/* --- Main Workspace Canvas --- */
+/* --- Main Workspace Canvas (Fully Responsive & Scrollable) --- */
 .main-workspace {
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
   position: relative;
   display: flex;
   background: radial-gradient(circle at 50% 50%, rgba(24, 30, 44, 0.4) 0%, rgba(10, 12, 16, 0.9) 100%);
@@ -347,7 +347,7 @@
   width: 100%;
   display: grid;
   gap: 12px;
-  overflow: hidden;
+  overflow: auto;
   position: relative;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }

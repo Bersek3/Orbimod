@@ -3,7 +3,7 @@
    High-performance message list, badges, emotes, hover mod actions, embeds
    ========================================================================== */
 
-/* Channel Card */
+/* Channel Card (Fully Resizable & Responsive) */
 .channel-card {
   background: linear-gradient(180deg, rgba(18, 23, 35, 0.88) 0%, rgba(10, 13, 20, 0.96) 100%);
   backdrop-filter: blur(18px);
@@ -15,9 +15,11 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
-  min-height: 0;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  min-height: 220px;
+  min-width: 260px;
   height: 100%;
+  resize: both; /* Permite arrastrar la esquina inferior derecha para ajustar ancho y alto */
 }
 
 .channel-card:hover {

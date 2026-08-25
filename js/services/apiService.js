@@ -238,6 +238,56 @@ export class ApiService {
       };
     }
   }
+
+  /**
+   * Batch checks real-time Live / Offline status for a list of channels
+   */
+  async checkLiveStatus(channels) {
+    if (!channels || channels.length === 0) return channels;
+
+    const twitchChannels = channels.filter(c => c.platform === 'twitch');
+    const kickChannels = channels.filter(c => c.platform === 'kick');
+
+    // 1. Check Twitch Helix Streams
+    if (twitchChannels.length > 0) {
+      const logins = twitchChannels.map(c => `user_login=${encodeURIComponent(c.name)}`).slice(0, 100).join('&');
+      const clientId = this.getTwitchClientId();
+      try {
+        // Try with helix users/streams endpoint
+        const res = await fetch(`https://api.twitch.tv/helix/streams?${logins}`, {
+          headers: {
+            'Client-Id': clientId
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const liveLogins = new Set((data.data || []).map(s => s.user_login.toLowerCase()));
+          const viewerMap = new Map((data.data || []).map(s => [s.user_login.toLowerCase(), s.viewer_count]));
+          twitchChannels.forEach(c => {
+            const isLive = liveLogins.has(c.name.toLowerCase());
+            c.isLive = isLive;
+            c.viewers = isLive ? (viewerMap.get(c.name.toLowerCase()) || 0) : 0;
+          });
+        }
+      } catch (e) {
+        console.warn('Twitch live check failed:', e);
+      }
+    }
+
+    // 2. Check Kick Streams
+    for (const kc of kickChannels) {
+      try {
+        const kRes = await this.fetchKickChannel(kc.name);
+        if (kRes.success) {
+          kc.isLive = kRes.channel.isLive;
+          kc.viewers = kRes.channel.viewers;
+          kc.avatar = kRes.channel.avatar || kc.avatar;
+        }
+      } catch (e) {}
+    }
+
+    return channels;
+  }
 }
 
 export const apiService = new ApiService();
