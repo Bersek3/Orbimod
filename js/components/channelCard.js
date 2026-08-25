@@ -97,6 +97,14 @@ export class ChannelCard {
     const hasVideo = !!this.channel.videoEnabled;
     const hasAudio = !!this.channel.audioEnabled;
 
+    const isMod = Boolean(this.channel.isModerator === true || this.channel.role === 'owner' || this.channel.role === 'mod');
+    const isOwner = this.channel.role === 'owner';
+    const modRoleBadgeHtml = isOwner
+      ? `<span class="mod-role-pill owner" title="Eres el propietario del canal">👑 PROPIETARIO</span>`
+      : (isMod
+        ? `<span class="mod-role-pill mod" title="Eres moderador activo en este canal">🛡️ MOD</span>`
+        : `<span class="mod-role-pill stream-only" title="Modo Solo Stream / Espectador (sin permisos de mod)">👁️ SOLO STREAM</span>`);
+
     card.innerHTML = `
       <!-- Header -->
       <div class="channel-header">
@@ -109,9 +117,10 @@ export class ChannelCard {
             </div>
             <div class="channel-meta">
               ${this.channel.isLive !== false 
-                ? `<span class="live-badge">● EN VIVO</span><span>${this.channel.viewers ? Number(this.channel.viewers).toLocaleString() + ' viewers' : 'Moderación Activa'}</span>`
+                ? `<span class="live-badge">● EN VIVO</span><span>${this.channel.viewers ? Number(this.channel.viewers).toLocaleString() + ' viewers' : 'Directo'}</span>`
                 : `<span class="live-badge" style="background: rgba(255,255,255,0.08); color: var(--text-dim); border-color: rgba(255,255,255,0.15);">⚪ OFFLINE</span><span>Canal en espera</span>`
               }
+              ${modRoleBadgeHtml}
             </div>
           </div>
         </div>
@@ -151,7 +160,7 @@ export class ChannelCard {
       <!-- Optional Stream Video Player -->
       <div class="channel-player-container ${hasVideo ? '' : 'collapsed'}">
         ${hasVideo ? `
-          <iframe class="channel-player-iframe" src="${playerIframeSrc}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture;" allowfullscreen="true" frameborder="0" scrolling="no"></iframe>
+          <div class="player-mount-area" style="width:100%; height:100%; position:absolute; top:0; left:0;"></div>
         ` : `
           <div class="video-placeholder-lazy" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); font-size: 11.5px; gap: 8px;">
             <span>📹 Modo Chat Ligero (Haz clic en el ícono de cámara arriba para cargar video)</span>
@@ -160,25 +169,36 @@ export class ChannelCard {
       </div>
 
       <!-- Room Moderation Modes Bar -->
-      <div class="room-modes-bar">
-        <div class="room-mode-toggles">
-          <button class="mode-chip slow-mode-btn ${this.channel.slowMode ? 'active' : ''}" data-mode="slow" title="Activar Modo Lento (Slow Mode)">
-            ⏱️ Slow ${this.channel.slowMode ? this.channel.slowMode + 's' : 'Off'}
-          </button>
-          <button class="mode-chip sub-mode-btn ${this.channel.subOnly ? 'active' : ''}" data-mode="sub" title="Solo Suscriptores pueden chatear">
-            ⭐ Subs
-          </button>
-          <button class="mode-chip follow-mode-btn ${this.channel.followOnly ? 'active' : ''}" data-mode="follow" title="Solo Seguidores pueden chatear">
-            👥 Follow
-          </button>
-          <button class="mode-chip emote-mode-btn ${this.channel.emoteOnly ? 'active' : ''}" data-mode="emote" title="Solo Emotes">
-            😀 Emotes
-          </button>
+      ${isMod ? `
+        <div class="room-modes-bar">
+          <div class="room-mode-toggles">
+            <button class="mode-chip slow-mode-btn ${this.channel.slowMode ? 'active' : ''}" data-mode="slow" title="Activar Modo Lento (Slow Mode)">
+              ⏱️ Slow ${this.channel.slowMode ? this.channel.slowMode + 's' : 'Off'}
+            </button>
+            <button class="mode-chip sub-mode-btn ${this.channel.subOnly ? 'active' : ''}" data-mode="sub" title="Solo Suscriptores pueden chatear">
+              ⭐ Subs
+            </button>
+            <button class="mode-chip follow-mode-btn ${this.channel.followOnly ? 'active' : ''}" data-mode="follow" title="Solo Seguidores pueden chatear">
+              👥 Follow
+            </button>
+            <button class="mode-chip emote-mode-btn ${this.channel.emoteOnly ? 'active' : ''}" data-mode="emote" title="Solo Emotes">
+              😀 Emotes
+            </button>
+          </div>
+          <div class="room-status-indicator mono" style="font-size: 10px; color: var(--text-dim);">
+            ID: ${this.channel.id}
+          </div>
         </div>
-        <div class="room-status-indicator mono" style="font-size: 10px; color: var(--text-dim);">
-          ID: ${this.channel.id}
+      ` : `
+        <div class="room-modes-bar not-mod" style="background: rgba(255, 255, 255, 0.02); justify-content: space-between;">
+          <span style="font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 5px;">
+            👁️ <strong style="color: #d1d8e0;">Modo Stream</strong> (Solo lectura / Sin permisos de moderación)
+          </span>
+          <div class="room-status-indicator mono" style="font-size: 10px; color: var(--text-dim);">
+            ID: ${this.channel.id}
+          </div>
         </div>
-      </div>
+      `}
 
       <!-- Quick Chat Filter Chips -->
       <div class="chat-filters-bar">
@@ -230,6 +250,11 @@ export class ChannelCard {
         }
       }
     };
+
+    // Auto initialize player on mount
+    if (this.channel.videoEnabled) {
+      setTimeout(() => reloadPlayer(), 50);
+    }
 
     // 1. Audio Toggle (Mute / Unmute stream on Kick and Twitch)
     audioBtn?.addEventListener('click', () => {

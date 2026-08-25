@@ -464,6 +464,40 @@ export class ApiService {
   }
 
   /**
+   * Checks if current authenticated user is moderator or broadcaster in a Twitch channel
+   */
+  async checkTwitchModStatus(channelSlug) {
+    const cleanName = (channelSlug || '').trim().toLowerCase().replace(/[@#]/g, '');
+    if (!cleanName) return { isMod: false, role: 'viewer' };
+
+    try {
+      const profiles = JSON.parse(localStorage.getItem('nexus_mod_profiles_v1') || '{}');
+      const creds = JSON.parse(localStorage.getItem('nexus_mod_auth_creds_v1') || '{}');
+      const twitchUser = (profiles.twitch?.login || creds.twitchUsername || '').toLowerCase();
+      const token = profiles.twitch?.token || creds.twitchToken;
+      const clientId = profiles.twitch?.clientId || this.getTwitchClientId();
+      const userId = profiles.twitch?.userId;
+
+      // Channel owner is always broadcaster/mod
+      if (twitchUser && cleanName === twitchUser) {
+        return { isMod: true, role: 'owner' };
+      }
+
+      if (token && userId) {
+        const modRes = await this.fetchModeratedChannels(token, clientId, userId);
+        if (modRes.success && modRes.channels) {
+          const isMod = modRes.channels.some(c => (c.name || c.broadcaster_login || '').toLowerCase() === cleanName);
+          if (isMod) return { isMod: true, role: 'mod' };
+        }
+      }
+    } catch (e) {
+      console.warn('[Twitch Mod Check error]', e);
+    }
+
+    return { isMod: false, role: 'viewer' };
+  }
+
+  /**
    * Batch checks real-time Live / Offline status for a list of channels
    */
   async checkLiveStatus(channels) {

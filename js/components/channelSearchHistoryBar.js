@@ -179,6 +179,12 @@ export class ChannelSearchHistoryBar {
       let res;
       if (this.selectedPlatform === 'twitch') {
         res = await apiService.fetchTwitchChannel(name);
+        if (res.success) {
+          if (searchBtn) searchBtn.textContent = 'Comprobando Mod...';
+          const twitchMod = await apiService.checkTwitchModStatus(name);
+          res.channel.isModerator = twitchMod.isMod;
+          res.channel.role = twitchMod.role;
+        }
       } else {
         res = await apiService.fetchKickChannel(name);
 
