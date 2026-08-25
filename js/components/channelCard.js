@@ -150,6 +150,10 @@ export class ChannelCard {
           ? `https://player.twitch.tv/?channel=${this.channel.name}&${parentParam}&autoplay=false&muted=true`
           : `https://player.kick.com/${this.channel.name}?autoplay=false&muted=true`;
         playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" loading="lazy" allow="autoplay; fullscreen" scrolling="no"></iframe>`;
+        const iframe = playerContainer.querySelector('iframe');
+        if (iframe && this.channel.platform === 'kick') {
+          iframe.addEventListener('load', () => this._cleanKickIframe(iframe));
+        }
       } else {
         playerContainer.innerHTML = `
           <div class="video-placeholder-lazy" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); font-size: 11.5px; gap: 8px;">
@@ -408,6 +412,42 @@ export class ChannelCard {
     this.isScrolledUp = false;
     this.unreadCountWhilePaused = 0;
     this.pausedIndicator.style.display = 'none';
+  }
+
+  _cleanKickIframe(iframe) {
+    if (this.channel.platform !== 'kick' || !iframe) return;
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) {
+        // Target Kick's top banner controls and bottom watermark overlay
+        const topHeader = doc.querySelector('.z-controls, [class*="z-controls"], [class*="bg-linear-to-b"]');
+        if (topHeader) topHeader.style.display = 'none';
+
+        const bottomBadge = doc.querySelector('[class*="bottom-12"][class*="right-4"], [class*="bg-neutral-950/70"]');
+        if (bottomBadge) bottomBadge.style.display = 'none';
+
+        // Inject stylesheet to permanently suppress these classes
+        const style = doc.createElement('style');
+        style.textContent = `
+          .absolute.top-0.right-0.left-0.z-controls,
+          .z-controls,
+          [class*="z-controls"],
+          [class*="bg-linear-to-b"][class*="from-neutral-950"],
+          .absolute.right-4.bottom-12,
+          [class*="right-4"][class*="bottom-12"],
+          [class*="bg-neutral-950/70"] {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            height: 0 !important;
+          }
+        `;
+        doc.head?.appendChild(style);
+      }
+    } catch (e) {
+      // Handled gracefully via outer CSS styling
+    }
   }
 
   _escapeHtml(text) {

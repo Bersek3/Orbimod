@@ -185,6 +185,20 @@
   border: none;
 }
 
+/* Kick Embed Player - Hide Intrusive Top Header and Bottom Watermark Overlays */
+.absolute.top-0.right-0.left-0.z-controls,
+.z-controls,
+[class*="z-controls"],
+[class*="bg-linear-to-b"][class*="from-neutral-950"],
+.absolute.right-4.bottom-12,
+[class*="right-4"][class*="bottom-12"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+}
+
 /* Room Moderation Quick Modes Toolbar */
 .room-modes-bar {
   padding: 4px 12px;
