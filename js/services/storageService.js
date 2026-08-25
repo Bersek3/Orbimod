@@ -39,12 +39,13 @@ class StorageService {
   getSettings() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      return data ? JSON.parse(data) : {
-        layout: 'layout-grid-2x2',
-        soundEnabled: true,
-        volume: 0.5,
-        theme: 'cyber-dark',
-        fontSize: 'normal',
+      const parsed = data ? JSON.parse(data) : {};
+      return {
+        layout: parsed.layout || 'layout-grid-2x2',
+        soundEnabled: parsed.soundEnabled ?? true,
+        volume: parsed.volume ?? 0.5,
+        theme: parsed.theme || 'cyber-dark',
+        fontSize: parsed.fontSize || 'normal',
         shieldActive: false,
         demoMode: false
       };

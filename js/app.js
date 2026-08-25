@@ -284,15 +284,11 @@ class OrbiModApp {
     });
 
     document.getElementById('btn-hero-sandbox')?.addEventListener('click', () => {
-      this.simulator.start();
       this.switchView('selector');
-      this.showToast('Modo Sandbox activo con chat simulado', 'info');
     });
 
     document.getElementById('btn-landing-sandbox-header')?.addEventListener('click', () => {
-      this.simulator.start();
       this.switchView('selector');
-      this.showToast('Modo Sandbox activo con chat simulado', 'info');
     });
 
     document.getElementById('btn-footer-start-auth')?.addEventListener('click', () => {
