@@ -9,10 +9,10 @@
     content="OrbiMod: Software profesional de alta velocidad para moderar múltiples canales simultáneos de Twitch y Kick con AutoMod, Inspector de Usuarios y Registro de Auditoría.">
 
   <!-- CSS Design System (Relative paths for GitHub Pages compatibility) -->
-  <link rel="stylesheet" href="./css/main.css?v=6.8">
-  <link rel="stylesheet" href="./css/components.css?v=6.8">
-  <link rel="stylesheet" href="./css/chat.css?v=6.8">
-  <link rel="stylesheet" href="./css/responsive.css?v=6.8">
+  <link rel="stylesheet" href="./css/main.css?v=6.9">
+  <link rel="stylesheet" href="./css/components.css?v=6.9">
+  <link rel="stylesheet" href="./css/chat.css?v=6.9">
+  <link rel="stylesheet" href="./css/responsive.css?v=6.9">
 
   <link rel="icon" type="image/svg+xml"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239146FF'><polygon points='12 2 2 7 12 12 22 7 12 2'/><polyline points='2 17 12 22 22 17'/><polyline points='2 12 12 17 22 12'/></svg>">
@@ -610,11 +610,18 @@
           </button>
 
           <!-- Account Hub / Unified Profiles -->
-          <button id="btn-deck-account-hub" class="btn btn-secondary btn-icon" title="Centro de Cuenta Unificada (Twitch, Kick, Supabase)"
-            style="color: #60a5fa;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
+          <button id="btn-deck-account-hub" class="deck-profile-btn" title="Centro de Cuenta Unificada (Twitch, Kick, Supabase)">
+            <div class="deck-profile-avatar-container">
+              <img id="deck-profile-avatar" src="https://api.dicebear.com/7.x/identicon/svg?seed=orbimod" alt="Avatar">
+              <span id="deck-profile-twitch-dot" class="platform-mini-dot twitch" title="Twitch Conectado"></span>
+              <span id="deck-profile-kick-dot" class="platform-mini-dot kick" title="Kick Conectado"></span>
+            </div>
+            <div class="deck-profile-info">
+              <span id="deck-profile-name">Vincular Cuentas</span>
+              <span id="deck-profile-sub">Twitch & Kick</span>
+            </div>
+            <svg class="dropdown-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
           </button>
 
@@ -696,7 +703,7 @@
   </div>
 
   <!-- Main ES Module Entry Point with Cache Buster -->
-  <script type="module" src="./js/app.js?v=6.8"></script>
+  <script type="module" src="./js/app.js?v=6.9"></script>
 </body>
 
 </html>

@@ -731,6 +731,51 @@ class OrbiModApp {
       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
   }
 
+  _updateAccountPills() {
+    const profiles = storageService.getProfiles();
+    const emailUser = supabaseAuthService.getCurrentUser();
+
+    const nameEl = document.getElementById('deck-profile-name');
+    const subEl = document.getElementById('deck-profile-sub');
+    const avatarEl = document.getElementById('deck-profile-avatar');
+    const twitchDot = document.getElementById('deck-profile-twitch-dot');
+    const kickDot = document.getElementById('deck-profile-kick-dot');
+
+    const isTwitch = profiles.twitch && profiles.twitch.valid;
+    const isKick = profiles.kick && profiles.kick.valid;
+
+    if (twitchDot) twitchDot.style.display = isTwitch ? 'block' : 'none';
+    if (kickDot) kickDot.style.display = isKick ? 'block' : 'none';
+
+    if (avatarEl) {
+      if (emailUser && emailUser.avatar) {
+        avatarEl.src = emailUser.avatar;
+      } else if (isTwitch && profiles.twitch.avatar) {
+        avatarEl.src = profiles.twitch.avatar;
+      } else if (isKick && profiles.kick.avatar) {
+        avatarEl.src = profiles.kick.avatar;
+      } else {
+        avatarEl.src = 'https://api.dicebear.com/7.x/identicon/svg?seed=orbimod';
+      }
+    }
+
+    if (nameEl && subEl) {
+      if (emailUser) {
+        nameEl.textContent = emailUser.displayName || emailUser.email.split('@')[0];
+        const platforms = [];
+        if (isTwitch) platforms.push('Twitch');
+        if (isKick) platforms.push('Kick');
+        subEl.textContent = platforms.length > 0 ? platforms.join(' + ') : 'Vincular cuentas';
+      } else if (isTwitch || isKick) {
+        nameEl.textContent = isTwitch ? `@${profiles.twitch.login}` : `@${profiles.kick.username}`;
+        subEl.textContent = (isTwitch && isKick) ? 'Twitch + Kick' : (isTwitch ? 'Twitch Mod' : 'Kick Mod');
+      } else {
+        nameEl.textContent = 'Vincular Cuentas';
+        subEl.textContent = 'Twitch & Kick';
+      }
+    }
+  }
+
   _bindKeyboardShortcuts() {
     window.addEventListener('keydown', (e) => {
       // ESC closes any open drawer or modal

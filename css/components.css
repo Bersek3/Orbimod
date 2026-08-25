@@ -2805,4 +2805,106 @@
   padding: 4px;
 }
 
+/* ==========================================================================
+   DECK HEADER PROFILE PILL & UNIFIED ACCOUNT TRIGGER
+   ========================================================================== */
+.deck-profile-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 3px 12px 3px 4px;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  position: relative;
+  user-select: none;
+  height: 34px;
+}
+
+.deck-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(96, 165, 250, 0.6);
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.25);
+  transform: translateY(-1px);
+}
+
+.deck-profile-avatar-container {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.deck-profile-avatar-container img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+}
+
+.platform-mini-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid #0f131f;
+  display: none;
+}
+
+.platform-mini-dot.twitch {
+  bottom: -1px;
+  right: -2px;
+  background: #9146FF;
+  box-shadow: 0 0 4px #9146FF;
+}
+
+.platform-mini-dot.kick {
+  top: -1px;
+  right: -2px;
+  background: #53FC18;
+  box-shadow: 0 0 4px #53FC18;
+}
+
+.deck-profile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+  text-align: left;
+}
+
+#deck-profile-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #f1f5f9;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#deck-profile-sub {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.dropdown-arrow-icon {
+  width: 12px;
+  height: 12px;
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+  margin-left: 2px;
+}
+
+.deck-profile-btn:hover .dropdown-arrow-icon {
+  color: #fff;
+  transform: translateY(1px);
+}
+
 
