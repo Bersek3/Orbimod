@@ -253,7 +253,40 @@ class OrbiModApp {
     if (window.location.hash && window.location.hash.includes('access_token=')) {
       const params = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = params.get('access_token');
+      const providerToken = params.get('provider_token');
 
+      // 1. Check if it's a Supabase / Google OAuth JWT token
+      if (accessToken && (accessToken.startsWith('eyJ') || providerToken)) {
+        this.showToast('☁️ Sesión de Google / Supabase autenticada con éxito', 'success');
+
+        const client = supabaseAuthService.getClient();
+        if (client) {
+          try {
+            const { data } = await client.auth.getSession();
+            if (data && data.session && data.session.user) {
+              const u = data.session.user;
+              const normalized = {
+                accessToken: data.session.access_token,
+                user: {
+                  id: u.id,
+                  email: u.email,
+                  displayName: u.user_metadata?.display_name || u.user_metadata?.full_name || u.user_metadata?.name || 'Usuario',
+                  avatar: u.user_metadata?.avatar_url || u.user_metadata?.picture || `https://api.dicebear.com/7.x/identicon/svg?seed=${u.email}`
+                }
+              };
+              supabaseAuthService._saveSession(normalized);
+            }
+          } catch (e) {}
+        }
+
+        window.history.replaceState(null, null, window.location.pathname);
+        await this.syncFromSupabase();
+        this._updateAccountPills();
+        this.updateLandingAuthStatus();
+        return true;
+      }
+
+      // 2. Twitch OAuth Token
       if (accessToken) {
         this.showToast('🟣 Procesando autenticación oficial de Twitch...', 'twitch');
         const validation = await apiService.validateTwitchToken(accessToken);
