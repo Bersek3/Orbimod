@@ -573,15 +573,17 @@ class SupabaseAuthService {
         }
       }
 
-      if (allProfiles.length === 0) return { success: false };
+      // 3. Fallback to Master Hub if database rows are isolated by Supabase RLS
+      const localHub = (typeof window !== 'undefined' && window.localStorage)
+        ? JSON.parse(window.localStorage.getItem('orbimod_master_hub_v2') || '{}')
+        : {};
 
-      // 3. Smart Merge: Extract the best linked account data across all matching rows
       const merged = {
         twitch_login: null,
         kick_username: null,
-        email: targetEmail || allProfiles[0].email,
-        username: allProfiles[0].username,
-        avatar_url: allProfiles[0].avatar_url
+        email: targetEmail || (allProfiles[0]?.email) || localHub.google?.email,
+        username: allProfiles[0]?.username || localHub.google?.displayName || 'Usuario',
+        avatar_url: allProfiles[0]?.avatar_url || localHub.google?.avatar || null
       };
 
       for (const p of allProfiles) {
@@ -591,18 +593,29 @@ class SupabaseAuthService {
         if (p.username && (!merged.username || merged.username === 'Usuario')) merged.username = p.username;
       }
 
-      // 4. If current userId is missing the linked accounts, sync back to its own profile row
+      // If Supabase didn't have twitch/kick yet for this row, merge from master hub!
+      if (!merged.twitch_login && localHub.twitch?.login) {
+        merged.twitch_login = localHub.twitch.login;
+      }
+      if (!merged.kick_username && localHub.kick?.username) {
+        merged.kick_username = localHub.kick.username;
+      }
+
+      if (!merged.twitch_login && !merged.kick_username && allProfiles.length === 0) {
+        return { success: false };
+      }
+
+      // 4. Automatically populate / sync this user ID's profile row in Supabase
       if (userId && (merged.twitch_login || merged.kick_username)) {
-        const myRow = allProfiles.find(p => p.id === userId);
-        if (!myRow || !myRow.twitch_login || !myRow.kick_username) {
-          try {
-            await client.from('profiles').update({
-              twitch_login: merged.twitch_login,
-              kick_username: merged.kick_username,
-              updated_at: new Date().toISOString()
-            }).eq('id', userId);
-          } catch (e) {}
-        }
+        try {
+          await this.saveLinkedAccounts(userId, {
+            twitch: merged.twitch_login ? { login: merged.twitch_login, valid: true } : null,
+            kick: merged.kick_username ? { username: merged.kick_username, valid: true } : null,
+            email: merged.email,
+            username: merged.username,
+            avatar: merged.avatar_url
+          });
+        } catch (e) {}
       }
 
       return { success: true, profile: merged };

@@ -1351,17 +1351,28 @@ export class UnifiedAuthModal {
         submitBtn.textContent = this.emailMode === 'register' ? 'REGISTER' : 'LOGIN';
 
         if (res.success) {
+          const hub = storageService.getMasterHub();
+          const profiles = storageService.getProfiles();
+          if (hub.twitch && hub.twitch.valid) profiles.twitch = hub.twitch;
+          if (hub.kick && hub.kick.valid) profiles.kick = hub.kick;
+          storageService.saveProfiles(profiles);
+
           storageService.updateMasterHubField('google', {
             id: res.user.id,
             email: res.user.email,
             displayName: res.user.displayName,
             avatar: res.user.avatar
           });
-          const hub = storageService.getMasterHub();
-          const profiles = storageService.getProfiles();
-          if (hub.twitch && hub.twitch.valid) profiles.twitch = hub.twitch;
-          if (hub.kick && hub.kick.valid) profiles.kick = hub.kick;
-          storageService.saveProfiles(profiles);
+
+          if (profiles.twitch || profiles.kick) {
+            await supabaseAuthService.saveLinkedAccounts(res.user.id, {
+              twitch: profiles.twitch,
+              kick: profiles.kick,
+              email: res.user.email,
+              username: res.user.displayName,
+              avatar: res.user.avatar
+            });
+          }
 
           if (this.onLoginSuccess) {
             this.onLoginSuccess({ platform: 'email', user: res.user });
