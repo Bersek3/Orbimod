@@ -110,22 +110,11 @@ export class ChannelCard {
         <button class="chat-filter-chip" data-filter="subs">⭐ Subs</button>
       </div>
 
-      <!-- Chat Feed Container -->
+      <!-- Chat Feed Container (Pure Live Visualization & Mod Actions) -->
       <div class="channel-chat-section">
         <div class="chat-messages-container"></div>
         <div class="chat-paused-pill ${this.channel.platform}" style="display: none;">
           ↓ Mensajes nuevos (${this.unreadCountWhilePaused})
-        </div>
-      </div>
-
-      <!-- Chat Composer & Quick Macros -->
-      <div class="chat-composer-section">
-        <div class="canned-macros-bar"></div>
-        <div class="chat-input-wrapper">
-          <input type="text" class="chat-input ${isTwitch ? '' : 'kick-input'}" placeholder="Enviar mensaje como Moderador a #${this.channel.name}..." maxlength="500">
-          <button class="btn ${isTwitch ? 'btn-primary' : 'btn-kick'} btn-send-chat">
-            <span>Enviar</span>
-          </button>
         </div>
       </div>
     `;
@@ -135,7 +124,6 @@ export class ChannelCard {
     this.pausedIndicator = card.querySelector('.chat-paused-pill');
 
     this._bindEvents();
-    this._renderMacros();
     return card;
   }
 
@@ -236,44 +224,6 @@ export class ChannelCard {
       this.scrollToBottom();
     });
 
-    // Chat Composer
-    const chatInput = this.element.querySelector('.chat-input');
-    const sendBtn = this.element.querySelector('.btn-send-chat');
-
-    const handleSend = () => {
-      const text = chatInput.value.trim();
-      if (!text) return;
-      if (this.options.onSendMessage) {
-        this.options.onSendMessage(this.channel, text);
-      }
-      chatInput.value = '';
-    };
-
-    sendBtn.addEventListener('click', handleSend);
-    chatInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        handleSend();
-      }
-    });
-  }
-
-  _renderMacros() {
-    const macroBar = this.element.querySelector('.canned-macros-bar');
-    const macros = this.options.getMacros ? this.options.getMacros() : [];
-    macroBar.innerHTML = '';
-
-    macros.forEach(m => {
-      const btn = document.createElement('button');
-      btn.className = 'macro-chip-btn';
-      btn.textContent = m.name;
-      btn.title = `${m.text} (${m.hotkey || ''})`;
-      btn.addEventListener('click', () => {
-        if (this.options.onSendMessage) {
-          this.options.onSendMessage(this.channel, m.text);
-        }
-      });
-      macroBar.appendChild(btn);
-    });
   }
 
   _applyChatFilter() {

@@ -821,10 +821,6 @@ class OrbiModApp {
     this._updateHeaderMetrics();
   }
 
-  _refreshAllCardMacros() {
-    this.channelCards.forEach(card => card._renderMacros());
-  }
-
   _updateHeaderMetrics() {
     const totalChannelsEl = document.getElementById('metric-channels-count');
     if (totalChannelsEl) totalChannelsEl.textContent = `${this.channels.length} Activos`;
