@@ -310,8 +310,16 @@ class OrbiModApp {
           creds.twitchUsername = validation.login;
           storageService.saveAuthCreds(creds);
 
+          // Sync to Supabase Master Account if authenticated
+          const curUser = supabaseAuthService.getCurrentUser();
+          if (curUser && curUser.id) {
+            await supabaseAuthService.saveLinkedAccounts(curUser.id, { twitch: profiles.twitch });
+          }
+
           // Clean URL hash without reloading
           window.history.replaceState(null, null, window.location.pathname);
+          this._updateAccountPills();
+          this.updateLandingAuthStatus();
           this.showToast(`¡Cuenta de Twitch vinculada con éxito como @${validation.login}!`, 'success');
 
           // Auto-fetch moderated channels!
@@ -629,71 +637,119 @@ class OrbiModApp {
 
   async syncFromSupabase() {
     const user = supabaseAuthService.getCurrentUser();
-    if (!user || !user.id) return;
+    let profiles = storageService.getProfiles();
 
-    try {
-      // 0. Sync Linked Accounts (Twitch & Kick linked to this master Email account)
-      const linkRes = await supabaseAuthService.loadLinkedAccounts(user.id);
-      if (linkRes.success && linkRes.profile) {
-        const p = linkRes.profile;
-        const profiles = storageService.getProfiles();
-        let changed = false;
-        if (p.twitch_login && (!profiles.twitch || !profiles.twitch.valid)) {
-          profiles.twitch = {
-            valid: true,
-            login: p.twitch_login,
-            token: p.twitch_token || null
-          };
-          changed = true;
+    // 0. If user is authenticated in Supabase (Google or Email)
+    if (user && (user.id || user.email)) {
+      try {
+        const linkRes = await supabaseAuthService.loadLinkedAccounts(user.id, user.email);
+        if (linkRes.success && linkRes.profile) {
+          const p = linkRes.profile;
+          let changed = false;
+          if (p.twitch_login) {
+            profiles.twitch = {
+              valid: true,
+              login: p.twitch_login,
+              token: profiles.twitch?.token || 'linked'
+            };
+            changed = true;
+          }
+          if (p.kick_username) {
+            profiles.kick = {
+              valid: true,
+              username: p.kick_username,
+              token: profiles.kick?.token || 'linked'
+            };
+            changed = true;
+          }
+          if (changed) {
+            storageService.saveProfiles(profiles);
+          }
+        } else {
+          // Initialize Supabase profile with local profiles if present
+          if ((profiles.twitch && profiles.twitch.valid) || (profiles.kick && profiles.kick.valid)) {
+            await supabaseAuthService.saveLinkedAccounts(user.id, {
+              twitch: profiles.twitch,
+              kick: profiles.kick,
+              email: user.email,
+              username: user.displayName,
+              avatar: user.avatar
+            });
+          }
         }
-        if (p.kick_username && (!profiles.kick || !profiles.kick.valid)) {
-          profiles.kick = {
-            valid: true,
-            username: p.kick_username,
-            token: p.kick_token || 'dev_configured'
-          };
-          changed = true;
-        }
-        if (changed) {
-          storageService.saveProfiles(profiles);
-          this._updateAccountPills();
-          this.updateLandingAuthStatus();
-        }
+      } catch (e) {
+        console.warn('[Supabase loadLinkedAccounts error]', e);
       }
-
-      // 1. Sync User Layout
-      const layoutRes = await supabaseAuthService.loadUserLayout(user.id);
-      if (layoutRes.success && layoutRes.layout) {
-        if (layoutRes.layout.layout_type) {
-          this.selectedLayout = layoutRes.layout.layout_type;
-          this.setLayout(this.selectedLayout);
+    } else {
+      // If user logged in directly with Twitch or Kick without Supabase session yet
+      // Check if their Twitch/Kick username belongs to an existing Supabase master profile
+      try {
+        let matched = null;
+        if (profiles.twitch && profiles.twitch.valid) {
+          const found = await supabaseAuthService.findProfileByPlatform('twitch', profiles.twitch.login);
+          if (found.success) matched = found.profile;
         }
-        if (Array.isArray(layoutRes.layout.channels) && layoutRes.layout.channels.length > 0) {
-          this.channels = layoutRes.layout.channels;
-          storageService.saveChannels(this.channels);
+        if (!matched && profiles.kick && profiles.kick.valid) {
+          const found = await supabaseAuthService.findProfileByPlatform('kick', profiles.kick.username);
+          if (found.success) matched = found.profile;
         }
-      }
 
-      // 2. Sync Moderated Channel History
-      const histRes = await supabaseAuthService.loadChannelHistory(user.id);
-      if (histRes.success && histRes.channels.length > 0) {
-        const localHistory = storageService.getChannelHistory();
-        const map = new Map();
-        histRes.channels.forEach(ch => {
-          map.set(ch.channel_id, {
-            id: ch.channel_id,
-            name: ch.name,
-            platform: ch.platform,
-            role: ch.role || 'mod',
-            avatar: ch.avatar || '',
-            addedAt: ch.added_at
+        if (matched) {
+          let changed = false;
+          if (matched.twitch_login && (!profiles.twitch || !profiles.twitch.valid)) {
+            profiles.twitch = { valid: true, login: matched.twitch_login, token: 'linked' };
+            changed = true;
+          }
+          if (matched.kick_username && (!profiles.kick || !profiles.kick.valid)) {
+            profiles.kick = { valid: true, username: matched.kick_username, token: 'linked' };
+            changed = true;
+          }
+          if (changed) {
+            storageService.saveProfiles(profiles);
+          }
+        }
+      } catch (e) {}
+    }
+
+    this._updateAccountPills();
+    this.updateLandingAuthStatus();
+
+    // 1. Sync User Layout & Channels if user is authenticated
+    if (user && user.id) {
+      try {
+        const layoutRes = await supabaseAuthService.loadUserLayout(user.id);
+        if (layoutRes.success && layoutRes.layout) {
+          if (layoutRes.layout.layout_type) {
+            this.selectedLayout = layoutRes.layout.layout_type;
+            this.setLayout(this.selectedLayout);
+          }
+          if (Array.isArray(layoutRes.layout.channels) && layoutRes.layout.channels.length > 0) {
+            this.channels = layoutRes.layout.channels;
+            storageService.saveChannels(this.channels);
+          }
+        }
+
+        // 2. Sync Moderated Channel History
+        const histRes = await supabaseAuthService.loadChannelHistory(user.id);
+        if (histRes.success && histRes.channels.length > 0) {
+          const localHistory = storageService.getChannelHistory();
+          const map = new Map();
+          histRes.channels.forEach(ch => {
+            map.set(ch.channel_id, {
+              id: ch.channel_id,
+              name: ch.name,
+              platform: ch.platform,
+              role: ch.role || 'mod',
+              avatar: ch.avatar || '',
+              addedAt: ch.added_at
+            });
           });
-        });
-        localHistory.forEach(ch => map.set(ch.id, ch));
-        storageService.saveChannelHistory(Array.from(map.values()));
+          localHistory.forEach(ch => map.set(ch.id, ch));
+          storageService.saveChannelHistory(Array.from(map.values()));
+        }
+      } catch (e) {
+        console.warn('[Supabase Cloud Sync Error]', e);
       }
-    } catch (e) {
-      console.warn('[Supabase Cloud Sync Error]', e);
     }
   }
 

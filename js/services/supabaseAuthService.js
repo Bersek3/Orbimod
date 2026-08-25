@@ -440,33 +440,43 @@ class SupabaseAuthService {
   /**
    * Save Linked Accounts (Twitch, Kick) to Master Supabase Profile
    */
-  async saveLinkedAccounts(userId, { twitch, kick }) {
+  async saveLinkedAccounts(userId, { twitch, kick, email, username, avatar }) {
     if (!userId) return { success: false };
     const client = this.getClient();
     if (!client) return { success: false };
 
-    const updateObj = {
+    const user = this.getCurrentUser();
+    const payload = {
+      id: userId,
+      email: email || user?.email || null,
+      username: username || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Usuario'),
+      avatar_url: avatar || user?.avatar || null,
       updated_at: new Date().toISOString()
     };
+
     if (twitch !== undefined) {
-      updateObj.twitch_login = twitch ? twitch.login : null;
+      payload.twitch_login = twitch ? (twitch.login || twitch.username) : null;
     }
     if (kick !== undefined) {
-      updateObj.kick_username = kick ? kick.username : null;
+      payload.kick_username = kick ? (kick.username || kick.login) : null;
     }
 
     try {
+      // 1. Try Upsert with onConflict on id
       const { data, error } = await client
         .from('profiles')
-        .update(updateObj)
-        .eq('id', userId);
+        .upsert(payload, { onConflict: 'id' });
 
       if (error) {
-        console.warn('[Supabase saveLinkedAccounts error]', error);
-        return { success: false, error: error.message };
+        console.warn('[Supabase saveLinkedAccounts upsert warning, trying update/insert fallback]', error);
+        const updateRes = await client.from('profiles').update(payload).eq('id', userId);
+        if (updateRes.error) {
+          await client.from('profiles').insert(payload);
+        }
       }
       return { success: true, data };
     } catch (e) {
+      console.warn('[Supabase saveLinkedAccounts exception]', e);
       return { success: false, error: e.message };
     }
   }
@@ -474,22 +484,58 @@ class SupabaseAuthService {
   /**
    * Load Linked Accounts from Master Supabase Profile
    */
-  async loadLinkedAccounts(userId) {
-    if (!userId) return { success: false };
+  async loadLinkedAccounts(userId, email = null) {
     const client = this.getClient();
     if (!client) return { success: false };
 
     try {
+      if (userId) {
+        const { data, error } = await client
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (!error && data) return { success: true, profile: data };
+      }
+
+      if (email) {
+        const { data, error } = await client
+          .from('profiles')
+          .select('*')
+          .eq('email', email)
+          .maybeSingle();
+
+        if (!error && data) return { success: true, profile: data };
+      }
+
+      return { success: false };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  /**
+   * Find Master Profile in Supabase by Linked Platform Username
+   */
+  async findProfileByPlatform(platform, username) {
+    if (!username) return { success: false };
+    const client = this.getClient();
+    if (!client) return { success: false };
+
+    const cleanUser = username.toLowerCase().replace(/[@#]/g, '');
+    try {
+      const col = platform === 'twitch' ? 'twitch_login' : 'kick_username';
       const { data, error } = await client
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .ilike(col, cleanUser)
         .maybeSingle();
 
-      if (error) return { success: false, error: error.message };
+      if (error || !data) return { success: false };
       return { success: true, profile: data };
     } catch (e) {
-      return { success: false, error: e.message };
+      return { success: false };
     }
   }
 
