@@ -58,6 +58,61 @@ class RobustHandler(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             self.send_error(500, f"Internal Error: {str(e)}")
 
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        self.end_headers()
+
+    def do_POST(self):
+        if self.path.startswith('/api/kick-token'):
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                import json
+                import urllib.request
+                import urllib.parse
+
+                req_data = json.loads(post_data.decode('utf-8'))
+                code = req_data.get('code')
+                client_id = req_data.get('client_id', '01M0VT0JC58YQEVGRHM8JFXQX3')
+                client_secret = req_data.get('client_secret', 'ee10e46fccf83a105e86834973db23cabcad279f33acf48bd4f6b5749884bb20')
+                redirect_uri = req_data.get('redirect_uri', f'http://localhost:{PORT}/')
+
+                token_url = 'https://id.kick.com/oauth/token'
+                payload = urllib.parse.urlencode({
+                    'grant_type': 'authorization_code',
+                    'client_id': client_id,
+                    'client_secret': client_secret,
+                    'code': code,
+                    'redirect_uri': redirect_uri
+                }).encode('utf-8')
+
+                req = urllib.request.Request(token_url, data=payload, headers={
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                })
+
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    res_data = response.read()
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(res_data)
+            except Exception as e:
+                import json
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+            return
+        
+        self.send_error(404, "Endpoint Not Found")
+
 def main():
     os.chdir(DIRECTORY)
     socketserver.TCPServer.allow_reuse_address = True

@@ -1090,32 +1090,33 @@ export class UnifiedAuthModal {
 
     if (this.emailMode === 'kick') {
       const savedKickClientId = apiService.getKickClientId();
+      const savedKickClientSecret = apiService.getKickClientSecret();
       const profiles = storageService.getProfiles?.() || {};
       const savedUsername = profiles.kick?.username || '';
 
       this.modal.innerHTML = `
-        <div class="modal-container auth-minimal-card" style="max-width: 420px;">
+        <div class="modal-container auth-minimal-card" style="max-width: 440px;">
           <div class="auth-minimal-header">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="background: #53FC18; color: #000; font-weight: 900; font-size: 13px; padding: 2px 7px; border-radius: 4px;">KICK DEV</span>
-              <h3 class="auth-minimal-title" style="margin: 0;">Conectar con Kick</h3>
+              <h3 class="auth-minimal-title" style="margin: 0;">Conectar con Kick Developer</h3>
             </div>
             <button class="auth-minimal-close close-modal-btn" title="Cerrar">✕</button>
           </div>
 
           <div style="font-size: 12px; color: #7f8c8d; margin-bottom: 14px; line-height: 1.4;">
-            Conecta tu cuenta de Kick usando OAuth 2.0 o tus credenciales de <strong>Kick Developer</strong>.
+            Conecta tu cuenta de Kick usando tu App oficial de <strong>Kick Developer</strong> (OAuth 2.0) o mediante tu nombre de usuario.
           </div>
 
           <div style="display:flex; flex-direction:column; gap:12px;">
             <!-- Kick OAuth 2.0 Direct Button -->
             <button id="btn-start-kick-oauth" class="minimal-submit-btn" style="background: #53FC18; color: #000; font-weight: 800; font-size: 12.5px; border-radius: 6px; box-shadow: 0 4px 14px rgba(83, 252, 24, 0.25);">
-              🟢 INICIAR CON KICK OAUTH 2.0
+              🟢 INICIAR CON KICK OAUTH 2.0 (App Oficial)
             </button>
 
             <div class="auth-or-divider" style="margin: 4px 0;">
               <div class="divider-line"></div>
-              <span class="divider-text">o con tu cuenta / App</span>
+              <span class="divider-text">Configuración de tu App Kick Dev</span>
               <div class="divider-line"></div>
             </div>
 
@@ -1125,18 +1126,23 @@ export class UnifiedAuthModal {
             </div>
 
             <div>
-              <label style="font-size: 11px; font-weight:700; color:#2d3436; margin-bottom:4px; display:block;">Kick Dev App Client ID (Opcional)</label>
-              <input type="text" id="kick-client-id-input" class="minimal-input" placeholder="orbimod_kick_app_..." value="${savedKickClientId === 'orbimod_kick_dev' ? '' : savedKickClientId}">
+              <label style="font-size: 11px; font-weight:700; color:#2d3436; margin-bottom:4px; display:block;">ID del Cliente (Kick App Client ID)</label>
+              <input type="text" id="kick-client-id-input" class="minimal-input" placeholder="01M0VT0JC58YQEVGRHM8JFXQX3" value="${savedKickClientId}">
+            </div>
+
+            <div>
+              <label style="font-size: 11px; font-weight:700; color:#2d3436; margin-bottom:4px; display:block;">Secreto del Cliente (Kick App Client Secret)</label>
+              <input type="password" id="kick-client-secret-input" class="minimal-input" placeholder="ee10e46fccf83a105..." value="${savedKickClientSecret}">
             </div>
 
             <div id="kick-auth-feedback" class="minimal-auth-feedback" style="display:none;"></div>
 
             <button id="btn-save-kick-auth" class="minimal-submit-btn" style="background: #2f3640; color: #fff; font-size: 12px;">
-              VINCULAR CUENTA DE KICK
+              GUARDAR Y VINCULAR CUENTA DE KICK
             </button>
 
             <div style="background: rgba(0,0,0,0.04); border-radius: 6px; padding: 8px 10px; font-size: 11px; color: #636e72; line-height: 1.4;">
-              💡 <strong>¿Tienes una App en Kick Dev?</strong> Puedes crear tus credenciales en <a href="https://kick.com/settings/developer" target="_blank" rel="noopener" style="color: #00a8ff; font-weight: 600;">kick.com/settings/developer</a>.
+              💡 <strong>Credenciales configuradas:</strong> App Kick Dev vinculada correctamente para consultas y moderación de chat.
             </div>
 
             <div style="text-align: center; margin-top: 4px;">
@@ -1247,7 +1253,9 @@ export class UnifiedAuthModal {
     // Kick Mode Buttons
     this.modal.querySelector('#btn-start-kick-oauth')?.addEventListener('click', () => {
       const clientId = this.modal.querySelector('#kick-client-id-input')?.value.trim();
+      const clientSecret = this.modal.querySelector('#kick-client-secret-input')?.value.trim();
       if (clientId) apiService.saveKickClientId(clientId);
+      if (clientSecret) apiService.saveKickClientSecret(clientSecret);
       const url = apiService.getKickAuthUrl(clientId);
       window.location.href = url;
     });
@@ -1255,6 +1263,7 @@ export class UnifiedAuthModal {
     this.modal.querySelector('#btn-save-kick-auth')?.addEventListener('click', async () => {
       const userInput = this.modal.querySelector('#kick-user-input')?.value.trim().toLowerCase().replace(/[@#]/g, '');
       const clientId = this.modal.querySelector('#kick-client-id-input')?.value.trim();
+      const clientSecret = this.modal.querySelector('#kick-client-secret-input')?.value.trim();
       const feedback = this.modal.querySelector('#kick-auth-feedback');
       const saveBtn = this.modal.querySelector('#btn-save-kick-auth');
 
@@ -1272,6 +1281,7 @@ export class UnifiedAuthModal {
       }
 
       if (clientId) apiService.saveKickClientId(clientId);
+      if (clientSecret) apiService.saveKickClientSecret(clientSecret);
 
       const kRes = await apiService.fetchKickChannel(userInput);
       if (!kRes.success) {

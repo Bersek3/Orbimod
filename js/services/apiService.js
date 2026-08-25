@@ -352,7 +352,7 @@ export class ApiService {
   // ==========================================
 
   getKickClientId() {
-    return localStorage.getItem('nexus_kick_custom_client_id') || 'orbimod_kick_dev';
+    return localStorage.getItem('nexus_kick_custom_client_id') || '01M0VT0JC58YQEVGRHM8JFXQX3';
   }
 
   saveKickClientId(clientId) {
@@ -360,6 +360,18 @@ export class ApiService {
       localStorage.setItem('nexus_kick_custom_client_id', clientId.trim());
     } else {
       localStorage.removeItem('nexus_kick_custom_client_id');
+    }
+  }
+
+  getKickClientSecret() {
+    return localStorage.getItem('nexus_kick_custom_client_secret') || 'ee10e46fccf83a105e86834973db23cabcad279f33acf48bd4f6b5749884bb20';
+  }
+
+  saveKickClientSecret(secret) {
+    if (secret) {
+      localStorage.setItem('nexus_kick_custom_client_secret', secret.trim());
+    } else {
+      localStorage.removeItem('nexus_kick_custom_client_secret');
     }
   }
 
@@ -371,6 +383,63 @@ export class ApiService {
     const redirectUri = window.location.origin + window.location.pathname;
     const scopes = ['user:read', 'channel:read', 'chat:write', 'stream:read'].join('+');
     return `https://id.kick.com/oauth/authorize?client_id=${encodeURIComponent(cid)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scopes}`;
+  }
+
+  /**
+   * Exchanges Kick authorization code for user access token
+   */
+  async exchangeKickAuthCode(code, clientId = null, clientSecret = null) {
+    const cid = clientId || this.getKickClientId();
+    const secret = clientSecret || this.getKickClientSecret();
+    const redirectUri = window.location.origin + window.location.pathname;
+
+    try {
+      // 1. Try local proxy first
+      const proxyRes = await fetch('/api/kick-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: code,
+          client_id: cid,
+          client_secret: secret,
+          redirect_uri: redirectUri
+        })
+      });
+
+      if (proxyRes.ok) {
+        const tokenData = await proxyRes.json();
+        return { success: true, tokenData };
+      }
+    } catch (e) {
+      console.warn('[Kick token proxy fallback]', e);
+    }
+
+    try {
+      // 2. Direct token endpoint fallback
+      const directRes = await fetch('https://id.kick.com/oauth/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: cid,
+          client_secret: secret,
+          code: code,
+          redirect_uri: redirectUri
+        })
+      });
+
+      if (directRes.ok) {
+        const tokenData = await directRes.json();
+        return { success: true, tokenData };
+      }
+    } catch (e) {
+      console.warn('[Direct Kick token error]', e);
+    }
+
+    return { success: false, error: 'No se pudo intercambiar el código OAuth de Kick' };
   }
 
   /**
