@@ -404,40 +404,6 @@ class OrbiModApp {
       this.connectionHubModal.open('kick');
     });
 
-    // Manual Channel Add
-    document.getElementById('btn-manual-add-submit')?.addEventListener('click', () => {
-      const nameInput = document.getElementById('manual-add-name');
-      const platformSelect = document.getElementById('manual-add-platform');
-      const name = nameInput.value.trim().toLowerCase();
-      const platform = platformSelect.value;
-
-      if (!name) return;
-
-      const newId = `ch-${name}`;
-      if (!this.allAvailableChannels.some(c => c.name.toLowerCase() === name)) {
-        const newChan = {
-          id: newId,
-          name: name,
-          displayName: name,
-          platform: platform,
-          isModerator: true,
-          videoEnabled: true,
-          role: 'mod',
-          avatar: ''
-        };
-        this.allAvailableChannels.push(newChan);
-        this.selectedChannels.add(newId);
-        storageService.saveChannels(this.allAvailableChannels);
-        nameInput.value = '';
-        this.renderChannelSelector();
-        this.showToast(`Canal @${name} (${platform}) añadido`, 'success');
-      } else {
-        this.selectedChannels.add(newId);
-        this.renderChannelSelector();
-        this.showToast(`Canal @${name} ya estaba en tu lista y ha sido seleccionado`, 'info');
-      }
-    });
-
     // Layout presets click
     document.querySelectorAll('.layout-preset-card').forEach(card => {
       card.addEventListener('click', () => {
@@ -474,8 +440,8 @@ class OrbiModApp {
       grid.innerHTML = `
         <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: var(--text-dim); background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle);">
           <div style="font-size: 28px; margin-bottom: 8px;">📡</div>
-          <div style="font-size: 14px; font-weight: 700; color: #fff;">No hay canales en tu lista todavía</div>
-          <div style="font-size: 12px; margin-top: 4px;">Conecta tu cuenta de Twitch arriba o añade un canal manualmente abajo.</div>
+          <div style="font-size: 14px; font-weight: 700; color: #fff;">No hay canales moderados detectados todavía</div>
+          <div style="font-size: 12px; margin-top: 4px;">Haz clic en <strong>"⚡ Re-escanear Canales Moderados"</strong> o vincula tu cuenta de Twitch/Kick arriba.</div>
         </div>
       `;
       return;
