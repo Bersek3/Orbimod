@@ -73,7 +73,7 @@ export class ChannelCard {
       <!-- Optional Stream Video Player with Lazy Load -->
       <div class="channel-player-container ${hasVideo ? '' : 'collapsed'}">
         ${hasVideo ? `
-          <iframe class="channel-player-iframe" src="${playerIframeSrc}" loading="lazy" allow="autoplay; fullscreen" allowfullscreen="true" scrolling="no"></iframe>
+          <iframe class="channel-player-iframe" src="${playerIframeSrc}" loading="lazy" allow="autoplay; fullscreen" scrolling="no"></iframe>
         ` : `
           <div class="video-placeholder-lazy" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); font-size: 11.5px; gap: 8px;">
             <span>📹 Modo Chat Ligero (Haz clic en el ícono de cámara arriba para cargar video)</span>
@@ -159,7 +159,7 @@ export class ChannelCard {
         const src = isTwitch
           ? `https://player.twitch.tv/?channel=${this.channel.name}&${parentParam}&autoplay=false&muted=true`
           : `https://player.kick.com/${this.channel.name}?autoplay=false&muted=true`;
-        playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" loading="lazy" allow="autoplay; fullscreen" allowfullscreen="true" scrolling="no"></iframe>`;
+        playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" loading="lazy" allow="autoplay; fullscreen" scrolling="no"></iframe>`;
       } else {
         playerContainer.innerHTML = `
           <div class="video-placeholder-lazy" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); font-size: 11.5px; gap: 8px;">

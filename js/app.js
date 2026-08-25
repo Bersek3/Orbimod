@@ -253,7 +253,8 @@ class OrbiModApp {
     this.currentView = viewName;
     document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
 
-    const target = document.getElementById(`view-${viewName}`);
+    const target = document.getElementById(`view-${viewName}`) || 
+                   (viewName === 'deck' ? document.getElementById('view-mod-deck') : null);
     if (target) {
       target.classList.add('active');
     }

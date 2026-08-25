@@ -911,6 +911,7 @@
   -webkit-overflow-scrolling: touch;
 }
 
+#view-deck,
 #view-mod-deck {
   overflow: hidden !important;
   height: 100vh !important;
