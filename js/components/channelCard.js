@@ -20,16 +20,24 @@ export class ChannelCard {
 
   _getPlayerIframeSrc() {
     const isTwitch = this.channel.platform === 'twitch';
-    const host = window.location.hostname || 'localhost';
+    const cleanName = (this.channel.name || '').trim().toLowerCase().replace(/[@#]/g, '');
     const isMuted = !this.channel.audioEnabled;
 
     if (isTwitch) {
-      const parentParam = host === 'localhost' || host === '127.0.0.1' 
-        ? `parent=localhost&parent=127.0.0.1` 
-        : `parent=${host}`;
-      return `https://player.twitch.tv/?channel=${this.channel.name}&${parentParam}&autoplay=true&muted=${isMuted}`;
+      const hostname = window.location.hostname || 'localhost';
+      const parents = new Set([hostname]);
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        parents.add('localhost');
+        parents.add('127.0.0.1');
+      }
+      if (hostname.includes('github.io')) {
+        parents.add(hostname);
+      }
+      const parentParams = Array.from(parents).map(p => `parent=${encodeURIComponent(p)}`).join('&');
+
+      return `https://player.twitch.tv/?channel=${encodeURIComponent(cleanName)}&${parentParams}&autoplay=true&muted=${isMuted}&playsinline=true`;
     } else {
-      return `https://player.kick.com/${this.channel.name}?autoplay=true&muted=${isMuted}`;
+      return `https://player.kick.com/${encodeURIComponent(cleanName)}?autoplay=true&muted=${isMuted}`;
     }
   }
 
@@ -79,6 +87,11 @@ export class ChannelCard {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           </button>
 
+          <!-- Reload Player Button -->
+          <button class="icon-btn-subtle reload-player-btn" title="Recargar Stream si hay error de descarga">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          </button>
+
           <!-- Clear Chat -->
           <button class="icon-btn-subtle clear-chat-btn" title="Limpiar Chat (/clear)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>
@@ -91,10 +104,10 @@ export class ChannelCard {
         </div>
       </div>
 
-      <!-- Optional Stream Video Player with Lazy Load -->
+      <!-- Optional Stream Video Player -->
       <div class="channel-player-container ${hasVideo ? '' : 'collapsed'}">
         ${hasVideo ? `
-          <iframe class="channel-player-iframe" src="${playerIframeSrc}" loading="lazy" allow="autoplay; fullscreen; encrypted-media; picture-in-picture;" scrolling="no"></iframe>
+          <iframe class="channel-player-iframe" src="${playerIframeSrc}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture;" allowfullscreen="true" frameborder="0" scrolling="no"></iframe>
         ` : `
           <div class="video-placeholder-lazy" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); font-size: 11.5px; gap: 8px;">
             <span>📹 Modo Chat Ligero (Haz clic en el ícono de cámara arriba para cargar video)</span>
@@ -152,6 +165,17 @@ export class ChannelCard {
     const playerContainer = this.element.querySelector('.channel-player-container');
     const videoBtn = this.element.querySelector('.video-toggle-btn');
     const audioBtn = this.element.querySelector('.audio-toggle-btn');
+    const reloadBtn = this.element.querySelector('.reload-player-btn');
+
+    const reloadPlayer = () => {
+      if (!this.channel.videoEnabled) return;
+      const src = this._getPlayerIframeSrc();
+      playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture;" allowfullscreen="true" frameborder="0" scrolling="no"></iframe>`;
+      const iframe = playerContainer.querySelector('iframe');
+      if (iframe && this.channel.platform === 'kick') {
+        iframe.addEventListener('load', () => this._cleanKickIframe(iframe));
+      }
+    };
 
     // 1. Audio Toggle (Mute / Unmute stream on Kick and Twitch)
     audioBtn?.addEventListener('click', () => {
@@ -176,15 +200,7 @@ export class ChannelCard {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
       `;
 
-      // Reload/update player iframe with current audio state
-      if (this.channel.videoEnabled) {
-        const src = this._getPlayerIframeSrc();
-        playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture;" scrolling="no"></iframe>`;
-        const iframe = playerContainer.querySelector('iframe');
-        if (iframe && this.channel.platform === 'kick') {
-          iframe.addEventListener('load', () => this._cleanKickIframe(iframe));
-        }
-      }
+      reloadPlayer();
     });
 
     // 2. Video Toggle (Dynamic creation / destruction to prevent memory leaks and WebGL context limits)
@@ -195,12 +211,7 @@ export class ChannelCard {
       playerContainer.classList.toggle('collapsed', !this.channel.videoEnabled);
 
       if (this.channel.videoEnabled) {
-        const src = this._getPlayerIframeSrc();
-        playerContainer.innerHTML = `<iframe class="channel-player-iframe" src="${src}" loading="lazy" allow="autoplay; fullscreen; encrypted-media; picture-in-picture;" scrolling="no"></iframe>`;
-        const iframe = playerContainer.querySelector('iframe');
-        if (iframe && this.channel.platform === 'kick') {
-          iframe.addEventListener('load', () => this._cleanKickIframe(iframe));
-        }
+        reloadPlayer();
       } else {
         // If video disabled, mute audio button as well
         this.channel.audioEnabled = false;
@@ -215,6 +226,11 @@ export class ChannelCard {
           </div>
         `;
       }
+    });
+
+    // 3. Reload Player (Fixes any stalled HLS download or Error #1000)
+    reloadBtn?.addEventListener('click', () => {
+      reloadPlayer();
     });
 
     // Clear Chat
