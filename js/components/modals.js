@@ -9,7 +9,179 @@ import { apiService } from '../services/apiService.js';
 import { supabaseAuthService } from '../services/supabaseAuthService.js';
 
 // ==========================================
-// 1. ADD CHANNEL MODAL (WITH LIVE API PREVIEWS)
+// 1. MANAGE CHANNELS MODAL (DIRECT DECK CONTROL)
+// ==========================================
+export class ManageChannelsModal {
+  constructor(modalElement, { getChannels, onAddChannel, onRemoveChannel, onScanChannels, onClearChannels }) {
+    this.modal = modalElement;
+    this.getChannels = getChannels;
+    this.onAddChannel = onAddChannel;
+    this.onRemoveChannel = onRemoveChannel;
+    this.onScanChannels = onScanChannels;
+    this.onClearChannels = onClearChannels;
+    this.selectedPlatform = 'twitch';
+  }
+
+  open() {
+    this.render();
+    this.modal.classList.add('open');
+  }
+
+  close() {
+    this.modal.classList.remove('open');
+  }
+
+  render() {
+    const channels = this.getChannels() || [];
+    this.modal.innerHTML = `
+      <div class="modal-container" style="max-width: 600px;">
+        <div class="modal-header">
+          <div class="modal-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <span>Gestión de Canales del Deck (${channels.length})</span>
+          </div>
+          <button class="icon-btn-subtle close-modal-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+          <!-- Quick Auto-Scan Action from Twitch Helix -->
+          <div style="background: rgba(145, 70, 255, 0.1); border: 1px solid rgba(145, 70, 255, 0.35); border-radius: var(--radius-sm); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <div>
+              <div style="font-weight: 700; font-size: 13px; color: #fff;">Sincronizar Canales Moderados</div>
+              <div style="font-size: 11px; color: var(--text-dim);">Escanear tu cuenta de Twitch para cargar automáticamente tus canales</div>
+            </div>
+            <button id="btn-modal-scan-twitch" class="btn btn-primary" style="font-size: 11.5px; padding: 6px 14px; white-space: nowrap;">
+              <span>⚡ Escanear Twitch</span>
+            </button>
+          </div>
+
+          <!-- Add New Channel Section -->
+          <div style="background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px 14px;">
+            <div style="font-weight: 700; font-size: 12.5px; color: #fff; margin-bottom: 8px;">Añadir Canal Manualmente</div>
+            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+              <button class="btn btn-secondary platform-toggle-btn ${this.selectedPlatform === 'twitch' ? 'active' : ''}" data-plat="twitch" style="font-size: 11px; padding: 4px 10px;">🟣 Twitch</button>
+              <button class="btn btn-secondary platform-toggle-btn ${this.selectedPlatform === 'kick' ? 'active' : ''}" data-plat="kick" style="font-size: 11px; padding: 4px 10px;">🟢 Kick</button>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <input type="text" id="modal-add-channel-input" class="form-input" placeholder="ej. ibai, westcol, auronplay..." style="flex: 1; font-size: 12.5px;">
+              <button id="btn-modal-submit-add" class="btn ${this.selectedPlatform === 'twitch' ? 'btn-primary' : 'btn-kick'}" style="font-size: 12px; padding: 6px 14px;">+ Añadir al Deck</button>
+            </div>
+          </div>
+
+          <!-- Active Channels List -->
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-weight: 700; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Canales Activos en el Deck</span>
+              ${channels.length > 0 ? `<button id="btn-modal-clear-all" style="background: transparent; border: none; color: var(--danger-red); font-size: 11px; cursor: pointer;">🗑️ Quitar todos</button>` : ''}
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; padding-right: 4px;">
+              ${channels.length === 0 ? `
+                <div style="text-align: center; padding: 24px; color: var(--text-dim); font-size: 12px; background: rgba(0,0,0,0.2); border-radius: var(--radius-xs);">
+                  No hay canales en el Deck. Añade uno arriba o sincroniza con Twitch.
+                </div>
+              ` : channels.map(ch => `
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border-subtle); border-radius: var(--radius-xs); padding: 8px 12px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="badge-${ch.platform}" style="font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 3px;">${ch.platform === 'twitch' ? 'TW' : 'KC'}</span>
+                    <span style="font-weight: 700; font-size: 13.5px; color: #fff;">#${ch.name}</span>
+                  </div>
+                  <button class="btn-remove-deck-channel" data-id="${ch.id}" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; padding: 4px;" title="Quitar canal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 15px; height: 15px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary close-modal-btn" style="width: 100%;">Guardar y Continuar</button>
+        </div>
+      </div>
+    `;
+
+    this._bindEvents();
+  }
+
+  _bindEvents() {
+    this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
+
+    this.modal.querySelectorAll('.platform-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.selectedPlatform = btn.dataset.plat;
+        this.render();
+      });
+    });
+
+    // Auto scan Twitch
+    this.modal.querySelector('#btn-modal-scan-twitch')?.addEventListener('click', async () => {
+      const scanBtn = this.modal.querySelector('#btn-modal-scan-twitch');
+      if (scanBtn) {
+        scanBtn.disabled = true;
+        scanBtn.textContent = 'Buscando...';
+      }
+      if (this.onScanChannels) {
+        await this.onScanChannels();
+      }
+      this.render();
+    });
+
+    // Clear all
+    this.modal.querySelector('#btn-modal-clear-all')?.addEventListener('click', () => {
+      if (confirm('¿Deseas quitar todos los canales del Deck?')) {
+        if (this.onClearChannels) this.onClearChannels();
+        this.render();
+      }
+    });
+
+    // Add manual channel
+    const addInput = this.modal.querySelector('#modal-add-channel-input');
+    const submitAdd = this.modal.querySelector('#btn-modal-submit-add');
+    const handleAdd = () => {
+      const name = addInput?.value.trim().toLowerCase().replace('@', '');
+      if (!name) return;
+      const newChan = {
+        id: `ch-${this.selectedPlatform}-${name}`,
+        name: name,
+        platform: this.selectedPlatform,
+        avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop',
+        viewers: 1200,
+        isLive: true,
+        videoEnabled: true,
+        slowMode: 0,
+        subOnly: false,
+        followOnly: false,
+        emoteOnly: false
+      };
+      if (this.onAddChannel) {
+        this.onAddChannel(newChan);
+      }
+      this.render();
+    };
+
+    submitAdd?.addEventListener('click', handleAdd);
+    addInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleAdd();
+    });
+
+    // Remove single channel
+    this.modal.querySelectorAll('.btn-remove-deck-channel').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        if (this.onRemoveChannel) {
+          this.onRemoveChannel(id);
+        }
+        this.render();
+      });
+    });
+  }
+}
+
+// ==========================================
+// 2. ADD CHANNEL MODAL (LEGACY FALLBACK)
 // ==========================================
 export class AddChannelModal {
   constructor(modalElement, onChannelAdd) {

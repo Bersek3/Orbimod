@@ -7,10 +7,10 @@
   <meta name="description" content="OrbiMod: Software profesional de alta velocidad para moderar múltiples canales simultáneos de Twitch y Kick con AutoMod, Inspector de Usuarios y Registro de Auditoría.">
 
   <!-- CSS Design System (Relative paths for GitHub Pages compatibility) -->
-  <link rel="stylesheet" href="./css/main.css?v=4.7">
-  <link rel="stylesheet" href="./css/components.css?v=4.7">
-  <link rel="stylesheet" href="./css/chat.css?v=4.7">
-  <link rel="stylesheet" href="./css/responsive.css?v=4.7">
+  <link rel="stylesheet" href="./css/main.css?v=4.8">
+  <link rel="stylesheet" href="./css/components.css?v=4.8">
+  <link rel="stylesheet" href="./css/chat.css?v=4.8">
+  <link rel="stylesheet" href="./css/responsive.css?v=4.8">
 
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239146FF'><polygon points='12 2 2 7 12 12 22 7 12 2'/><polyline points='2 17 12 22 22 17'/><polyline points='2 12 12 17 22 12'/></svg>">
 </head>
@@ -447,160 +447,20 @@
     </section>
 
     <!-- ================================================================= -->
-    <!-- VIEW 2: CHANNEL SELECTION & DECK CONFIGURATOR                      -->
-    <!-- ================================================================= -->
-    <section id="view-selector" class="app-view">
-      <div class="selector-container">
-        <!-- Selector Top Bar -->
-        <header class="selector-header">
-          <div class="brand-section">
-            <div class="brand-logo">
-              <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-            </div>
-            <div>
-              <h2 style="font-size: 16px; font-weight: 800; color: #fff;">Panel de Selección de Canales</h2>
-              <div style="font-size: 11.5px; color: var(--text-dim);">Elige qué canales deseas monitorear y moderar en esta sesión</div>
-            </div>
-          </div>
-
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <button id="btn-selector-back-home" class="btn btn-secondary" style="font-size: 12px;">
-              <span>← Inicio</span>
-            </button>
-            <button id="btn-selector-logout" class="btn btn-secondary" style="font-size: 12px; color: var(--danger-red);" title="Cerrar sesión">
-              <span>🚪 Cerrar Sesión</span>
-            </button>
-            <button id="btn-selector-launch" class="btn btn-primary" style="font-size: 13px; font-weight: 700; padding: 9px 20px; box-shadow: 0 0 18px var(--twitch-purple-glow);">
-              <span>🚀 Lanzar OrbiMod Deck (<span id="selected-count-badge">0</span> Canales) →</span>
-            </button>
-          </div>
-        </header>
-
-        <div class="selector-body">
-          <!-- Left Column: Detected & Custom Channels -->
-          <div class="selector-left-col">
-            <!-- Account Status Banner -->
-            <div class="selector-accounts-bar">
-              <div class="account-pill twitch" id="selector-twitch-account-pill">
-                <span class="radio-card-icon twitch" style="width:20px;height:20px;font-size:10px;">TW</span>
-                <span id="selector-twitch-user-label">Twitch no conectado</span>
-                <button id="btn-selector-reconnect-twitch" class="btn-text-link">Conectar</button>
-              </div>
-
-              <div class="account-pill kick" id="selector-kick-account-pill">
-                <span class="radio-card-icon kick" style="width:20px;height:20px;font-size:10px;">KC</span>
-                <span id="selector-kick-user-label">Kick no configurado</span>
-                <button id="btn-selector-reconnect-kick" class="btn-text-link">Conectar</button>
-              </div>
-
-              <div style="display: flex; gap: 6px; margin-left: auto;">
-                <button id="btn-clean-rescan-channels" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px; color: var(--danger-red);">
-                  <span>🗑️ Limpiar Lista</span>
-                </button>
-                <button id="btn-scan-mod-channels" class="btn btn-primary" style="font-size: 11px; padding: 4px 12px;">
-                  <span>⚡ Escanear Canales Moderados</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Channels Section Header -->
-            <div class="channels-section-header">
-              <div style="font-size: 13px; font-weight: 700; color: #fff;">
-                <span>Canales Disponibles para Moderar</span>
-                <span id="total-available-badge" class="badge-success" style="font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-left: 6px;">0 detectados</span>
-              </div>
-              <div style="display: flex; gap: 8px;">
-                <button id="btn-select-all-channels" class="btn btn-secondary" style="font-size: 11px; padding: 3px 8px;">Seleccionar Todos</button>
-                <button id="btn-deselect-all-channels" class="btn btn-secondary" style="font-size: 11px; padding: 3px 8px;">Deseleccionar</button>
-              </div>
-            </div>
-
-            <!-- Channels List Grid -->
-            <div id="channels-selection-grid" class="channels-selection-grid">
-              <!-- Rendered dynamically -->
-            </div>
-          </div>
-
-          <!-- Right Column: Deck Layout & Preferences -->
-          <div class="selector-right-col">
-            <div class="selector-config-card">
-              <div class="form-label" style="font-size: 13px; color: #fff; margin-bottom: 8px;">Elige el Modo de Vista Inicial</div>
-              <div class="layout-preset-selector">
-                <div class="layout-preset-card active" data-layout="layout-grid-2x2">
-                  <div class="preset-icon">⊞</div>
-                  <div>
-                    <div class="preset-name">Grid 2x2 (Cuadrícula)</div>
-                    <div class="preset-desc">Hasta 4 canales simultáneos equilibrados</div>
-                  </div>
-                </div>
-
-                <div class="layout-preset-card" data-layout="layout-split-1-2">
-                  <div class="preset-icon">◫</div>
-                  <div>
-                    <div class="preset-name">Split 1+2 (Canal Principal)</div>
-                    <div class="preset-desc">1 canal grande + 2 laterales</div>
-                  </div>
-                </div>
-
-                <div class="layout-preset-card" data-layout="layout-chat-wall">
-                  <div class="preset-icon">|||</div>
-                  <div>
-                    <div class="preset-name">Chat Wall (Muro de Chats)</div>
-                    <div class="preset-desc">Solo chats verticales para alta velocidad</div>
-                  </div>
-                </div>
-
-                <div class="layout-preset-card" data-layout="layout-single-focus">
-                  <div class="preset-icon">▢</div>
-                  <div>
-                    <div class="preset-name">Single Focus</div>
-                    <div class="preset-desc">1 solo canal maximizado</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Extra Options -->
-              <div style="margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
-                <div>
-                  <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-main); cursor: pointer;">
-                    <input type="checkbox" id="selector-enable-video-all" checked>
-                    <span>Cargar reproductores de video en vivo (Live Player)</span>
-                  </label>
-                  <span style="font-size: 10.5px; color: var(--text-dim); display: block; margin-left: 22px; margin-top: 2px;">
-                    💡 Desactívalo para Modo Chat Ultra-Rápido si moderas más de 4 canales simultáneos.
-                  </span>
-                </div>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-main); cursor: pointer;">
-                  <input type="checkbox" id="selector-enable-audio-fx" checked>
-                  <span>Efectos de sonido de moderación activos</span>
-                </label>
-              </div>
-
-              <!-- Ready Button -->
-              <button id="btn-selector-launch-secondary" class="btn btn-primary" style="width: 100%; margin-top: 16px; padding: 11px 0; font-size: 13.5px; font-weight: 700; box-shadow: 0 4px 15px var(--twitch-purple-glow);">
-                <span>🚀 Entrar a OrbiMod Deck →</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ================================================================= -->
-    <!-- VIEW 3: ACTIVE MODERATION CONTROL DECK                            -->
+    <!-- VIEW 2: ACTIVE MODERATION CONTROL DECK (DIRECT MAIN DASHBOARD)    -->
     <!-- ================================================================= -->
     <section id="view-deck" class="app-view">
       <!-- Top Navigation Header -->
       <header class="app-header">
         <!-- Brand & Title -->
         <div class="brand-section">
-          <div class="brand-logo" id="header-logo-home-btn" title="Volver al Selector / Inicio" style="cursor: pointer;">
+          <div class="brand-logo" id="header-logo-home-btn" title="Ir al Inicio / Landing" style="cursor: pointer;">
             <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
           </div>
           <div class="brand-title">
             <h1>ORBIMOD <span class="brand-version-pill">DECK</span></h1>
             <div class="brand-sub">
-              <span>Twitch & Kick Multi-Channel</span>
+              <span>Twitch & Kick Live Moderation</span>
             </div>
           </div>
         </div>
@@ -631,16 +491,10 @@
 
         <!-- Right: Mod Action Controls -->
         <div class="header-actions">
-          <!-- Manage Channels Button -->
-          <button id="btn-header-manage-channels" class="btn btn-secondary" title="Cambiar o añadir canales activos">
+          <!-- Manage Channels Button (Control Center for Channels) -->
+          <button id="btn-header-manage-channels" class="btn btn-secondary" title="Gestionar y añadir canales moderados">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             <span>⚙️ Canales (<span id="header-channels-count">0</span>)</span>
-          </button>
-
-          <!-- Shield Mode -->
-          <button id="btn-global-shield" class="btn btn-shield" title="Activar Escudo de Emergencia (Alt+S)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span>Escudo</span>
           </button>
 
           <!-- AutoMod Queue -->
@@ -656,31 +510,9 @@
             <span>Auditoría</span>
           </button>
 
-          <!-- Event Radar -->
-          <button id="btn-event-radar" class="btn btn-secondary" title="Radar de Raids (Alt+R)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            <span>Radar</span>
-          </button>
-
           <!-- Sound Toggle -->
           <button id="btn-toggle-sound" class="btn btn-secondary btn-icon active" title="Alternar Audio">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
-          </button>
-
-          <!-- Macros -->
-          <button id="btn-macro-manager" class="btn btn-secondary btn-icon" title="Gestor de Macros">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h8M6 16h12"/></svg>
-          </button>
-
-          <!-- Connections / Auth -->
-          <button id="btn-connection-hub" class="btn btn-secondary btn-icon" title="Cuentas & Conexiones">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-          </button>
-
-          <!-- Exit / Back to Selector -->
-          <button id="btn-exit-deck" class="btn btn-secondary" title="Volver al Selector de Canales" style="font-size: 11.5px; padding: 4px 10px; display: flex; align-items: center; gap: 4px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            <span>Selector</span>
           </button>
 
           <!-- Logout Button -->
@@ -762,6 +594,6 @@
   </div>
 
   <!-- Main ES Module Entry Point with Cache Buster -->
-  <script type="module" src="./js/app.js?v=4.7"></script>
+  <script type="module" src="./js/app.js?v=4.8"></script>
 </body>
 </html>

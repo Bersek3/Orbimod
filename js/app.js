@@ -16,15 +16,13 @@ import { AutoModQueueDrawer } from './components/automodQueue.js';
 import { AuditLogDrawer } from './components/auditLog.js';
 import { EventRadarDrawer } from './components/eventRadar.js';
 import { MacroManagerModal } from './components/macroManager.js';
-import { AddChannelModal, AutoModSettingsModal, ConnectionHubModal, HotkeysModal, UnifiedAuthModal } from './components/modals.js';
+import { ManageChannelsModal, AddChannelModal, AutoModSettingsModal, ConnectionHubModal, HotkeysModal, UnifiedAuthModal } from './components/modals.js';
 import { supabaseAuthService } from './services/supabaseAuthService.js';
 
 class OrbiModApp {
   constructor() {
-    this.currentView = 'landing'; // 'landing' | 'selector' | 'deck'
-    this.allAvailableChannels = storageService.getChannels() || [];
-    this.selectedChannels = new Set(this.allAvailableChannels.map(c => c.id));
-    this.channels = []; // active in deck
+    this.currentView = 'landing'; // 'landing' | 'deck'
+    this.channels = storageService.getChannels() || []; // active in deck
     this.settings = storageService.getSettings();
     this.channelCards = new Map(); // id -> ChannelCard instance
     this.selectedLayout = this.settings.layout || 'layout-grid-2x2';
@@ -99,24 +97,55 @@ class OrbiModApp {
       }
     );
 
-    this.macroModal = new MacroManagerModal(
+    this.manageChannelsModal = new ManageChannelsModal(
       document.getElementById('generic-modal'),
-      () => this._refreshAllCardMacros()
-    );
-
-    this.addChannelModal = new AddChannelModal(
-      document.getElementById('generic-modal'),
-      (newChan) => this.addChannel(newChan)
+      {
+        getChannels: () => this.channels,
+        onAddChannel: (chan) => this.addChannel(chan),
+        onRemoveChannel: (id) => this.removeChannel(id),
+        onScanChannels: async () => {
+          const profiles = storageService.getProfiles();
+          if (!profiles.twitch || !profiles.twitch.token) {
+            this.showToast('Primero inicia sesión con Twitch', 'warning');
+            return;
+          }
+          this.showToast('⚡ Escaneando canales moderados en Twitch...', 'twitch');
+          const res = await apiService.fetchModeratedChannels(profiles.twitch.token, profiles.twitch.clientId, profiles.twitch.userId);
+          if (res.success && res.channels.length > 0) {
+            res.channels.forEach(ch => {
+              const login = (ch.name || ch.broadcaster_login || '').toLowerCase();
+              if (login && !this.channels.some(c => c.name.toLowerCase() === login && c.platform === 'twitch')) {
+                this.addChannel({
+                  id: `ch-twitch-${login}`,
+                  name: login,
+                  displayName: ch.displayName || login,
+                  platform: 'twitch',
+                  avatar: ch.avatar || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop',
+                  viewers: 1200,
+                  isLive: true,
+                  videoEnabled: true,
+                  slowMode: 0,
+                  subOnly: false,
+                  followOnly: false,
+                  emoteOnly: false
+                });
+              }
+            });
+            this.showToast(`¡Se agregaron ${res.channels.length} canales moderados!`, 'success');
+          } else {
+            this.showToast('No se encontraron canales donde seas moderador', 'info');
+          }
+        },
+        onClearChannels: () => {
+          [...this.channels].forEach(ch => this.removeChannel(ch.id));
+          this.showToast('Todos los canales fueron quitados del Deck', 'info');
+        }
+      }
     );
 
     this.automodSettingsModal = new AutoModSettingsModal(
       document.getElementById('generic-modal'),
       () => this.showToast('Reglas de AutoMod actualizadas', 'success')
-    );
-
-    this.connectionHubModal = new ConnectionHubModal(
-      document.getElementById('generic-modal'),
-      (creds) => this.handleConnectionsUpdate(creds)
     );
 
     this.hotkeysModal = new HotkeysModal(document.getElementById('generic-modal'));
@@ -148,7 +177,6 @@ class OrbiModApp {
   async init() {
     this._bindHeaderControls();
     this._bindLandingControls();
-    this._bindSelectorControls();
     this._bindKeyboardShortcuts();
     this._startVelocityMeter();
     this._setupAutoModListener();
@@ -160,18 +188,13 @@ class OrbiModApp {
     // Apply layout
     this.setLayout(this.selectedLayout);
 
-    // Shield status
-    if (this.settings.shieldActive) {
-      this.handleShieldToggle(true);
-    }
-
     // Check URL hash for OAuth redirect token (#access_token=...)
     const didAuth = await this._checkOAuthRedirect();
 
     this.updateLandingAuthStatus();
 
     if (didAuth) {
-      this.switchView('selector');
+      this.switchView('deck');
     } else {
       this.switchView('landing');
     }
@@ -219,10 +242,10 @@ class OrbiModApp {
               const displayName = ch.displayName || ch.broadcaster_name || ch.name || login;
               if (!login) return;
 
-              const id = `ch-${login}`;
-              const exists = this.allAvailableChannels.some(c => c && c.name && c.name.toLowerCase() === login);
+              const id = `ch-twitch-${login}`;
+              const exists = this.channels.some(c => c && c.name && c.name.toLowerCase() === login);
               if (!exists) {
-                this.allAvailableChannels.push({
+                this.channels.push({
                   id: id,
                   name: login,
                   displayName: displayName,
@@ -233,10 +256,9 @@ class OrbiModApp {
                   avatar: ch.avatar || ''
                 });
               }
-              this.selectedChannels.add(id);
             });
-            storageService.saveChannels(this.allAvailableChannels);
-            this.showToast(`⚡ Se detectaron ${modRes.channels.length} canales donde eres moderador en Twitch`, 'success');
+            storageService.saveChannels(this.channels);
+            this.showToast(`⚡ Se sincronizaron ${modRes.channels.length} canales moderados en Twitch`, 'success');
           }
           return true;
         }
@@ -246,10 +268,11 @@ class OrbiModApp {
   }
 
   // ==========================================
-  // VIEW ROUTER (Landing, Selector, Mod Deck)
+  // VIEW ROUTER (Landing <-> Direct Mod Deck)
   // ==========================================
 
   switchView(viewName) {
+    if (viewName === 'selector') viewName = 'deck';
     this.currentView = viewName;
     document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
 
@@ -261,8 +284,6 @@ class OrbiModApp {
 
     if (viewName === 'landing') {
       this.updateLandingAuthStatus();
-    } else if (viewName === 'selector') {
-      this.renderChannelSelector();
     } else if (viewName === 'deck') {
       this.launchModDeck();
     }
@@ -284,11 +305,11 @@ class OrbiModApp {
     });
 
     document.getElementById('btn-hero-sandbox')?.addEventListener('click', () => {
-      this.switchView('selector');
+      this.switchView('deck');
     });
 
     document.getElementById('btn-landing-sandbox-header')?.addEventListener('click', () => {
-      this.switchView('selector');
+      this.switchView('deck');
     });
 
     document.getElementById('btn-footer-start-auth')?.addEventListener('click', () => {
@@ -296,7 +317,7 @@ class OrbiModApp {
     });
 
     document.getElementById('btn-landing-go-dashboard')?.addEventListener('click', () => {
-      this.switchView('selector');
+      this.switchView('deck');
     });
 
     // Interactive FAQ Accordion
@@ -332,9 +353,6 @@ class OrbiModApp {
       supabaseAuthService.signOut();
       try { this.twitchClient.disconnect?.(); } catch (e) {}
       try { this.kickClient.disconnect?.(); } catch (e) {}
-      this.channels = [];
-      this.allAvailableChannels = [];
-      this.selectedChannels.clear();
       this.updateLandingAuthStatus();
       this.switchView('landing');
       this.showToast('Has cerrado sesión correctamente', 'info');
@@ -381,219 +399,38 @@ class OrbiModApp {
     } else if (res.platform === 'kick') {
       this.showToast(`🟢 Conectado con Kick como @${res.username}`, 'success');
       this.updateLandingAuthStatus();
-      this.switchView('selector');
+      this.switchView('deck');
     } else if (res.platform === 'email') {
       this.showToast(`✉️ Sesión iniciada como ${res.user.displayName || res.user.email}`, 'success');
       this.updateLandingAuthStatus();
-      this.switchView('selector');
-    }
-  }
-
-  // ==========================================
-  // VIEW 2: CHANNEL SELECTOR LOGIC
-  // ==========================================
-
-  _bindSelectorControls() {
-    document.getElementById('btn-selector-back-home')?.addEventListener('click', () => {
-      this.switchView('landing');
-    });
-
-    document.getElementById('btn-selector-logout')?.addEventListener('click', () => {
-      this.logout();
-    });
-
-    document.getElementById('btn-selector-launch')?.addEventListener('click', () => {
-      if (this.selectedChannels.size === 0) {
-        this.showToast('Por favor selecciona al menos 1 canal para lanzar el Deck', 'warning');
-        return;
-      }
       this.switchView('deck');
-    });
-
-    document.getElementById('btn-selector-launch-secondary')?.addEventListener('click', () => {
-      if (this.selectedChannels.size === 0) {
-        this.showToast('Por favor selecciona al menos 1 canal para lanzar el Deck', 'warning');
-        return;
-      }
-      this.switchView('deck');
-    });
-
-    // Clean List & Re-scan Button
-    document.getElementById('btn-clean-rescan-channels')?.addEventListener('click', async () => {
-      this.allAvailableChannels = [];
-      this.selectedChannels.clear();
-      storageService.saveChannels([]);
-      this.renderChannelSelector();
-      this.showToast('Lista de canales limpiada', 'info');
-
-      // If Twitch is connected, automatically scan real moderated channels
-      const profiles = storageService.getProfiles();
-      if (profiles.twitch?.valid && profiles.twitch?.token) {
-        document.getElementById('btn-scan-mod-channels')?.click();
-      }
-    });
-
-    document.getElementById('btn-scan-mod-channels')?.addEventListener('click', async () => {
-      const profiles = storageService.getProfiles();
-      if (!profiles.twitch || !profiles.twitch.token) {
-        this.showToast('Primero conecta tu cuenta de Twitch para escanear tus canales', 'warning');
-        this.connectionHubModal.open('twitch');
-        return;
-      }
-
-      this.showToast('⚡ Escaneando canales donde eres moderador en Twitch...', 'twitch');
-      const res = await apiService.fetchModeratedChannels(profiles.twitch.token, profiles.twitch.clientId, profiles.twitch.userId);
-      if (res.success && res.channels.length > 0) {
-        // Keep ONLY the fresh list of verified moderated channels
-        this.allAvailableChannels = res.channels.map(ch => {
-          const login = (ch.name || ch.broadcaster_login || '').toLowerCase();
-          const displayName = ch.displayName || ch.broadcaster_name || ch.name || login;
-          return {
-            id: `ch-${login}`,
-            name: login,
-            displayName: displayName,
-            platform: 'twitch',
-            isModerator: true,
-            videoEnabled: true,
-            role: 'mod',
-            avatar: ch.avatar || ''
-          };
-        }).filter(c => c.name);
-
-        this.selectedChannels = new Set(this.allAvailableChannels.map(c => c.id));
-        storageService.saveChannels(this.allAvailableChannels);
-        this.renderChannelSelector();
-        this.showToast(`¡Se cargaron tus ${this.allAvailableChannels.length} canales moderados de Twitch!`, 'success');
-      } else {
-        this.showToast('No se encontraron canales moderados en tu cuenta de Twitch', 'info');
-      }
-    });
-
-    document.getElementById('btn-select-all-channels')?.addEventListener('click', () => {
-      this.allAvailableChannels.forEach(c => this.selectedChannels.add(c.id));
-      this.renderChannelSelector();
-    });
-
-    document.getElementById('btn-deselect-all-channels')?.addEventListener('click', () => {
-      this.selectedChannels.clear();
-      this.renderChannelSelector();
-    });
-
-    document.getElementById('btn-selector-reconnect-twitch')?.addEventListener('click', () => {
-      window.location.href = apiService.getTwitchAuthUrl();
-    });
-
-    document.getElementById('btn-selector-reconnect-kick')?.addEventListener('click', () => {
-      this.connectionHubModal.open('kick');
-    });
-
-    // Layout presets click
-    document.querySelectorAll('.layout-preset-card').forEach(card => {
-      card.addEventListener('click', () => {
-        document.querySelectorAll('.layout-preset-card').forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        this.selectedLayout = card.dataset.layout;
-        this.setLayout(this.selectedLayout);
-      });
-    });
-  }
-
-  renderChannelSelector() {
-    const profiles = storageService.getProfiles();
-    const twitchLabel = document.getElementById('selector-twitch-user-label');
-    const kickLabel = document.getElementById('selector-kick-user-label');
-
-    if (twitchLabel) {
-      twitchLabel.textContent = profiles.twitch?.valid ? `@${profiles.twitch.login}` : 'Twitch no conectado';
     }
-    if (kickLabel) {
-      kickLabel.textContent = profiles.kick?.valid ? `@${profiles.kick.username}` : 'Kick no configurado';
-    }
-
-    const grid = document.getElementById('channels-selection-grid');
-    const countBadge = document.getElementById('selected-count-badge');
-    const totalBadge = document.getElementById('total-available-badge');
-
-    if (countBadge) countBadge.textContent = this.selectedChannels.size;
-    if (totalBadge) totalBadge.textContent = `${this.allAvailableChannels.length} disponibles`;
-
-    if (!grid) return;
-
-    if (this.allAvailableChannels.length === 0) {
-      grid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: var(--text-dim); background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle);">
-          <div style="font-size: 28px; margin-bottom: 8px;">📡</div>
-          <div style="font-size: 14px; font-weight: 700; color: #fff;">No hay canales moderados en la lista</div>
-          <div style="font-size: 12px; margin-top: 4px;">Haz clic en <strong>"⚡ Escanear Canales Moderados"</strong> para sincronizar tus canales reales de Twitch.</div>
-        </div>
-      `;
-      return;
-    }
-
-    grid.innerHTML = this.allAvailableChannels.map(ch => {
-      const isSelected = this.selectedChannels.has(ch.id);
-      const isTwitch = ch.platform === 'twitch';
-      const defaultAvatar = isTwitch 
-        ? 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop'
-        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop';
-
-      return `
-        <div class="channel-select-card ${ch.platform} ${isSelected ? 'selected' : ''}" data-channel-id="${ch.id}">
-          <div class="channel-select-info">
-            <img src="${ch.avatar || defaultAvatar}" class="channel-select-avatar" alt="${ch.name}">
-            <div style="min-width: 0;">
-              <div class="channel-select-name">#${ch.displayName || ch.name}</div>
-              <div class="channel-select-meta">
-                <span class="channel-tag badge-${ch.platform}">${ch.platform.toUpperCase()}</span>
-                <span>${ch.role === 'mod' ? '🛡️ MOD' : 'Canal'}</span>
-              </div>
-            </div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" class="channel-select-checkbox" ${isSelected ? 'checked' : ''} data-channel-id="${ch.id}">
-            <button class="btn-remove-channel" data-channel-id="${ch.id}" title="Quitar de mi lista" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:12px; padding:2px 4px;">✕</button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    // Bind card click & checkbox
-    grid.querySelectorAll('.channel-select-card').forEach(card => {
-      const chId = card.dataset.channelId;
-      card.addEventListener('click', (e) => {
-        if (e.target.classList.contains('btn-remove-channel')) {
-          e.stopPropagation();
-          this.allAvailableChannels = this.allAvailableChannels.filter(c => c.id !== chId);
-          this.selectedChannels.delete(chId);
-          storageService.saveChannels(this.allAvailableChannels);
-          this.renderChannelSelector();
-          this.showToast('Canal quitado de la lista', 'info');
-          return;
-        }
-
-        if (e.target.tagName !== 'INPUT') {
-          const cb = card.querySelector('.channel-select-checkbox');
-          cb.checked = !cb.checked;
-        }
-        const isChecked = card.querySelector('.channel-select-checkbox').checked;
-        if (isChecked) {
-          this.selectedChannels.add(chId);
-          card.classList.add('selected');
-        } else {
-          this.selectedChannels.delete(chId);
-          card.classList.remove('selected');
-        }
-        if (countBadge) countBadge.textContent = this.selectedChannels.size;
-      });
-    });
   }
 
   // ==========================================
-  // VIEW 3: MOD DECK LAUNCH
+  // VIEW 2: MOD DECK LAUNCH
   // ==========================================
 
   launchModDeck() {
-    this.channels = this.allAvailableChannels.filter(c => this.selectedChannels.has(c.id));
+    this.channels = storageService.getChannels() || [];
+    if (this.channels.length === 0) {
+      this.channels = [
+        {
+          id: 'ch-twitch-los_del_provi',
+          name: 'los_del_provi',
+          platform: 'twitch',
+          avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop',
+          viewers: 1200,
+          isLive: true,
+          videoEnabled: true,
+          slowMode: 0,
+          subOnly: false,
+          followOnly: false,
+          emoteOnly: false
+        }
+      ];
+      storageService.saveChannels(this.channels);
+    }
     
     // Stop any simulated messages
     this.simulator.stop();
@@ -601,10 +438,6 @@ class OrbiModApp {
     // Header channel count
     const headerCount = document.getElementById('header-channels-count');
     if (headerCount) headerCount.textContent = this.channels.length;
-
-    // Check video setting
-    const videoEnabled = document.getElementById('selector-enable-video-all')?.checked ?? true;
-    this.channels.forEach(c => c.videoEnabled = videoEnabled);
 
     // Render channels in deck
     this.renderChannels();
@@ -641,17 +474,14 @@ class OrbiModApp {
   }
 
   _bindHeaderControls() {
-    // Return to Selector from Header Logo or Manage Channels Button
+    // Return to Landing from Header Logo
     document.getElementById('header-logo-home-btn')?.addEventListener('click', () => {
-      this.switchView('selector');
+      this.switchView('landing');
     });
 
+    // Open Centralized Channel Manager right on top of Deck
     document.getElementById('btn-header-manage-channels')?.addEventListener('click', () => {
-      this.switchView('selector');
-    });
-
-    document.getElementById('btn-exit-deck')?.addEventListener('click', () => {
-      this.switchView('selector');
+      this.manageChannelsModal.open();
     });
 
     document.getElementById('btn-deck-logout')?.addEventListener('click', () => {
@@ -675,18 +505,11 @@ class OrbiModApp {
       });
     });
 
-    // Header Action Buttons
-    document.getElementById('btn-add-channel')?.addEventListener('click', () => this.addChannelModal.open());
-    document.getElementById('btn-global-shield')?.addEventListener('click', () => {
-      this.settings.shieldActive = !this.settings.shieldActive;
-      this.handleShieldToggle(this.settings.shieldActive);
-    });
+    // AutoMod & Audit Drawers
     document.getElementById('btn-automod-queue')?.addEventListener('click', () => this.automodDrawer.open());
     document.getElementById('btn-audit-log')?.addEventListener('click', () => this.auditLogDrawer.open());
-    document.getElementById('btn-event-radar')?.addEventListener('click', () => this.eventRadarDrawer.open());
-    document.getElementById('btn-macro-manager')?.addEventListener('click', () => this.macroModal.open());
-    document.getElementById('btn-connection-hub')?.addEventListener('click', () => this.connectionHubModal.open());
-    document.getElementById('btn-hotkeys-help')?.addEventListener('click', () => this.hotkeysModal.open());
+
+    // Sound Toggle
     document.getElementById('btn-toggle-sound')?.addEventListener('click', () => {
       this.settings.soundEnabled = !this.settings.soundEnabled;
       storageService.saveSettings(this.settings);
@@ -824,6 +647,9 @@ class OrbiModApp {
       deck.appendChild(cardInstance.render());
     });
 
+    const headerCount = document.getElementById('header-channels-count');
+    if (headerCount) headerCount.textContent = this.channels.length;
+
     // Add empty placeholder card to invite adding more channels if < 4
     if (this.channels.length < 4) {
       const emptySlot = document.createElement('div');
@@ -833,7 +659,7 @@ class OrbiModApp {
         <div style="font-weight: 600; font-size: 13px;">+ Añadir Canal al Deck</div>
         <div style="font-size: 11px;">Twitch o Kick simultáneo</div>
       `;
-      emptySlot.addEventListener('click', () => this.addChannelModal.open());
+      emptySlot.addEventListener('click', () => this.manageChannelsModal.open());
       deck.appendChild(emptySlot);
     }
 
