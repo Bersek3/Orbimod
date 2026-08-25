@@ -375,14 +375,44 @@ export class ApiService {
     }
   }
 
+  _generatePKCEVerifier() {
+    const array = new Uint8Array(32);
+    window.crypto.getRandomValues(array);
+    let str = '';
+    for (let i = 0; i < array.byteLength; i++) {
+      str += String.fromCharCode(array[i]);
+    }
+    return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  async _generatePKCEChallenge(verifier) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(verifier);
+    const digest = await window.crypto.subtle.digest('SHA-256', data);
+    const bytes = new Uint8Array(digest);
+    let str = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      str += String.fromCharCode(bytes[i]);
+    }
+    return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
   /**
-   * Generates official Kick Developer OAuth 2.0 URL
+   * Generates official Kick Developer OAuth 2.1 URL with PKCE
    */
-  getKickAuthUrl(clientId = null) {
+  async getKickAuthUrl(clientId = null) {
     const cid = clientId || this.getKickClientId();
     const redirectUri = window.location.origin + window.location.pathname;
-    const scopes = ['user:read', 'channel:read', 'chat:write', 'stream:read'].join('+');
-    return `https://id.kick.com/oauth/authorize?client_id=${encodeURIComponent(cid)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scopes}`;
+    const scopes = 'user:read channel:read chat:write';
+
+    // Generate PKCE code_verifier and code_challenge (mandatory by Kick OAuth 2.1)
+    const verifier = this._generatePKCEVerifier();
+    sessionStorage.setItem('kick_pkce_verifier', verifier);
+    const challenge = await this._generatePKCEChallenge(verifier);
+    const state = Math.random().toString(36).substring(2, 15);
+    sessionStorage.setItem('kick_oauth_state', state);
+
+    return `https://id.kick.com/oauth/authorize?client_id=${encodeURIComponent(cid)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&code_challenge=${encodeURIComponent(challenge)}&code_challenge_method=S256&state=${encodeURIComponent(state)}`;
   }
 
   /**
@@ -392,6 +422,7 @@ export class ApiService {
     const cid = clientId || this.getKickClientId();
     const secret = clientSecret || this.getKickClientSecret();
     const redirectUri = window.location.origin + window.location.pathname;
+    const verifier = sessionStorage.getItem('kick_pkce_verifier') || '';
 
     try {
       // 1. Try local proxy first
@@ -402,7 +433,8 @@ export class ApiService {
           code: code,
           client_id: cid,
           client_secret: secret,
-          redirect_uri: redirectUri
+          redirect_uri: redirectUri,
+          code_verifier: verifier
         })
       });
 
@@ -427,7 +459,8 @@ export class ApiService {
           client_id: cid,
           client_secret: secret,
           code: code,
-          redirect_uri: redirectUri
+          redirect_uri: redirectUri,
+          code_verifier: verifier
         })
       });
 

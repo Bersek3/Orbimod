@@ -79,15 +79,20 @@ class RobustHandler(http.server.BaseHTTPRequestHandler):
                 client_id = req_data.get('client_id', '01M0VT0JC58YQEVGRHM8JFXQX3')
                 client_secret = req_data.get('client_secret', 'ee10e46fccf83a105e86834973db23cabcad279f33acf48bd4f6b5749884bb20')
                 redirect_uri = req_data.get('redirect_uri', f'http://localhost:{PORT}/')
+                code_verifier = req_data.get('code_verifier')
 
                 token_url = 'https://id.kick.com/oauth/token'
-                payload = urllib.parse.urlencode({
+                token_params = {
                     'grant_type': 'authorization_code',
                     'client_id': client_id,
                     'client_secret': client_secret,
                     'code': code,
                     'redirect_uri': redirect_uri
-                }).encode('utf-8')
+                }
+                if code_verifier:
+                    token_params['code_verifier'] = code_verifier
+
+                payload = urllib.parse.urlencode(token_params).encode('utf-8')
 
                 req = urllib.request.Request(token_url, data=payload, headers={
                     'Content-Type': 'application/x-www-form-urlencoded',

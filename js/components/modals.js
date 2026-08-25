@@ -1251,12 +1251,12 @@ export class UnifiedAuthModal {
     });
 
     // Kick Mode Buttons
-    this.modal.querySelector('#btn-start-kick-oauth')?.addEventListener('click', () => {
+    this.modal.querySelector('#btn-start-kick-oauth')?.addEventListener('click', async () => {
       const clientId = this.modal.querySelector('#kick-client-id-input')?.value.trim();
       const clientSecret = this.modal.querySelector('#kick-client-secret-input')?.value.trim();
       if (clientId) apiService.saveKickClientId(clientId);
       if (clientSecret) apiService.saveKickClientSecret(clientSecret);
-      const url = apiService.getKickAuthUrl(clientId);
+      const url = await apiService.getKickAuthUrl(clientId);
       window.location.href = url;
     });
 
