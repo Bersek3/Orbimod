@@ -30,7 +30,7 @@ class SupabaseAuthService {
           isConfigured: true
         };
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return {
       url: DEFAULT_SUPABASE_URL,
@@ -464,7 +464,7 @@ class SupabaseAuthService {
           ownerId: owner.id,
           ownerEmail: owner.email,
           ownerUsername: owner.username,
-          error: `🚫 La cuenta de ${platformName} (@${username}) ya está vinculada al correo principal (${maskedEmail}). Por seguridad no puede vincularse a otra cuenta diferente.`
+          error: `🚫 La cuenta de ${platformName} (@${username}) ya está vinculada a otro correo electronico.`
         };
       }
       return { hasConflict: false };
@@ -615,7 +615,7 @@ class SupabaseAuthService {
     if (client) {
       try {
         await client.auth.signOut();
-      } catch (e) {}
+      } catch (e) { }
     }
     this._saveSession(null);
     return { success: true };

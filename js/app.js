@@ -646,13 +646,19 @@ class OrbiModApp {
 
   handleUnifiedLoginSuccess(res) {
     if (res.platform === 'twitch') {
-      this.showToast('🟣 Conectando con Twitch...', 'twitch');
+      this.showToast(`🟣 Conectado con Twitch como @${res.username || 'moderador'}`, 'twitch');
+      this.updateLandingAuthStatus();
+      this.switchView('deck');
+    } else if (res.platform === 'google') {
+      this.showToast(`🔴 Conectado con Google: ${res.user?.displayName || res.user?.email || 'Usuario'}`, 'success');
+      this.updateLandingAuthStatus();
+      this.switchView('deck');
     } else if (res.platform === 'kick') {
       this.showToast(`🟢 Conectado con Kick como @${res.username}`, 'success');
       this.updateLandingAuthStatus();
       this.switchView('deck');
     } else if (res.platform === 'email') {
-      this.showToast(`✉️ Sesión iniciada como ${res.user.displayName || res.user.email}`, 'success');
+      this.showToast(`✉️ Sesión iniciada como ${res.user?.displayName || res.user?.email}`, 'success');
       this.updateLandingAuthStatus();
       this.switchView('deck');
     }
