@@ -257,6 +257,16 @@ class StorageService {
       console.error('Failed to save profiles', e);
     }
   }
+
+  clearAuth() {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.AUTH_CREDS);
+      localStorage.removeItem(STORAGE_KEYS.USER_PROFILES);
+      localStorage.removeItem(STORAGE_KEYS.CHANNELS);
+    } catch (e) {
+      console.error('Failed to clear auth in storage', e);
+    }
+  }
 }
 
 export const storageService = new StorageService();

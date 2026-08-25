@@ -313,6 +313,35 @@ class OrbiModApp {
         }
       });
     });
+
+    // Smooth In-Page Scrolling for Landing Navigation Links
+    document.querySelectorAll('.landing-nav-links .nav-link, .footer-links .footer-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        const href = link.getAttribute('href');
+        if (href && href.startsWith('#')) {
+          e.preventDefault();
+          const targetEl = document.querySelector(href);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      });
+    });
+  }
+
+  logout() {
+    if (confirm('¿Estás seguro de que deseas cerrar tu sesión en OrbiMod?')) {
+      storageService.clearAuth();
+      supabaseAuthService.signOut();
+      try { this.twitchClient.disconnect?.(); } catch (e) {}
+      try { this.kickClient.disconnect?.(); } catch (e) {}
+      this.channels = [];
+      this.allAvailableChannels = [];
+      this.selectedChannels.clear();
+      this.updateLandingAuthStatus();
+      this.switchView('landing');
+      this.showToast('Has cerrado sesión correctamente', 'info');
+    }
   }
 
   updateLandingAuthStatus() {
@@ -370,6 +399,10 @@ class OrbiModApp {
   _bindSelectorControls() {
     document.getElementById('btn-selector-back-home')?.addEventListener('click', () => {
       this.switchView('landing');
+    });
+
+    document.getElementById('btn-selector-logout')?.addEventListener('click', () => {
+      this.logout();
     });
 
     document.getElementById('btn-selector-launch')?.addEventListener('click', () => {
@@ -618,7 +651,11 @@ class OrbiModApp {
     });
 
     document.getElementById('btn-exit-deck')?.addEventListener('click', () => {
-      this.switchView('landing');
+      this.switchView('selector');
+    });
+
+    document.getElementById('btn-deck-logout')?.addEventListener('click', () => {
+      this.logout();
     });
 
     // Backdrop Drawer closer
