@@ -6,6 +6,7 @@
 import { storageService } from '../services/storageService.js';
 import { automodService } from '../services/automodService.js';
 import { apiService } from '../services/apiService.js';
+import { supabaseAuthService } from '../services/supabaseAuthService.js';
 
 // ==========================================
 // 1. ADD CHANNEL MODAL (WITH LIVE API PREVIEWS)
@@ -782,3 +783,323 @@ export class HotkeysModal {
     this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
   }
 }
+
+// ==========================================
+// 5. UNIFIED AUTH MODAL (TWITCH, KICK & CORREO / SUPABASE)
+// ==========================================
+export class UnifiedAuthModal {
+  constructor(modalElement, onLoginSuccess) {
+    this.modal = modalElement;
+    this.onLoginSuccess = onLoginSuccess;
+    this.activeTab = 'twitch'; // 'twitch' | 'kick' | 'email'
+    this.emailMode = 'login'; // 'login' | 'register' | 'config'
+  }
+
+  open(defaultTab = 'twitch') {
+    this.activeTab = defaultTab;
+    this.render();
+    this.modal.classList.add('open');
+  }
+
+  close() {
+    this.modal.classList.remove('open');
+  }
+
+  render() {
+    const profiles = storageService.getProfiles();
+    const creds = storageService.getAuthCreds();
+    const currentUser = supabaseAuthService.getCurrentUser();
+
+    this.modal.innerHTML = `
+      <div class="modal-container auth-unified-modal" style="max-width: 520px;">
+        <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
+          <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <div class="brand-logo" style="width: 28px; height: 28px; font-size: 14px;">
+              <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            </div>
+            <div>
+              <div style="font-weight: 800; font-size: 16px; color: #fff;">Iniciar Sesión en OrbiMod</div>
+              <div style="font-size: 11.5px; color: var(--text-dim);">Selecciona tu método de autenticación preferido</div>
+            </div>
+          </div>
+          <button class="icon-btn-subtle close-modal-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Auth Method Tabs -->
+        <div class="auth-tabs-nav">
+          <button class="auth-tab-btn ${this.activeTab === 'twitch' ? 'active' : ''}" data-tab="twitch">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+            <span>Twitch</span>
+          </button>
+          <button class="auth-tab-btn ${this.activeTab === 'kick' ? 'active' : ''}" data-tab="kick">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--kick-green);"></span>
+            <span>Kick</span>
+          </button>
+          <button class="auth-tab-btn ${this.activeTab === 'email' ? 'active' : ''}" data-tab="email">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <span>Correo / Supabase</span>
+          </button>
+        </div>
+
+        <div class="modal-body auth-modal-content-area" style="padding-top: 10px;">
+          <!-- TAB 1: TWITCH -->
+          <div class="auth-tab-pane ${this.activeTab === 'twitch' ? 'active' : ''}" id="pane-twitch">
+            <div class="auth-highlight-banner twitch">
+              <div style="font-weight: 700; font-size: 13.5px; color: #fff; margin-bottom: 4px;">🟣 Conexión Oficial con Twitch Developer OAuth</div>
+              <div style="font-size: 11.5px; color: rgba(255,255,255,0.8); line-height: 1.4;">
+                Conexión segura de 1-clic que auto-detecta todos los canales donde tienes rol de moderador y habilita sanciones instantáneas.
+              </div>
+            </div>
+
+            ${profiles.twitch && profiles.twitch.valid ? `
+              <div class="connected-account-preview twitch" style="display: flex; align-items: center; justify-content: space-between; background: rgba(145, 70, 255, 0.1); border: 1px solid rgba(145, 70, 255, 0.3); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <img src="${profiles.twitch.avatar || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop'}" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--twitch-purple);">
+                  <div>
+                    <div style="font-weight: 700; color: #fff; font-size: 13px;">@${profiles.twitch.login}</div>
+                    <div style="font-size: 11px; color: var(--success-green);">● Cuenta Vinculada & Activa</div>
+                  </div>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-modal-relink-twitch">Re-conectar</button>
+              </div>
+            ` : ''}
+
+            <button id="btn-auth-launch-twitch" class="btn btn-primary" style="width: 100%; padding: 13px; font-size: 13.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 18px var(--twitch-purple-glow);">
+              <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor;"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+              <span>Conectar con Twitch en 1-Clic</span>
+            </button>
+
+            <div style="margin-top: 12px; font-size: 11px; color: var(--text-dim); text-align: center;">
+              🔒 Permisos de moderación seguros vía Twitch Helix API. Tu token nunca sale de tu navegador.
+            </div>
+          </div>
+
+          <!-- TAB 2: KICK -->
+          <div class="auth-tab-pane ${this.activeTab === 'kick' ? 'active' : ''}" id="pane-kick">
+            <div class="auth-highlight-banner kick">
+              <div style="font-weight: 700; font-size: 13.5px; color: #fff; margin-bottom: 4px;">🟢 Conexión con Kick Pusher Cluster</div>
+              <div style="font-size: 11.5px; color: rgba(255,255,255,0.8); line-height: 1.4;">
+                Conéctate a las salas de chat de Kick en tiempo real para moderar simultáneamente.
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label class="form-label">Nombre de Usuario en Kick</label>
+              <input type="text" id="auth-kick-username" class="form-input" placeholder="ej. MiUsuarioKick" value="${profiles.kick?.username || creds.kickUsername || ''}">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label">Token de Sesión o API (Opcional)</label>
+              <input type="password" id="auth-kick-token" class="form-input" placeholder="Bearer token o déjalo vacío para modo lectura" value="${creds.kickToken || ''}">
+            </div>
+
+            <button id="btn-auth-save-kick" class="btn btn-kick" style="width: 100%; padding: 12px; font-size: 13.5px; font-weight: 700;">
+              <span>Guardar & Conectar Kick</span>
+            </button>
+          </div>
+
+          <!-- TAB 3: EMAIL / SUPABASE -->
+          <div class="auth-tab-pane ${this.activeTab === 'email' ? 'active' : ''}" id="pane-email">
+            <div style="display: flex; gap: 8px; margin-bottom: 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+              <button class="btn-text-tab ${this.emailMode === 'login' ? 'active' : ''}" id="btn-email-mode-login">Iniciar Sesión</button>
+              <button class="btn-text-tab ${this.emailMode === 'register' ? 'active' : ''}" id="btn-email-mode-register">Crear Cuenta</button>
+              <button class="btn-text-tab ${this.emailMode === 'config' ? 'active' : ''}" id="btn-email-mode-config" style="margin-left: auto; font-size: 11px;">⚙️ Config Supabase</button>
+            </div>
+
+            ${currentUser ? `
+              <div style="background: rgba(46, 213, 115, 0.1); border: 1px solid rgba(46, 213, 115, 0.3); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <div style="font-weight: 700; color: #fff; font-size: 12.5px;">${currentUser.displayName || currentUser.email}</div>
+                  <div style="font-size: 11px; color: var(--text-dim);">${currentUser.email}</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-email-signout" style="color: var(--danger-red);">Cerrar Sesión</button>
+              </div>
+            ` : ''}
+
+            ${this.emailMode === 'config' ? `
+              <!-- Supabase Custom Keys Config -->
+              <div class="supabase-config-box">
+                <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 6px;">⚡ Conectar Proyecto de Supabase</div>
+                <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 10px;">Ingresa la URL y Anon Key de tu proyecto Supabase para sincronización completa en la nube.</div>
+                
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label class="form-label" style="font-size: 11px;">Project URL</label>
+                  <input type="text" id="supabase-url-input" class="form-input" placeholder="https://xyzcompany.supabase.co" value="${supabaseAuthService.supabaseConfig.url || ''}">
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                  <label class="form-label" style="font-size: 11px;">Anon Public Key</label>
+                  <input type="password" id="supabase-key-input" class="form-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." value="${supabaseAuthService.supabaseConfig.anonKey || ''}">
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn btn-primary btn-sm" id="btn-save-supabase-config">Guardar Configuración</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-cancel-supabase-config">Volver</button>
+                </div>
+              </div>
+            ` : `
+              <!-- Email Form -->
+              <form id="email-auth-form">
+                ${this.emailMode === 'register' ? `
+                  <div class="form-group" style="margin-bottom: 10px;">
+                    <label class="form-label">Nombre o Apodo de Moderador</label>
+                    <input type="text" id="auth-email-name" class="form-input" placeholder="ej. AlexMod" required>
+                  </div>
+                ` : ''}
+
+                <div class="form-group" style="margin-bottom: 10px;">
+                  <label class="form-label">Correo Electrónico</label>
+                  <input type="email" id="auth-email-input" class="form-input" placeholder="tu@correo.com" required value="${currentUser?.email || ''}">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                  <label class="form-label">Contraseña</label>
+                  <input type="password" id="auth-password-input" class="form-input" placeholder="Mínimo 6 caracteres" required>
+                </div>
+
+                <div id="email-auth-feedback" style="font-size: 12px; margin-bottom: 10px; display: none;"></div>
+
+                <button type="submit" id="btn-submit-email-auth" class="btn btn-primary" style="width: 100%; padding: 11px; font-size: 13px; font-weight: 700;">
+                  <span>${this.emailMode === 'login' ? 'Iniciar Sesión con Correo' : 'Crear Cuenta en OrbiMod'}</span>
+                </button>
+              </form>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+
+    this._bindEvents();
+  }
+
+  _bindEvents() {
+    this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
+
+    // Tabs navigation
+    this.modal.querySelectorAll('.auth-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.activeTab = btn.dataset.tab;
+        this.render();
+      });
+    });
+
+    // Twitch Launch
+    this.modal.querySelector('#btn-auth-launch-twitch')?.addEventListener('click', () => {
+      const url = apiService.getTwitchAuthUrl();
+      window.location.href = url;
+    });
+
+    this.modal.querySelector('#btn-modal-relink-twitch')?.addEventListener('click', () => {
+      const url = apiService.getTwitchAuthUrl();
+      window.location.href = url;
+    });
+
+    // Kick Save
+    this.modal.querySelector('#btn-auth-save-kick')?.addEventListener('click', () => {
+      const usernameInput = this.modal.querySelector('#auth-kick-username');
+      const tokenInput = this.modal.querySelector('#auth-kick-token');
+      const username = usernameInput ? usernameInput.value.trim() : '';
+      const token = tokenInput ? tokenInput.value.trim() : '';
+
+      if (!username) {
+        alert('Por favor ingresa tu nombre de usuario de Kick');
+        return;
+      }
+
+      const creds = storageService.getAuthCreds();
+      creds.kickUsername = username;
+      creds.kickToken = token;
+      storageService.saveAuthCreds(creds);
+
+      const profiles = storageService.getProfiles();
+      profiles.kick = {
+        valid: true,
+        username: username,
+        token: token
+      };
+      storageService.saveProfiles(profiles);
+
+      if (this.onLoginSuccess) {
+        this.onLoginSuccess({ platform: 'kick', username: username });
+      }
+      this.close();
+    });
+
+    // Email Mode toggles
+    this.modal.querySelector('#btn-email-mode-login')?.addEventListener('click', () => {
+      this.emailMode = 'login';
+      this.render();
+    });
+
+    this.modal.querySelector('#btn-email-mode-register')?.addEventListener('click', () => {
+      this.emailMode = 'register';
+      this.render();
+    });
+
+    this.modal.querySelector('#btn-email-mode-config')?.addEventListener('click', () => {
+      this.emailMode = 'config';
+      this.render();
+    });
+
+    this.modal.querySelector('#btn-cancel-supabase-config')?.addEventListener('click', () => {
+      this.emailMode = 'login';
+      this.render();
+    });
+
+    // Save Supabase Config
+    this.modal.querySelector('#btn-save-supabase-config')?.addEventListener('click', () => {
+      const url = this.modal.querySelector('#supabase-url-input')?.value || '';
+      const key = this.modal.querySelector('#supabase-key-input')?.value || '';
+      const res = supabaseAuthService.configureSupabase(url, key);
+      alert(res.message);
+      this.emailMode = 'login';
+      this.render();
+    });
+
+    // Sign Out Email
+    this.modal.querySelector('#btn-email-signout')?.addEventListener('click', async () => {
+      await supabaseAuthService.signOut();
+      this.render();
+    });
+
+    // Submit Email Form
+    const emailForm = this.modal.querySelector('#email-auth-form');
+    if (emailForm) {
+      emailForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = this.modal.querySelector('#auth-email-input').value.trim();
+        const password = this.modal.querySelector('#auth-password-input').value;
+        const name = this.modal.querySelector('#auth-email-name')?.value.trim() || '';
+        const feedback = this.modal.querySelector('#email-auth-feedback');
+        const submitBtn = this.modal.querySelector('#btn-submit-email-auth');
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Procesando...';
+
+        let res;
+        if (this.emailMode === 'register') {
+          res = await supabaseAuthService.signUp(email, password, name);
+        } else {
+          res = await supabaseAuthService.signInWithPassword(email, password);
+        }
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = this.emailMode === 'login' ? 'Iniciar Sesión con Correo' : 'Crear Cuenta en OrbiMod';
+
+        if (res.success) {
+          if (this.onLoginSuccess) {
+            this.onLoginSuccess({ platform: 'email', user: res.user });
+          }
+          this.close();
+        } else {
+          if (feedback) {
+            feedback.style.display = 'block';
+            feedback.style.color = 'var(--danger-red)';
+            feedback.textContent = res.error;
+          }
+        }
+      });
+    }
+  }
+}
+

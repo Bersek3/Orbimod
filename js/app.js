@@ -16,7 +16,8 @@ import { AutoModQueueDrawer } from './components/automodQueue.js';
 import { AuditLogDrawer } from './components/auditLog.js';
 import { EventRadarDrawer } from './components/eventRadar.js';
 import { MacroManagerModal } from './components/macroManager.js';
-import { AddChannelModal, AutoModSettingsModal, ConnectionHubModal, HotkeysModal } from './components/modals.js';
+import { AddChannelModal, AutoModSettingsModal, ConnectionHubModal, HotkeysModal, UnifiedAuthModal } from './components/modals.js';
+import { supabaseAuthService } from './services/supabaseAuthService.js';
 
 class OrbiModApp {
   constructor() {
@@ -119,6 +120,11 @@ class OrbiModApp {
     );
 
     this.hotkeysModal = new HotkeysModal(document.getElementById('generic-modal'));
+
+    this.unifiedAuthModal = new UnifiedAuthModal(
+      document.getElementById('generic-modal'),
+      (loginRes) => this.handleUnifiedLoginSuccess(loginRes)
+    );
 
     // Clients
     this.twitchClient = new TwitchClient(
@@ -266,58 +272,94 @@ class OrbiModApp {
   // ==========================================
 
   _bindLandingControls() {
-    document.getElementById('btn-landing-connect-twitch')?.addEventListener('click', () => {
-      const authUrl = apiService.getTwitchAuthUrl();
-      window.location.href = authUrl;
+    // Top-Corner Login Button
+    document.getElementById('btn-landing-login-corner')?.addEventListener('click', () => {
+      this.unifiedAuthModal.open('twitch');
     });
 
-    document.getElementById('btn-landing-connect-kick')?.addEventListener('click', () => {
-      this.connectionHubModal.open('kick');
+    // Hero CTA Buttons
+    document.getElementById('btn-hero-start-auth')?.addEventListener('click', () => {
+      this.unifiedAuthModal.open('twitch');
     });
 
-    document.getElementById('btn-landing-sandbox')?.addEventListener('click', () => {
+    document.getElementById('btn-hero-sandbox')?.addEventListener('click', () => {
       this.simulator.start();
       this.switchView('selector');
+      this.showToast('Modo Sandbox activo con chat simulado', 'info');
     });
 
-    document.getElementById('btn-landing-go-selector')?.addEventListener('click', () => {
+    document.getElementById('btn-landing-sandbox-header')?.addEventListener('click', () => {
+      this.simulator.start();
       this.switchView('selector');
+      this.showToast('Modo Sandbox activo con chat simulado', 'info');
+    });
+
+    document.getElementById('btn-footer-start-auth')?.addEventListener('click', () => {
+      this.unifiedAuthModal.open('twitch');
+    });
+
+    document.getElementById('btn-landing-go-dashboard')?.addEventListener('click', () => {
+      this.switchView('selector');
+    });
+
+    // Interactive FAQ Accordion
+    document.querySelectorAll('.faq-question').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.closest('.faq-item');
+        const isOpen = item.classList.contains('open');
+        document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+        if (!isOpen) {
+          item.classList.add('open');
+        }
+      });
     });
   }
 
   updateLandingAuthStatus() {
     const profiles = storageService.getProfiles();
-    const twitchStatus = document.getElementById('landing-twitch-status');
-    const kickStatus = document.getElementById('landing-kick-status');
-    const twitchBtn = document.getElementById('btn-landing-connect-twitch');
-    const kickBtn = document.getElementById('btn-landing-connect-kick');
+    const emailUser = supabaseAuthService.getCurrentUser();
 
-    if (profiles.twitch && profiles.twitch.valid) {
-      if (twitchStatus) {
-        twitchStatus.innerHTML = `
-          <img src="${profiles.twitch.avatar || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop'}" style="width:20px;height:20px;border-radius:50%;">
-          <span style="color:var(--success-green);font-weight:700;">@${profiles.twitch.login}</span>
-          <span class="badge-success" style="font-size:9.5px;padding:1px 5px;border-radius:3px;">CONECTADO</span>
-        `;
+    const cornerLoginBtn = document.getElementById('btn-landing-login-corner');
+    const userProfileBadge = document.getElementById('landing-user-profile-badge');
+    const userNameEl = document.getElementById('landing-user-name');
+    const userAvatarEl = document.getElementById('landing-user-avatar');
+
+    const isTwitchAuth = profiles.twitch && profiles.twitch.valid;
+    const isKickAuth = profiles.kick && profiles.kick.valid;
+    const isEmailAuth = !!emailUser;
+
+    if (isTwitchAuth || isKickAuth || isEmailAuth) {
+      if (cornerLoginBtn) cornerLoginBtn.style.display = 'none';
+      if (userProfileBadge) {
+        userProfileBadge.style.display = 'flex';
+        if (isTwitchAuth) {
+          if (userNameEl) userNameEl.textContent = `@${profiles.twitch.login}`;
+          if (userAvatarEl) userAvatarEl.src = profiles.twitch.avatar || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop';
+        } else if (isKickAuth) {
+          if (userNameEl) userNameEl.textContent = `@${profiles.kick.username} (Kick)`;
+          if (userAvatarEl) userAvatarEl.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop';
+        } else if (isEmailAuth) {
+          if (userNameEl) userNameEl.textContent = emailUser.displayName || emailUser.email.split('@')[0];
+          if (userAvatarEl) userAvatarEl.src = emailUser.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${emailUser.email}`;
+        }
       }
-      if (twitchBtn) {
-        twitchBtn.innerHTML = `<span>✓ Cuenta Vinculada (@${profiles.twitch.login})</span>`;
-        twitchBtn.classList.remove('btn-primary');
-        twitchBtn.classList.add('btn-secondary');
-      }
+    } else {
+      if (cornerLoginBtn) cornerLoginBtn.style.display = 'flex';
+      if (userProfileBadge) userProfileBadge.style.display = 'none';
     }
+  }
 
-    if (profiles.kick && profiles.kick.valid) {
-      if (kickStatus) {
-        kickStatus.innerHTML = `
-          <span class="metric-dot" style="background:var(--success-green);"></span>
-          <span style="color:var(--success-green);font-weight:700;">@${profiles.kick.username}</span>
-          <span class="badge-kick" style="font-size:9.5px;padding:1px 5px;border-radius:3px;">SINCRONIZADO</span>
-        `;
-      }
-      if (kickBtn) {
-        kickBtn.innerHTML = `<span>✓ Kick Configurado (@${profiles.kick.username})</span>`;
-      }
+  handleUnifiedLoginSuccess(res) {
+    if (res.platform === 'twitch') {
+      this.showToast('🟣 Conectando con Twitch...', 'twitch');
+    } else if (res.platform === 'kick') {
+      this.showToast(`🟢 Conectado con Kick como @${res.username}`, 'success');
+      this.updateLandingAuthStatus();
+      this.switchView('selector');
+    } else if (res.platform === 'email') {
+      this.showToast(`✉️ Sesión iniciada como ${res.user.displayName || res.user.email}`, 'success');
+      this.updateLandingAuthStatus();
+      this.switchView('selector');
     }
   }
 

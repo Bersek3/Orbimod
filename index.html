@@ -7,10 +7,10 @@
   <meta name="description" content="OrbiMod: Software profesional de alta velocidad para moderar múltiples canales simultáneos de Twitch y Kick con AutoMod, Inspector de Usuarios y Registro de Auditoría.">
 
   <!-- CSS Design System (Relative paths for GitHub Pages compatibility) -->
-  <link rel="stylesheet" href="./css/main.css?v=3.0">
-  <link rel="stylesheet" href="./css/components.css?v=3.0">
-  <link rel="stylesheet" href="./css/chat.css?v=3.0">
-  <link rel="stylesheet" href="./css/responsive.css?v=3.0">
+  <link rel="stylesheet" href="./css/main.css?v=4.0">
+  <link rel="stylesheet" href="./css/components.css?v=4.0">
+  <link rel="stylesheet" href="./css/chat.css?v=4.0">
+  <link rel="stylesheet" href="./css/responsive.css?v=4.0">
 
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239146FF'><polygon points='12 2 2 7 12 12 22 7 12 2'/><polyline points='2 17 12 22 22 17'/><polyline points='2 12 12 17 22 12'/></svg>">
 </head>
@@ -18,111 +18,447 @@
   <div id="app-root">
 
     <!-- ================================================================= -->
-    <!-- VIEW 1: PROFESSIONAL LANDING PORTAL                               -->
+    <!-- VIEW 1: COMPREHENSIVE INFORMATIVE LANDING PORTAL                  -->
     <!-- ================================================================= -->
     <section id="view-landing" class="app-view active">
-      <div class="landing-container">
-        <!-- Hero Header -->
-        <header class="landing-header">
-          <div class="brand-section">
-            <div class="brand-logo">
-              <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+      <div class="landing-page-wrapper">
+
+        <!-- Top Navigation Bar -->
+        <header class="landing-navbar">
+          <div class="landing-nav-container">
+            <div class="brand-section">
+              <div class="brand-logo">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+              </div>
+              <div class="brand-title">
+                <h1>ORBIMOD</h1>
+                <div class="brand-sub">MODERATION SUITE</div>
+              </div>
             </div>
-            <div class="brand-title">
-              <h1>ORBIMOD</h1>
-              <div class="brand-sub">Multi-Stream Moderation Control Station</div>
+
+            <!-- Nav Links -->
+            <nav class="landing-nav-links">
+              <a href="#landing-features" class="nav-link">Funcionalidades</a>
+              <a href="#landing-how-it-works" class="nav-link">Cómo Funciona</a>
+              <a href="#landing-security" class="nav-link">Seguridad</a>
+              <a href="#landing-faq" class="nav-link">FAQ</a>
+            </nav>
+
+            <!-- Right Corner Auth Area -->
+            <div class="landing-nav-actions">
+              <button id="btn-landing-sandbox-header" class="btn btn-secondary btn-sm" title="Probar simulador con chats en vivo">
+                <span>⚡ Sandbox Demo</span>
+              </button>
+
+              <!-- Not Logged In State -->
+              <button id="btn-landing-login-corner" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px; box-shadow: 0 0 15px var(--twitch-purple-glow);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                <span>🔑 Iniciar Sesión</span>
+              </button>
+
+              <!-- Logged In State (Pill) -->
+              <div id="landing-user-profile-badge" class="landing-user-badge" style="display: none;">
+                <img id="landing-user-avatar" src="" alt="Avatar" class="user-badge-avatar">
+                <div class="user-badge-meta">
+                  <span id="landing-user-name" class="user-badge-name">@moderador</span>
+                  <span class="user-badge-status">● CONECTADO</span>
+                </div>
+                <button id="btn-landing-go-dashboard" class="btn btn-primary btn-xs">
+                  <span>Ir al Deck →</span>
+                </button>
+              </div>
             </div>
-          </div>
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <button id="btn-landing-sandbox" class="btn btn-secondary">
-              <span>⚡ Probar Modo Demo (Sandbox)</span>
-            </button>
           </div>
         </header>
 
-        <!-- Hero Banner -->
-        <div class="landing-hero-content">
-          <div class="hero-badge">
-            <span>🛡️ CONTROL TOTAL DE TWITCH Y KICK EN TIEMPO REAL</span>
-          </div>
-          <h2 class="hero-title">
-            Modera múltiples canales simultáneos desde <span class="gradient-text">una sola pantalla</span>.
-          </h2>
-          <p class="hero-description">
-            Conéctate con tu cuenta oficial para detectar automáticamente todos los canales donde tienes rol de moderador, filtrar spam con AutoMod inteligente y responder a raids en milisegundos.
-          </p>
+        <!-- Hero Section -->
+        <section class="landing-hero-section">
+          <div class="landing-hero-inner">
+            <div class="hero-pill-badge">
+              <span class="pill-dot pulse"></span>
+              <span>ESTACIÓN PROFESIONAL DE MODERACIÓN MULTI-CANAL</span>
+            </div>
 
-          <!-- Account Connection Cards -->
-          <div class="landing-auth-grid">
-            <!-- Twitch OAuth Card -->
-            <div class="auth-card twitch-card" id="landing-twitch-card">
-              <div class="auth-card-header">
-                <div class="auth-card-icon twitch">TW</div>
-                <div>
-                  <div class="auth-card-title">Twitch Helix OAuth</div>
-                  <div class="auth-card-sub">Detección automática de canales moderados</div>
-                </div>
-              </div>
-              <div class="auth-card-status" id="landing-twitch-status">
-                <span class="metric-dot" style="background: var(--text-dim);"></span>
-                <span>No conectado</span>
-              </div>
-              <button id="btn-landing-connect-twitch" class="btn btn-primary btn-auth-action">
-                <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor;"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
-                <span>Conectar con Twitch (1-Clic)</span>
+            <h1 class="hero-main-title">
+              Modera múltiples canales de <span class="gradient-text-twitch">Twitch</span> y <span class="gradient-text-kick">Kick</span> en <span class="gradient-text">tiempo real</span>.
+            </h1>
+
+            <p class="hero-main-sub">
+              OrbiMod centraliza tus chats en una estación de mando de alta velocidad: auto-detecta todos los canales donde eres moderador, filtra spam con AutoMod avanzado y ejecuta sanciones instantáneas en 1-clic.
+            </p>
+
+            <div class="hero-cta-group">
+              <button id="btn-hero-start-auth" class="btn btn-primary btn-lg" style="box-shadow: 0 4px 25px var(--twitch-purple-glow);">
+                <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor;"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+                <span>Conectar Cuenta & Comenzar Gratis</span>
+              </button>
+
+              <button id="btn-hero-sandbox" class="btn btn-secondary btn-lg">
+                <span>⚡ Probar Modo Sandbox en Vivo</span>
               </button>
             </div>
 
-            <!-- Kick API Card -->
-            <div class="auth-card kick-card" id="landing-kick-card">
-              <div class="auth-card-header">
-                <div class="auth-card-icon kick">KC</div>
-                <div>
-                  <div class="auth-card-title">Kick Pusher Cluster</div>
-                  <div class="auth-card-sub">Sincronización de chatrooms y moderación</div>
+            <!-- Interactive Deck Showcase Mockup -->
+            <div class="hero-mockup-wrapper">
+              <div class="hero-mockup-window">
+                <div class="window-bar">
+                  <div class="window-dots">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                  </div>
+                  <div class="window-title">ORBIMOD DECK — ESTACIÓN ACTIVA EN TIEMPO REAL</div>
+                  <div class="window-status">● 4 CANALES CONECTADOS | LATENCIA 12ms</div>
+                </div>
+
+                <div class="mockup-deck-grid">
+                  <!-- Mockup Channel 1 -->
+                  <div class="mock-card twitch">
+                    <div class="mock-card-header">
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        <span class="mock-avatar" style="background:#9146FF;">TW</span>
+                        <span style="font-weight:700;color:#fff;font-size:12px;">#los_del_provi</span>
+                        <span class="channel-tag badge-twitch">TWITCH</span>
+                        <span class="channel-tag" style="background:rgba(46,213,115,0.2);color:#2ed573;">🛡️ MOD</span>
+                      </div>
+                      <span style="font-size:10px;color:var(--text-dim);">● 28,400 viewers</span>
+                    </div>
+                    <div class="mock-chat-feed">
+                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user" style="color:#bf94ff;">GamerPro:</span> ¡Vamos con todo hoy!</div>
+                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user" style="color:#53fc18;">Lucia_tv:</span> Sub hypeee ⭐</div>
+                      <div class="mock-msg highlight"><span class="m-time">14:03</span> <span class="m-user" style="color:#ff4757;">SpamBot:</span> Gana skins gratis en http://... <span class="m-action">[AutoMod Bloqueó]</span></div>
+                    </div>
+                    <div class="mock-input">
+                      <span>Enviar mensaje como Moderador a #los_del_provi...</span>
+                      <button class="mock-btn-send">Enviar</button>
+                    </div>
+                  </div>
+
+                  <!-- Mockup Channel 2 -->
+                  <div class="mock-card twitch">
+                    <div class="mock-card-header">
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        <span class="mock-avatar" style="background:#9146FF;">TW</span>
+                        <span style="font-weight:700;color:#fff;font-size:12px;">#LadyKarin</span>
+                        <span class="channel-tag badge-twitch">TWITCH</span>
+                        <span class="channel-tag" style="background:rgba(46,213,115,0.2);color:#2ed573;">🛡️ MOD</span>
+                      </div>
+                      <span style="font-size:10px;color:var(--text-dim);">● 14,200 viewers</span>
+                    </div>
+                    <div class="mock-chat-feed">
+                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user" style="color:#eccc68;">KarinFan:</span> ¡Qué partida tan épica!</div>
+                      <div class="mock-msg"><span class="m-time">14:03</span> <span class="m-user" style="color:#2ed573;">Tú (Mod):</span> 🛡️ Mantengan el respeto en el chat.</div>
+                    </div>
+                    <div class="mock-input">
+                      <span>Enviar mensaje como Moderador a #LadyKarin...</span>
+                      <button class="mock-btn-send">Enviar</button>
+                    </div>
+                  </div>
+
+                  <!-- Mockup Channel 3 -->
+                  <div class="mock-card kick">
+                    <div class="mock-card-header">
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        <span class="mock-avatar" style="background:#53fc18;color:#000;">KC</span>
+                        <span style="font-weight:700;color:#fff;font-size:12px;">#PedroZaico</span>
+                        <span class="channel-tag badge-kick">KICK</span>
+                        <span class="channel-tag" style="background:rgba(46,213,115,0.2);color:#2ed573;">🛡️ MOD</span>
+                      </div>
+                      <span style="font-size:10px;color:var(--text-dim);">● 9,800 viewers</span>
+                    </div>
+                    <div class="mock-chat-feed">
+                      <div class="mock-msg"><span class="m-time">14:02</span> <span class="m-user" style="color:#53fc18;">ZaicoArmy:</span> Saludos desde Chile 🇨🇱</div>
+                      <div class="mock-msg"><span class="m-time">14:03</span> <span class="m-user" style="color:#70a1ff;">VipMember:</span> GG ese clutch 🔥</div>
+                    </div>
+                    <div class="mock-input">
+                      <span>Enviar mensaje como Moderador a #PedroZaico...</span>
+                      <button class="mock-btn-send">Enviar</button>
+                    </div>
+                  </div>
+
+                  <!-- Mockup Channel 4 -->
+                  <div class="mock-card twitch">
+                    <div class="mock-card-header">
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        <span class="mock-avatar" style="background:#9146FF;">TW</span>
+                        <span style="font-weight:700;color:#fff;font-size:12px;">#CAOZSSJ</span>
+                        <span class="channel-tag badge-twitch">TWITCH</span>
+                        <span class="channel-tag" style="background:rgba(46,213,115,0.2);color:#2ed573;">🛡️ MOD</span>
+                      </div>
+                      <span style="font-size:10px;color:var(--text-dim);">● 6,300 viewers</span>
+                    </div>
+                    <div class="mock-chat-feed">
+                      <div class="mock-msg"><span class="m-time">14:01</span> <span class="m-user" style="color:#ffa502;">CaozMod:</span> ¡Bienvenidos todos al stream!</div>
+                      <div class="mock-msg"><span class="m-time">14:03</span> <span class="m-user" style="color:#bf94ff;">SuperSaiyan:</span> Modo torbellino activado</div>
+                    </div>
+                    <div class="mock-input">
+                      <span>Enviar mensaje como Moderador a #CAOZSSJ...</span>
+                      <button class="mock-btn-send">Enviar</button>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="auth-card-status" id="landing-kick-status">
-                <span class="metric-dot" style="background: var(--text-dim);"></span>
-                <span>No configurado</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Stats & Trust Bar -->
+        <section class="landing-stats-bar">
+          <div class="stats-container">
+            <div class="stat-box">
+              <div class="stat-number">⚡ &lt;15ms</div>
+              <div class="stat-label">Latencia IRC WebSocket en vivo</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-box">
+              <div class="stat-number">🛡️ 100%</div>
+              <div class="stat-label">Privacidad en tu Navegador (Client-Side)</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-box">
+              <div class="stat-number">🟣 + 🟢</div>
+              <div class="stat-label">Twitch & Kick en una sola estación</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-box">
+              <div class="stat-number">∞ Canales</div>
+              <div class="stat-label">Sin límites de moderación simultánea</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section id="landing-how-it-works" class="landing-section">
+          <div class="section-container">
+            <div class="section-header-center">
+              <span class="section-tag">FLUJO DE TRABAJO EN 3 PASOS</span>
+              <h2 class="section-title">¿Cómo Funciona OrbiMod?</h2>
+              <p class="section-sub">Diseñado para moderadores profesionales y streamers que requieren máxima agilidad sin fricción.</p>
+            </div>
+
+            <div class="steps-grid">
+              <div class="step-card">
+                <div class="step-badge">Paso 1</div>
+                <div class="step-icon">🔑</div>
+                <h3 class="step-title">Vincula tu Cuenta Oficial</h3>
+                <p class="step-desc">
+                  Conéctate con tu cuenta de Twitch (1-clic OAuth oficial) o Kick Pusher. Sin necesidad de registrar contraseñas en servidores externos.
+                </p>
               </div>
-              <button id="btn-landing-connect-kick" class="btn btn-kick btn-auth-action">
-                <span>🟢 Conectar con Kick</span>
+
+              <div class="step-card highlight">
+                <div class="step-badge">Paso 2</div>
+                <div class="step-icon">⚡</div>
+                <h3 class="step-title">Auto-Detección Inteligente</h3>
+                <p class="step-desc">
+                  La API Helix escanea en tiempo real todas las salas donde tienes privilegios de moderador y te permite seleccionar con qué canales trabajar hoy.
+                </p>
+              </div>
+
+              <div class="step-card">
+                <div class="step-badge">Paso 3</div>
+                <div class="step-icon">🎛️</div>
+                <h3 class="step-title">Lanza tu Deck & Modera</h3>
+                <p class="step-desc">
+                  Accede a la estación con chats simultáneos, timeouts en 1-clic, macros con teclas rápidas (Ctrl+1..5), radar de raids y escudo anti-spam.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Features Deep-Dive Grid -->
+        <section id="landing-features" class="landing-section bg-alt">
+          <div class="section-container">
+            <div class="section-header-center">
+              <span class="section-tag">HERRAMIENTAS DE ÉLITE</span>
+              <h2 class="section-title">Todo lo que necesitas para moderar streams gigantes</h2>
+              <p class="section-sub">Creado para mantener el orden, proteger la comunidad y responder en milisegundos.</p>
+            </div>
+
+            <div class="features-detailed-grid">
+              <!-- Feature 1 -->
+              <div class="feature-detailed-card">
+                <div class="feature-detailed-icon" style="background:rgba(145,70,255,0.15);color:#bf94ff;">⊞</div>
+                <h3 class="feature-detailed-title">Layouts Multi-Deck Inteligentes</h3>
+                <p class="feature-detailed-desc">
+                  Cambia al instante entre cuadrícula equilibrada <strong>Grid 2x2</strong>, canal prioritario <strong>Split 1+2</strong>, <strong>Chat Wall</strong> ultra-rápido de alta densidad para 6+ canales, o <strong>Single Focus</strong>.
+                </p>
+              </div>
+
+              <!-- Feature 2 -->
+              <div class="feature-detailed-card">
+                <div class="feature-detailed-icon" style="background:rgba(46,213,115,0.15);color:#2ed573;">🛡️</div>
+                <h3 class="feature-detailed-title">AutoMod & Escudo Anti-Spam</h3>
+                <p class="feature-detailed-desc">
+                  Motor de reglas regex, bloqueo de enlaces sospechosos, detector de spam de mayúsculas y cola de aprobación manual antes de que los mensajes lleguen al chat.
+                </p>
+              </div>
+
+              <!-- Feature 3 -->
+              <div class="feature-detailed-card">
+                <div class="feature-detailed-icon" style="background:rgba(255,71,87,0.15);color:#ff4757;">⏱️</div>
+                <h3 class="feature-detailed-title">Sanciones Rápidas en 1-Clic</h3>
+                <p class="feature-detailed-desc">
+                  Aplica purgas instantáneas (1s), timeouts escalonados (60s, 5m, 10m, 24h), eliminación de mensajes y baneos permanentes con menú contextual flotante.
+                </p>
+              </div>
+
+              <!-- Feature 4 -->
+              <div class="feature-detailed-card">
+                <div class="feature-detailed-icon" style="background:rgba(255,165,2,0.15);color:#ffa502;">📡</div>
+                <h3 class="feature-detailed-title">Radar de Raids & Eventos</h3>
+                <p class="feature-detailed-desc">
+                  Detecta ráfagas repentinas de mensajes, sub bombs y raids entrantes. Activa el <strong>Modo Escudo Global (Alt+S)</strong> para blindar todos tus canales a la vez.
+                </p>
+              </div>
+
+              <!-- Feature 5 -->
+              <div class="feature-detailed-card">
+                <div class="feature-detailed-icon" style="background:rgba(112,161,255,0.15);color:#70a1ff;">🔍</div>
+                <h3 class="feature-detailed-title">Inspector de Usuarios Consolidado</h3>
+                <p class="feature-detailed-desc">
+                  Examina el historial de mensajes de cualquier espectador en la sesión, añade notas privadas compartidas y consulta su historial de sanciones previas.
+                </p>
+              </div>
+
+              <!-- Feature 6 -->
+              <div class="feature-detailed-card">
+                <div class="feature-detailed-icon" style="background:rgba(236,204,104,0.15);color:#eccc68;">📋</div>
+                <h3 class="feature-detailed-title">Registro de Auditoría Exportable</h3>
+                <p class="feature-detailed-desc">
+                  Historial inmutable con marca de tiempo de cada acción tomada por moderadores o AutoMod. Exportación con 1-clic a formatos <strong>CSV y JSON</strong> para reportes.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Security & Architecture Section -->
+        <section id="landing-security" class="landing-section">
+          <div class="section-container">
+            <div class="security-box-wrapper">
+              <div class="security-icon-large">🔒</div>
+              <div class="security-text-content">
+                <h2 style="font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 8px;">Arquitectura Segura y Respetuosa con tu Privacidad</h2>
+                <p style="font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 16px;">
+                  OrbiMod funciona de forma 100% Client-Side en tu navegador web. Tu token OAuth de Twitch y credenciales de Kick se almacenan de manera local y cifrada en tu propio dispositivo (<code style="color:var(--twitch-purple);">localStorage</code>). Las conexiones se realizan de forma directa mediante WebSockets oficiales a los servidores de Twitch y Kick, garantizando cero intermediarios y cero almacenamiento de tus datos privados.
+                </p>
+                <div class="security-badges-list">
+                  <div class="sec-badge"><span>✓</span> Cero servidores intermediarios</div>
+                  <div class="sec-badge"><span>✓</span> OAuth oficial de Twitch Developer</div>
+                  <div class="sec-badge"><span>✓</span> Conexión directa WebSocket IRC</div>
+                  <div class="sec-badge"><span>✓</span> Tokens aislados en tu navegador</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section id="landing-faq" class="landing-section bg-alt">
+          <div class="section-container">
+            <div class="section-header-center">
+              <span class="section-tag">DUDAS RESUELTAS</span>
+              <h2 class="section-title">Preguntas Frecuentes (FAQ)</h2>
+              <p class="section-sub">Todo lo que necesitas saber antes de empezar a usar OrbiMod.</p>
+            </div>
+
+            <div class="faq-accordion-container">
+              <div class="faq-item">
+                <button class="faq-question">
+                  <span>¿Necesito descargar o instalar algún programa en mi PC?</span>
+                  <span class="faq-arrow">+</span>
+                </button>
+                <div class="faq-answer">
+                  <p>No. OrbiMod se ejecuta 100% en la web a través de tu navegador moderno (Chrome, Edge, Firefox, Brave, Safari). No requiere extensiones pesadas ni instalaciones complejas.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  <span>¿Es seguro conectar mi cuenta de Twitch con OrbiMod?</span>
+                  <span class="faq-arrow">+</span>
+                </button>
+                <div class="faq-answer">
+                  <p>Totalmente seguro. La conexión se realiza a través del protocolo oficial OAuth de Twitch. Tu contraseña nunca se comparte con OrbiMod y el token generado se guarda exclusivamente en la memoria local de tu navegador.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  <span>¿Cómo sabe OrbiMod qué canales modero?</span>
+                  <span class="faq-arrow">+</span>
+                </button>
+                <div class="faq-answer">
+                  <p>Al autenticarte con Twitch, OrbiMod consulta el endpoint oficial de la API Helix (<code>/helix/moderation/channels</code>) con tu ID de usuario, obteniendo al instante la lista verificada de todos los canales donde tienes rango de moderador.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  <span>¿Puedo moderar canales de Twitch y Kick al mismo tiempo?</span>
+                  <span class="faq-arrow">+</span>
+                </button>
+                <div class="faq-answer">
+                  <p>¡Sí! OrbiMod fue diseñado específicamente como una estación unificada. Puedes tener canales de Twitch y canales de Kick en la misma cuadrícula respondiendo a los chats de forma simultánea.</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  <span>¿Puedo desactivar los videos en vivo para ahorrar datos o memoria?</span>
+                  <span class="faq-arrow">+</span>
+                </button>
+                <div class="faq-answer">
+                  <p>Sí. Puedes desactivar los reproductores de video en vivo desde el configurador o usar el modo bajo demanda con el botón de cámara (📹) en cada tarjeta para disfrutar de un modo chat ligero de máxima velocidad.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Final CTA Banner -->
+        <section class="landing-final-cta">
+          <div class="final-cta-container">
+            <h2 class="final-cta-title">¿Listo para transformar tu experiencia de moderación?</h2>
+            <p class="final-cta-sub">Únete a los moderadores que gestionan múltiples salas con máxima velocidad y control total.</p>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+              <button id="btn-footer-start-auth" class="btn btn-primary btn-lg" style="box-shadow:0 0 25px var(--twitch-purple-glow);">
+                <span>🚀 Iniciar Sesión y Lanzar OrbiMod →</span>
               </button>
             </div>
           </div>
+        </section>
 
-          <!-- Feature Highlights Grid -->
-          <div class="landing-features-grid">
-            <div class="feature-item">
-              <div class="feature-icon">⚡</div>
-              <div class="feature-name">Auto-Detección de Canales</div>
-              <div class="feature-desc">Lee en vivo todos los canales donde eres moderador sin tener que escribirlos uno a uno.</div>
+        <!-- Footer -->
+        <footer class="landing-footer">
+          <div class="footer-container">
+            <div class="footer-brand">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="brand-logo" style="width: 22px; height: 22px; font-size: 11px;">
+                  <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                </div>
+                <span style="font-weight: 800; color: #fff; font-size: 14px;">ORBIMOD SUITE</span>
+              </div>
+              <div style="font-size: 11.5px; color: var(--text-dim); margin-top: 4px;">
+                Software profesional de alta velocidad para moderación en vivo.
+              </div>
             </div>
-            <div class="feature-item">
-              <div class="feature-icon">🛡️</div>
-              <div class="feature-name">AutoMod & Escudo Anti-Spam</div>
-              <div class="feature-desc">Filtro de enlaces sospechosos, regex de palabras prohibidas y limitador de mayúsculas.</div>
+
+            <div class="footer-links">
+              <a href="https://github.com/Bersek3/Orbimod" target="_blank" rel="noreferrer" class="footer-link">GitHub Repository</a>
+              <a href="#landing-features" class="footer-link">Funcionalidades</a>
+              <a href="#landing-security" class="footer-link">Seguridad</a>
+              <a href="#landing-faq" class="footer-link">FAQ</a>
             </div>
-            <div class="feature-item">
-              <div class="feature-icon">⏱️</div>
-              <div class="feature-name">Sanciones en 1-Clic</div>
-              <div class="feature-desc">Timeouts instantáneos (1s, 60s, 10m, 24h), baneos y eliminación de mensajes al pasar el cursor.</div>
-            </div>
-            <div class="feature-item">
-              <div class="feature-icon">🎛️</div>
-              <div class="feature-name">Layouts Multi-Deck</div>
-              <div class="feature-desc">Modos Grid 2x2, Split 1+2, Chat Wall de alta velocidad y Focus para adaptarte a cualquier pantalla.</div>
+
+            <div class="footer-copy">
+              <span>© 2026 OrbiMod. Desarrollado para streamers y moderadores de élite.</span>
             </div>
           </div>
+        </footer>
 
-          <!-- Bottom Action -->
-          <div style="margin-top: 24px; display: flex; justify-content: center;">
-            <button id="btn-landing-go-selector" class="btn btn-primary" style="font-size: 14px; padding: 12px 28px; border-radius: var(--radius-full); box-shadow: 0 0 25px var(--twitch-purple-glow);">
-              <span>Continuar a Seleccionar Canales →</span>
-            </button>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -429,6 +765,6 @@
   </div>
 
   <!-- Main ES Module Entry Point with Cache Buster -->
-  <script type="module" src="./js/app.js?v=3.2"></script>
+  <script type="module" src="./js/app.js?v=4.0"></script>
 </body>
 </html>
