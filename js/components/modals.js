@@ -1255,7 +1255,14 @@ export class UnifiedAuthModal {
         }
         this.close();
       } else {
-        await supabaseAuthService.signInWithGoogle();
+        const res = await supabaseAuthService.signInWithGoogle();
+        if (res && !res.success) {
+          const feedback = this.modal.querySelector('#email-auth-feedback');
+          if (feedback) {
+            feedback.style.display = 'block';
+            feedback.innerHTML = `⚠️ <strong>Google Auth no activado en tu Supabase:</strong><br><small style="color:#7f8c8d;">Debes activar el proveedor Google en tu <a href="https://supabase.com/dashboard/project/kypzqrqdcqytbxuqpvzg/auth/providers" target="_blank" style="color:#00a8ff;text-decoration:underline;">Panel de Supabase &gt; Authentication &gt; Providers &gt; Google</a>. Mientras tanto puedes iniciar sesión con tu Email, Twitch o Kick.</small>`;
+          }
+        }
       }
     });
 

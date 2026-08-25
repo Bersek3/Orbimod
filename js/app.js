@@ -446,7 +446,11 @@ class OrbiModApp {
         this.showToast(`☁️ Sesión activa: ${user.displayName || user.email}`, 'success');
         this.switchView('deck');
       } else {
-        await supabaseAuthService.signInWithGoogle();
+        const res = await supabaseAuthService.signInWithGoogle();
+        if (res && !res.success) {
+          this.showToast(`⚠️ Google Auth pendiente de activación en Supabase`, 'warning');
+          this.unifiedAuthModal.open('login');
+        }
       }
     });
 
