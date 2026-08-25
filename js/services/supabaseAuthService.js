@@ -438,12 +438,64 @@ class SupabaseAuthService {
   }
 
   /**
-   * Save Linked Accounts (Twitch, Kick) to Master Supabase Profile
+   * Check if a Twitch or Kick account is already linked to another Master Email Account
+   */
+  async checkAccountConflict(platform, username, currentUserId) {
+    if (!username) return { hasConflict: false };
+    const client = this.getClient();
+    if (!client) return { hasConflict: false };
+
+    const cleanUser = username.toLowerCase().replace(/[@#]/g, '').trim();
+    const col = platform === 'twitch' ? 'twitch_login' : 'kick_username';
+
+    try {
+      let query = client.from('profiles').select('id, email, username').ilike(col, cleanUser);
+      if (currentUserId) {
+        query = query.neq('id', currentUserId);
+      }
+      const { data, error } = await query;
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const owner = data[0];
+        const platformName = platform === 'twitch' ? 'Twitch' : 'Kick';
+        const maskedEmail = owner.email ? (owner.email.substring(0, 3) + '***@' + owner.email.split('@')[1]) : 'otra cuenta';
+        return {
+          hasConflict: true,
+          ownerId: owner.id,
+          ownerEmail: owner.email,
+          ownerUsername: owner.username,
+          error: `🚫 La cuenta de ${platformName} (@${username}) ya está vinculada al correo principal (${maskedEmail}). Por seguridad no puede vincularse a otra cuenta diferente.`
+        };
+      }
+      return { hasConflict: false };
+    } catch (e) {
+      console.warn('[Supabase checkAccountConflict error]', e);
+      return { hasConflict: false };
+    }
+  }
+
+  /**
+   * Save Linked Accounts (Twitch, Kick) to Master Supabase Profile with Security Validation
    */
   async saveLinkedAccounts(userId, { twitch, kick, email, username, avatar }) {
     if (!userId) return { success: false };
     const client = this.getClient();
     if (!client) return { success: false };
+
+    // 0. Conflict Validation: Prevent stealing already-linked accounts
+    if (twitch && (twitch.login || twitch.username)) {
+      const conflictTwitch = await this.checkAccountConflict('twitch', twitch.login || twitch.username, userId);
+      if (conflictTwitch.hasConflict) {
+        return { success: false, conflict: true, error: conflictTwitch.error };
+      }
+    }
+
+    if (kick && (kick.username || kick.login)) {
+      const conflictKick = await this.checkAccountConflict('kick', kick.username || kick.login, userId);
+      if (conflictKick.hasConflict) {
+        return { success: false, conflict: true, error: conflictKick.error };
+      }
+    }
 
     const user = this.getCurrentUser();
     const payload = {

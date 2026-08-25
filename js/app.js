@@ -300,6 +300,19 @@ class OrbiModApp {
         const validation = await apiService.validateTwitchToken(accessToken);
 
         if (validation.valid) {
+          const curUser = supabaseAuthService.getCurrentUser();
+          
+          // Conflict Protection: Ensure this Twitch account is not already owned by another user
+          if (curUser && curUser.id) {
+            const conflict = await supabaseAuthService.checkAccountConflict('twitch', validation.login, curUser.id);
+            if (conflict.hasConflict) {
+              window.history.replaceState(null, null, window.location.pathname);
+              this.showToast(conflict.error, 'warning');
+              alert(conflict.error);
+              return true;
+            }
+          }
+
           const userProfile = await apiService.fetchTwitchUserProfile(validation.token, validation.clientId);
           const profiles = storageService.getProfiles();
           profiles.twitch = {
@@ -327,7 +340,6 @@ class OrbiModApp {
           storageService.saveAuthCreds(creds);
 
           // Sync to Supabase Master Account if authenticated
-          const curUser = supabaseAuthService.getCurrentUser();
           if (curUser && curUser.id) {
             await supabaseAuthService.saveLinkedAccounts(curUser.id, { twitch: profiles.twitch });
           }
@@ -390,6 +402,19 @@ class OrbiModApp {
           if (uRes.avatar) kickAvatar = uRes.avatar;
         }
 
+        const curUser = supabaseAuthService.getCurrentUser();
+
+        // Conflict Protection: Ensure this Kick account is not already owned by another user
+        if (curUser && curUser.id) {
+          const conflict = await supabaseAuthService.checkAccountConflict('kick', kickUser, curUser.id);
+          if (conflict.hasConflict) {
+            window.history.replaceState(null, null, window.location.pathname);
+            this.showToast(conflict.error, 'warning');
+            alert(conflict.error);
+            return true;
+          }
+        }
+
         const profiles = storageService.getProfiles();
         profiles.kick = {
           valid: true,
@@ -414,7 +439,6 @@ class OrbiModApp {
         storageService.saveAuthCreds(creds);
 
         // Sync to Supabase Master Account if authenticated
-        const curUser = supabaseAuthService.getCurrentUser();
         if (curUser && curUser.id) {
           await supabaseAuthService.saveLinkedAccounts(curUser.id, { kick: profiles.kick });
         }
