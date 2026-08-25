@@ -785,18 +785,17 @@ export class HotkeysModal {
 }
 
 // ==========================================
-// 5. UNIFIED AUTH MODAL (TWITCH, KICK & CORREO / SUPABASE)
+// 5. UNIFIED AUTH MODAL (MATCHING REFERENCE DESIGN)
 // ==========================================
 export class UnifiedAuthModal {
   constructor(modalElement, onLoginSuccess) {
     this.modal = modalElement;
     this.onLoginSuccess = onLoginSuccess;
-    this.activeTab = 'twitch'; // 'twitch' | 'kick' | 'email'
     this.emailMode = 'login'; // 'login' | 'register' | 'config'
   }
 
-  open(defaultTab = 'twitch') {
-    this.activeTab = defaultTab;
+  open(defaultMode = 'login') {
+    this.emailMode = defaultMode;
     this.render();
     this.modal.classList.add('open');
   }
@@ -806,164 +805,104 @@ export class UnifiedAuthModal {
   }
 
   render() {
-    const profiles = storageService.getProfiles();
-    const creds = storageService.getAuthCreds();
     const currentUser = supabaseAuthService.getCurrentUser();
 
-    this.modal.innerHTML = `
-      <div class="modal-container auth-unified-modal" style="max-width: 520px;">
-        <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
-          <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
-            <div class="brand-logo" style="width: 28px; height: 28px; font-size: 14px;">
-              <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+    if (this.emailMode === 'config') {
+      this.modal.innerHTML = `
+        <div class="modal-container auth-minimal-card" style="max-width: 380px;">
+          <div class="auth-minimal-header">
+            <h3 class="auth-minimal-title">Configurar Supabase</h3>
+            <button class="auth-minimal-close close-modal-btn" title="Cerrar">✕</button>
+          </div>
+          <div style="font-size: 12px; color: #7f8c8d; margin-bottom: 16px; line-height: 1.4;">
+            Ingresa los datos de tu proyecto Supabase para autenticación en la nube.
+          </div>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+              <label style="font-size: 11px; font-weight:700; color:#2d3436; margin-bottom:4px; display:block;">Project URL</label>
+              <input type="text" id="supabase-url-input" class="minimal-input" placeholder="https://xyzcompany.supabase.co" value="${supabaseAuthService.supabaseConfig.url || ''}">
             </div>
             <div>
-              <div style="font-weight: 800; font-size: 16px; color: #fff;">Iniciar Sesión en OrbiMod</div>
-              <div style="font-size: 11.5px; color: var(--text-dim);">Selecciona tu método de autenticación preferido</div>
+              <label style="font-size: 11px; font-weight:700; color:#2d3436; margin-bottom:4px; display:block;">Anon Public Key</label>
+              <input type="password" id="supabase-key-input" class="minimal-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI..." value="${supabaseAuthService.supabaseConfig.anonKey || ''}">
+            </div>
+            <button id="btn-save-supabase-config" class="minimal-submit-btn" style="margin-top:8px;">GUARDAR CONFIGURACIÓN</button>
+            <div style="text-align: center; margin-top: 10px;">
+              <a href="#" id="btn-cancel-supabase-config" style="font-size: 12px; color: #00a8ff; text-decoration: none;">← Volver al Login</a>
             </div>
           </div>
-          <button class="icon-btn-subtle close-modal-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </div>
+      `;
+      this._bindEvents();
+      return;
+    }
+
+    this.modal.innerHTML = `
+      <div class="modal-container auth-minimal-card">
+        <!-- Header -->
+        <div class="auth-minimal-header">
+          <h3 class="auth-minimal-title">${this.emailMode === 'register' ? 'Register with' : 'Login with'}</h3>
+          <button class="auth-minimal-close close-modal-btn" title="Cerrar">✕</button>
+        </div>
+
+        <!-- 3 Circular Social Login Buttons -->
+        <div class="auth-social-row">
+          <!-- 1. Twitch Circle -->
+          <button class="auth-social-circle circle-twitch" id="btn-auth-circle-twitch" title="Conectar con Twitch OAuth (1-Clic)">
+            <svg viewBox="0 0 24 24" class="social-svg-icon"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+          </button>
+
+          <!-- 2. Google / Custom OAuth Circle -->
+          <button class="auth-social-circle circle-google" id="btn-auth-circle-google" title="Iniciar sesión con Google">
+            <span style="font-family:'Inter',sans-serif;font-weight:700;font-size:18px;line-height:1;">g<sup>+</sup></span>
+          </button>
+
+          <!-- 3. Kick Circle -->
+          <button class="auth-social-circle circle-kick" id="btn-auth-circle-kick" title="Conectar con Kick">
+            <span style="font-family:'Inter',sans-serif;font-weight:900;font-size:20px;line-height:1;">K</span>
           </button>
         </div>
 
-        <!-- Auth Method Tabs -->
-        <div class="auth-tabs-nav">
-          <button class="auth-tab-btn ${this.activeTab === 'twitch' ? 'active' : ''}" data-tab="twitch">
-            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
-            <span>Twitch</span>
-          </button>
-          <button class="auth-tab-btn ${this.activeTab === 'kick' ? 'active' : ''}" data-tab="kick">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--kick-green);"></span>
-            <span>Kick</span>
-          </button>
-          <button class="auth-tab-btn ${this.activeTab === 'email' ? 'active' : ''}" data-tab="email">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            <span>Correo / Supabase</span>
-          </button>
+        <!-- Divider with "or" -->
+        <div class="auth-or-divider">
+          <div class="divider-line"></div>
+          <span class="divider-text">or</span>
+          <div class="divider-line"></div>
         </div>
 
-        <div class="modal-body auth-modal-content-area" style="padding-top: 10px;">
-          <!-- TAB 1: TWITCH -->
-          <div class="auth-tab-pane ${this.activeTab === 'twitch' ? 'active' : ''}" id="pane-twitch">
-            <div class="auth-highlight-banner twitch">
-              <div style="font-weight: 700; font-size: 13.5px; color: #fff; margin-bottom: 4px;">🟣 Conexión Oficial con Twitch Developer OAuth</div>
-              <div style="font-size: 11.5px; color: rgba(255,255,255,0.8); line-height: 1.4;">
-                Conexión segura de 1-clic que auto-detecta todos los canales donde tienes rol de moderador y habilita sanciones instantáneas.
-              </div>
+        <!-- Email & Password Form -->
+        <form id="minimal-auth-form" class="auth-minimal-form">
+          ${this.emailMode === 'register' ? `
+            <div class="minimal-field">
+              <input type="text" id="auth-email-name" class="minimal-input" placeholder="Name or Nickname" required />
             </div>
+          ` : ''}
 
-            ${profiles.twitch && profiles.twitch.valid ? `
-              <div class="connected-account-preview twitch" style="display: flex; align-items: center; justify-content: space-between; background: rgba(145, 70, 255, 0.1); border: 1px solid rgba(145, 70, 255, 0.3); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <img src="${profiles.twitch.avatar || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop'}" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--twitch-purple);">
-                  <div>
-                    <div style="font-weight: 700; color: #fff; font-size: 13px;">@${profiles.twitch.login}</div>
-                    <div style="font-size: 11px; color: var(--success-green);">● Cuenta Vinculada & Activa</div>
-                  </div>
-                </div>
-                <button class="btn btn-secondary btn-sm" id="btn-modal-relink-twitch">Re-conectar</button>
-              </div>
-            ` : ''}
-
-            <button id="btn-auth-launch-twitch" class="btn btn-primary" style="width: 100%; padding: 13px; font-size: 13.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 18px var(--twitch-purple-glow);">
-              <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor;"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
-              <span>Conectar con Twitch en 1-Clic</span>
-            </button>
-
-            <div style="margin-top: 12px; font-size: 11px; color: var(--text-dim); text-align: center;">
-              🔒 Permisos de moderación seguros vía Twitch Helix API. Tu token nunca sale de tu navegador.
-            </div>
+          <div class="minimal-field">
+            <input type="email" id="auth-email-input" class="minimal-input" placeholder="Email" required value="${currentUser?.email || ''}" />
           </div>
 
-          <!-- TAB 2: KICK -->
-          <div class="auth-tab-pane ${this.activeTab === 'kick' ? 'active' : ''}" id="pane-kick">
-            <div class="auth-highlight-banner kick">
-              <div style="font-weight: 700; font-size: 13.5px; color: #fff; margin-bottom: 4px;">🟢 Conexión con Kick Pusher Cluster</div>
-              <div style="font-size: 11.5px; color: rgba(255,255,255,0.8); line-height: 1.4;">
-                Conéctate a las salas de chat de Kick en tiempo real para moderar simultáneamente.
-              </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 12px;">
-              <label class="form-label">Nombre de Usuario en Kick</label>
-              <input type="text" id="auth-kick-username" class="form-input" placeholder="ej. MiUsuarioKick" value="${profiles.kick?.username || creds.kickUsername || ''}">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 16px;">
-              <label class="form-label">Token de Sesión o API (Opcional)</label>
-              <input type="password" id="auth-kick-token" class="form-input" placeholder="Bearer token o déjalo vacío para modo lectura" value="${creds.kickToken || ''}">
-            </div>
-
-            <button id="btn-auth-save-kick" class="btn btn-kick" style="width: 100%; padding: 12px; font-size: 13.5px; font-weight: 700;">
-              <span>Guardar & Conectar Kick</span>
-            </button>
+          <div class="minimal-field">
+            <input type="password" id="auth-password-input" class="minimal-input" placeholder="Password" required />
           </div>
 
-          <!-- TAB 3: EMAIL / SUPABASE -->
-          <div class="auth-tab-pane ${this.activeTab === 'email' ? 'active' : ''}" id="pane-email">
-            <div style="display: flex; gap: 8px; margin-bottom: 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
-              <button class="btn-text-tab ${this.emailMode === 'login' ? 'active' : ''}" id="btn-email-mode-login">Iniciar Sesión</button>
-              <button class="btn-text-tab ${this.emailMode === 'register' ? 'active' : ''}" id="btn-email-mode-register">Crear Cuenta</button>
-              <button class="btn-text-tab ${this.emailMode === 'config' ? 'active' : ''}" id="btn-email-mode-config" style="margin-left: auto; font-size: 11px;">⚙️ Config Supabase</button>
-            </div>
+          <div id="email-auth-feedback" class="minimal-auth-feedback" style="display:none;"></div>
 
-            ${currentUser ? `
-              <div style="background: rgba(46, 213, 115, 0.1); border: 1px solid rgba(46, 213, 115, 0.3); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                  <div style="font-weight: 700; color: #fff; font-size: 12.5px;">${currentUser.displayName || currentUser.email}</div>
-                  <div style="font-size: 11px; color: var(--text-dim);">${currentUser.email}</div>
-                </div>
-                <button class="btn btn-secondary btn-sm" id="btn-email-signout" style="color: var(--danger-red);">Cerrar Sesión</button>
-              </div>
-            ` : ''}
+          <!-- Bright Blue Full-Width Login Button -->
+          <button type="submit" id="btn-submit-email-auth" class="minimal-submit-btn">
+            ${this.emailMode === 'register' ? 'REGISTER' : 'LOGIN'}
+          </button>
+        </form>
 
-            ${this.emailMode === 'config' ? `
-              <!-- Supabase Custom Keys Config -->
-              <div class="supabase-config-box">
-                <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 6px;">⚡ Conectar Proyecto de Supabase</div>
-                <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 10px;">Ingresa la URL y Anon Key de tu proyecto Supabase para sincronización completa en la nube.</div>
-                
-                <div class="form-group" style="margin-bottom: 8px;">
-                  <label class="form-label" style="font-size: 11px;">Project URL</label>
-                  <input type="text" id="supabase-url-input" class="form-input" placeholder="https://xyzcompany.supabase.co" value="${supabaseAuthService.supabaseConfig.url || ''}">
-                </div>
-                <div class="form-group" style="margin-bottom: 12px;">
-                  <label class="form-label" style="font-size: 11px;">Anon Public Key</label>
-                  <input type="password" id="supabase-key-input" class="form-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." value="${supabaseAuthService.supabaseConfig.anonKey || ''}">
-                </div>
-                <div style="display: flex; gap: 8px;">
-                  <button class="btn btn-primary btn-sm" id="btn-save-supabase-config">Guardar Configuración</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-cancel-supabase-config">Volver</button>
-                </div>
-              </div>
-            ` : `
-              <!-- Email Form -->
-              <form id="email-auth-form">
-                ${this.emailMode === 'register' ? `
-                  <div class="form-group" style="margin-bottom: 10px;">
-                    <label class="form-label">Nombre o Apodo de Moderador</label>
-                    <input type="text" id="auth-email-name" class="form-input" placeholder="ej. AlexMod" required>
-                  </div>
-                ` : ''}
-
-                <div class="form-group" style="margin-bottom: 10px;">
-                  <label class="form-label">Correo Electrónico</label>
-                  <input type="email" id="auth-email-input" class="form-input" placeholder="tu@correo.com" required value="${currentUser?.email || ''}">
-                </div>
-
-                <div class="form-group" style="margin-bottom: 14px;">
-                  <label class="form-label">Contraseña</label>
-                  <input type="password" id="auth-password-input" class="form-input" placeholder="Mínimo 6 caracteres" required>
-                </div>
-
-                <div id="email-auth-feedback" style="font-size: 12px; margin-bottom: 10px; display: none;"></div>
-
-                <button type="submit" id="btn-submit-email-auth" class="btn btn-primary" style="width: 100%; padding: 11px; font-size: 13px; font-weight: 700;">
-                  <span>${this.emailMode === 'login' ? 'Iniciar Sesión con Correo' : 'Crear Cuenta en OrbiMod'}</span>
-                </button>
-              </form>
-            `}
+        <!-- Footer Link -->
+        <div class="auth-minimal-footer">
+          ${this.emailMode === 'register' ? `
+            <span>Already have an account? <a href="#" id="auth-toggle-mode">Login</a></span>
+          ` : `
+            <span>Looking to <a href="#" id="auth-toggle-mode">create an account</a> ?</span>
+          `}
+          <div style="margin-top: 10px;">
+            <a href="#" id="auth-toggle-supabase" style="font-size: 11px; color: #95a5a6; text-decoration: none;">⚙️ Configurar Supabase</a>
           </div>
         </div>
       </div>
@@ -975,48 +914,29 @@ export class UnifiedAuthModal {
   _bindEvents() {
     this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
 
-    // Tabs navigation
-    this.modal.querySelectorAll('.auth-tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.activeTab = btn.dataset.tab;
-        this.render();
-      });
-    });
-
-    // Twitch Launch
-    this.modal.querySelector('#btn-auth-launch-twitch')?.addEventListener('click', () => {
+    // 1. Twitch Circle Click
+    this.modal.querySelector('#btn-auth-circle-twitch')?.addEventListener('click', () => {
       const url = apiService.getTwitchAuthUrl();
       window.location.href = url;
     });
 
-    this.modal.querySelector('#btn-modal-relink-twitch')?.addEventListener('click', () => {
+    // 2. Google Circle Click
+    this.modal.querySelector('#btn-auth-circle-google')?.addEventListener('click', () => {
       const url = apiService.getTwitchAuthUrl();
       window.location.href = url;
     });
 
-    // Kick Save
-    this.modal.querySelector('#btn-auth-save-kick')?.addEventListener('click', () => {
-      const usernameInput = this.modal.querySelector('#auth-kick-username');
-      const tokenInput = this.modal.querySelector('#auth-kick-token');
-      const username = usernameInput ? usernameInput.value.trim() : '';
-      const token = tokenInput ? tokenInput.value.trim() : '';
-
-      if (!username) {
-        alert('Por favor ingresa tu nombre de usuario de Kick');
-        return;
-      }
+    // 3. Kick Circle Click
+    this.modal.querySelector('#btn-auth-circle-kick')?.addEventListener('click', () => {
+      const username = prompt('Ingresa tu nombre de usuario en Kick:')?.trim();
+      if (!username) return;
 
       const creds = storageService.getAuthCreds();
       creds.kickUsername = username;
-      creds.kickToken = token;
       storageService.saveAuthCreds(creds);
 
       const profiles = storageService.getProfiles();
-      profiles.kick = {
-        valid: true,
-        username: username,
-        token: token
-      };
+      profiles.kick = { valid: true, username: username, token: '' };
       storageService.saveProfiles(profiles);
 
       if (this.onLoginSuccess) {
@@ -1025,23 +945,22 @@ export class UnifiedAuthModal {
       this.close();
     });
 
-    // Email Mode toggles
-    this.modal.querySelector('#btn-email-mode-login')?.addEventListener('click', () => {
-      this.emailMode = 'login';
+    // Mode Toggle (Login <-> Register)
+    this.modal.querySelector('#auth-toggle-mode')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.emailMode = this.emailMode === 'login' ? 'register' : 'login';
       this.render();
     });
 
-    this.modal.querySelector('#btn-email-mode-register')?.addEventListener('click', () => {
-      this.emailMode = 'register';
-      this.render();
-    });
-
-    this.modal.querySelector('#btn-email-mode-config')?.addEventListener('click', () => {
+    // Supabase Config Toggle
+    this.modal.querySelector('#auth-toggle-supabase')?.addEventListener('click', (e) => {
+      e.preventDefault();
       this.emailMode = 'config';
       this.render();
     });
 
-    this.modal.querySelector('#btn-cancel-supabase-config')?.addEventListener('click', () => {
+    this.modal.querySelector('#btn-cancel-supabase-config')?.addEventListener('click', (e) => {
+      e.preventDefault();
       this.emailMode = 'login';
       this.render();
     });
@@ -1056,14 +975,8 @@ export class UnifiedAuthModal {
       this.render();
     });
 
-    // Sign Out Email
-    this.modal.querySelector('#btn-email-signout')?.addEventListener('click', async () => {
-      await supabaseAuthService.signOut();
-      this.render();
-    });
-
-    // Submit Email Form
-    const emailForm = this.modal.querySelector('#email-auth-form');
+    // Form Submit (Login / Register via Supabase & Email)
+    const emailForm = this.modal.querySelector('#minimal-auth-form');
     if (emailForm) {
       emailForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1074,7 +987,7 @@ export class UnifiedAuthModal {
         const submitBtn = this.modal.querySelector('#btn-submit-email-auth');
 
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Procesando...';
+        submitBtn.textContent = 'PROCESANDO...';
 
         let res;
         if (this.emailMode === 'register') {
@@ -1084,7 +997,7 @@ export class UnifiedAuthModal {
         }
 
         submitBtn.disabled = false;
-        submitBtn.textContent = this.emailMode === 'login' ? 'Iniciar Sesión con Correo' : 'Crear Cuenta en OrbiMod';
+        submitBtn.textContent = this.emailMode === 'register' ? 'REGISTER' : 'LOGIN';
 
         if (res.success) {
           if (this.onLoginSuccess) {
@@ -1094,7 +1007,6 @@ export class UnifiedAuthModal {
         } else {
           if (feedback) {
             feedback.style.display = 'block';
-            feedback.style.color = 'var(--danger-red)';
             feedback.textContent = res.error;
           }
         }

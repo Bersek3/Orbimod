@@ -86,9 +86,9 @@
 }
 
 html, body {
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
   background-color: var(--bg-primary);
   color: var(--text-main);
   font-family: var(--font-sans);
@@ -96,7 +96,6 @@ html, body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  user-select: none;
 }
 
 /* Background Ambient Glow */
@@ -128,8 +127,8 @@ body::after {
 #app-root {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100vw;
+  width: 100%;
+  min-height: 100vh;
   position: relative;
   z-index: 1;
 }
