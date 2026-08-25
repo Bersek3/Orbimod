@@ -1391,3 +1391,228 @@ export class UnifiedAuthModal {
   }
 }
 
+// ==========================================
+// 8. UNIFIED ACCOUNT & PROFILES HUB MODAL
+// ==========================================
+export class UnifiedAccountHubModal {
+  constructor(modalElement, { onLogout, onUpdate, showToast }) {
+    this.modal = modalElement;
+    this.onLogout = onLogout;
+    this.onUpdate = onUpdate;
+    this.showToast = showToast;
+  }
+
+  open() {
+    this.render();
+    this.modal.classList.add('open');
+  }
+
+  close() {
+    this.modal.classList.remove('open');
+  }
+
+  render() {
+    const user = supabaseAuthService.getCurrentUser();
+    const profiles = storageService.getProfiles();
+
+    const email = user ? user.email : 'No autenticado con correo';
+    const displayName = user ? (user.displayName || email.split('@')[0]) : 'Invitado';
+    const avatar = user ? user.avatar : 'https://api.dicebear.com/7.x/identicon/svg?seed=orbimod';
+
+    const twitchLinked = profiles.twitch && profiles.twitch.valid;
+    const kickLinked = profiles.kick && profiles.kick.valid;
+
+    this.modal.innerHTML = `
+      <div class="modal-container" style="max-width: 520px; border-radius: 12px; background: #11141e; border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+        <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding: 16px 20px;">
+          <div class="modal-title" style="display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700;">
+            <span>👑 Centro de Cuenta Unificada</span>
+          </div>
+          <button class="icon-btn-subtle close-modal-btn" title="Cerrar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+          <!-- Master Account Card -->
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px; display: flex; align-items: center; gap: 14px;">
+            <img src="${avatar}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3b82f6; object-fit: cover;" alt="Avatar">
+            <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+              <div style="font-size: 15px; font-weight: 800; color: #fff;">${displayName}</div>
+              <div style="font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis;">${email}</div>
+              <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                <span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                  ☁️ SUPABASE CLOUD SYNC ACTIVO
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">
+            Cuentas Vinculadas a tu Perfil
+          </div>
+
+          <!-- 1. Twitch Account Card -->
+          <div style="background: rgba(145, 70, 255, 0.06); border: 1px solid ${twitchLinked ? 'rgba(145, 70, 255, 0.4)' : 'rgba(255,255,255,0.08)'}; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(145, 70, 255, 0.2); display: flex; align-items: center; justify-content: center; color: #bf94ff; font-weight: 900; font-size: 14px;">
+                🟣
+              </div>
+              <div>
+                <div style="font-size: 13px; font-weight: 700; color: #fff;">Twitch</div>
+                <div style="font-size: 11.5px; color: ${twitchLinked ? '#bf94ff' : 'var(--text-dim)'};">
+                  ${twitchLinked ? `@${profiles.twitch.login} (Vinculada)` : 'No vinculada'}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              ${twitchLinked ? `
+                <button id="btn-hub-unlink-twitch" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px; border-color: rgba(239, 68, 68, 0.4); color: #f87171;">
+                  Desvincular
+                </button>
+              ` : `
+                <button id="btn-hub-link-twitch" class="btn btn-primary" style="background: #9146FF; font-size: 11px; padding: 4px 12px;">
+                  + Vincular Twitch
+                </button>
+              `}
+            </div>
+          </div>
+
+          <!-- 2. Kick Account Card -->
+          <div style="background: rgba(83, 252, 24, 0.05); border: 1px solid ${kickLinked ? 'rgba(83, 252, 24, 0.4)' : 'rgba(255,255,255,0.08)'}; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(83, 252, 24, 0.2); display: flex; align-items: center; justify-content: center; color: #53fc18; font-weight: 900; font-size: 14px;">
+                🟢
+              </div>
+              <div>
+                <div style="font-size: 13px; font-weight: 700; color: #fff;">Kick</div>
+                <div style="font-size: 11.5px; color: ${kickLinked ? '#53fc18' : 'var(--text-dim)'};">
+                  ${kickLinked ? `@${profiles.kick.username} (Vinculada)` : 'No vinculada'}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              ${kickLinked ? `
+                <button id="btn-hub-unlink-kick" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px; border-color: rgba(239, 68, 68, 0.4); color: #f87171;">
+                  Desvincular
+                </button>
+              ` : `
+                <button id="btn-hub-link-kick" class="btn btn-primary" style="background: #53FC18; color: #000; font-weight: 800; font-size: 11px; padding: 4px 12px;">
+                  + Vincular Kick
+                </button>
+              `}
+            </div>
+          </div>
+
+          <!-- Kick Fast Username Connect Box if not linked -->
+          ${!kickLinked ? `
+            <div id="kick-quick-link-box" style="display:none; background: rgba(255,255,255,0.02); border: 1px dashed rgba(83, 252, 24, 0.3); border-radius: 8px; padding: 10px 12px; gap: 8px; flex-direction: column;">
+              <label style="font-size: 11px; color: var(--text-dim);">Escribe tu nombre de usuario en Kick:</label>
+              <div style="display: flex; gap: 6px;">
+                <input type="text" id="hub-kick-username-input" class="minimal-input" placeholder="ej. Bersek" value="Bersek" style="font-size: 12px;">
+                <button id="btn-hub-save-kick" class="btn btn-primary" style="background: #53FC18; color: #000; font-weight: 800; font-size: 11.5px; white-space: nowrap;">
+                  Guardar
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
+            <button id="btn-hub-logout-global" class="btn btn-secondary" style="font-size: 11.5px; color: #ef4444; border-color: rgba(239,68,68,0.3);">
+              🚪 Cerrar Sesión Global
+            </button>
+            <button class="btn btn-secondary close-modal-btn" style="font-size: 11.5px;">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this._bindEvents();
+  }
+
+  _bindEvents() {
+    this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
+
+    // Link Twitch
+    this.modal.querySelector('#btn-hub-link-twitch')?.addEventListener('click', () => {
+      window.location.href = apiService.getTwitchAuthUrl();
+    });
+
+    // Unlink Twitch
+    this.modal.querySelector('#btn-hub-unlink-twitch')?.addEventListener('click', async () => {
+      if (confirm('¿Deseas desvincular tu cuenta de Twitch de tu perfil maestro?')) {
+        const profiles = storageService.getProfiles();
+        delete profiles.twitch;
+        storageService.saveProfiles(profiles);
+
+        const user = supabaseAuthService.getCurrentUser();
+        if (user && user.id) {
+          await supabaseAuthService.saveLinkedAccounts(user.id, { twitch: null });
+        }
+        if (this.showToast) this.showToast('Cuenta de Twitch desvinculada', 'info');
+        if (this.onUpdate) this.onUpdate();
+        this.render();
+      }
+    });
+
+    // Toggle Kick Quick Link Box
+    const linkKickBtn = this.modal.querySelector('#btn-hub-link-kick');
+    const quickBox = this.modal.querySelector('#kick-quick-link-box');
+    linkKickBtn?.addEventListener('click', () => {
+      if (quickBox) {
+        quickBox.style.display = quickBox.style.display === 'none' ? 'flex' : 'none';
+      }
+    });
+
+    // Save Kick username
+    this.modal.querySelector('#btn-hub-save-kick')?.addEventListener('click', async () => {
+      const username = this.modal.querySelector('#hub-kick-username-input')?.value.trim().toLowerCase().replace(/[@#]/g, '');
+      if (!username) return;
+
+      const profiles = storageService.getProfiles();
+      profiles.kick = {
+        valid: true,
+        username: username,
+        token: 'dev_configured'
+      };
+      storageService.saveProfiles(profiles);
+
+      const user = supabaseAuthService.getCurrentUser();
+      if (user && user.id) {
+        await supabaseAuthService.saveLinkedAccounts(user.id, { kick: { username, token: 'dev_configured' } });
+      }
+
+      if (this.showToast) this.showToast(`🟢 Cuenta de Kick @${username} vinculada a tu perfil maestro`, 'success');
+      if (this.onUpdate) this.onUpdate();
+      this.render();
+    });
+
+    // Unlink Kick
+    this.modal.querySelector('#btn-hub-unlink-kick')?.addEventListener('click', async () => {
+      if (confirm('¿Deseas desvincular tu cuenta de Kick de tu perfil maestro?')) {
+        const profiles = storageService.getProfiles();
+        delete profiles.kick;
+        storageService.saveProfiles(profiles);
+
+        const user = supabaseAuthService.getCurrentUser();
+        if (user && user.id) {
+          await supabaseAuthService.saveLinkedAccounts(user.id, { kick: null });
+        }
+        if (this.showToast) this.showToast('Cuenta de Kick desvinculada', 'info');
+        if (this.onUpdate) this.onUpdate();
+        this.render();
+      }
+    });
+
+    // Logout Global
+    this.modal.querySelector('#btn-hub-logout-global')?.addEventListener('click', () => {
+      this.close();
+      if (this.onLogout) this.onLogout();
+    });
+  }
+}
+

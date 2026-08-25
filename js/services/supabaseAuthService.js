@@ -403,6 +403,66 @@ class SupabaseAuthService {
   }
 
   /**
+   * Save Linked Accounts (Twitch, Kick) to Master Supabase Profile
+   */
+  async saveLinkedAccounts(userId, { twitch, kick }) {
+    if (!userId) return { success: false };
+    const client = this.getClient();
+    if (!client) return { success: false };
+
+    const updateObj = {
+      updated_at: new Date().toISOString()
+    };
+    if (twitch !== undefined) {
+      updateObj.twitch_login = twitch ? twitch.login : null;
+      updateObj.twitch_token = twitch ? twitch.token : null;
+    }
+    if (kick !== undefined) {
+      updateObj.kick_username = kick ? kick.username : null;
+      updateObj.kick_token = kick ? kick.token : null;
+    }
+
+    try {
+      const { data, error } = await client
+        .from('profiles')
+        .upsert({
+          id: userId,
+          ...updateObj
+        }, { onConflict: 'id' });
+
+      if (error) {
+        console.warn('[Supabase saveLinkedAccounts error]', error);
+        return { success: false, error: error.message };
+      }
+      return { success: true, data };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  /**
+   * Load Linked Accounts from Master Supabase Profile
+   */
+  async loadLinkedAccounts(userId) {
+    if (!userId) return { success: false };
+    const client = this.getClient();
+    if (!client) return { success: false };
+
+    try {
+      const { data, error } = await client
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) return { success: false, error: error.message };
+      return { success: true, profile: data };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  /**
    * Configure Custom Supabase Credentials
    */
   configureSupabase(url, anonKey) {

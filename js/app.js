@@ -16,7 +16,7 @@ import { AutoModQueueDrawer } from './components/automodQueue.js';
 import { AuditLogDrawer } from './components/auditLog.js';
 import { EventRadarDrawer } from './components/eventRadar.js';
 import { MacroManagerModal } from './components/macroManager.js';
-import { ManageChannelsModal, AddChannelModal, AutoModSettingsModal, ConnectionHubModal, HotkeysModal, UnifiedAuthModal } from './components/modals.js';
+import { ManageChannelsModal, AddChannelModal, AutoModSettingsModal, ConnectionHubModal, HotkeysModal, UnifiedAuthModal, UnifiedAccountHubModal } from './components/modals.js';
 import { ChannelSearchHistoryBar } from './components/channelSearchHistoryBar.js';
 import { supabaseAuthService } from './services/supabaseAuthService.js';
 
@@ -161,6 +161,18 @@ class OrbiModApp {
     this.unifiedAuthModal = new UnifiedAuthModal(
       document.getElementById('generic-modal'),
       (loginRes) => this.handleUnifiedLoginSuccess(loginRes)
+    );
+
+    this.accountHubModal = new UnifiedAccountHubModal(
+      document.getElementById('generic-modal'),
+      {
+        onLogout: () => this.logout(),
+        onUpdate: () => {
+          this._updateAccountPills();
+          this.updateLandingAuthStatus();
+        },
+        showToast: (m, t) => this.showToast(m, t)
+      }
     );
 
     // Clients
@@ -400,7 +412,12 @@ class OrbiModApp {
 
     // Nav Auth Button in Header
     document.getElementById('landing-user-profile-badge')?.addEventListener('click', () => {
-      this.switchView('deck');
+      const user = supabaseAuthService.getCurrentUser();
+      if (user) {
+        this.accountHubModal.open();
+      } else {
+        this.switchView('deck');
+      }
     });
 
     // Footer Links & Brand Link
@@ -522,6 +539,35 @@ class OrbiModApp {
     if (!user || !user.id) return;
 
     try {
+      // 0. Sync Linked Accounts (Twitch & Kick linked to this master Email account)
+      const linkRes = await supabaseAuthService.loadLinkedAccounts(user.id);
+      if (linkRes.success && linkRes.profile) {
+        const p = linkRes.profile;
+        const profiles = storageService.getProfiles();
+        let changed = false;
+        if (p.twitch_login && (!profiles.twitch || !profiles.twitch.valid)) {
+          profiles.twitch = {
+            valid: true,
+            login: p.twitch_login,
+            token: p.twitch_token || null
+          };
+          changed = true;
+        }
+        if (p.kick_username && (!profiles.kick || !profiles.kick.valid)) {
+          profiles.kick = {
+            valid: true,
+            username: p.kick_username,
+            token: p.kick_token || 'dev_configured'
+          };
+          changed = true;
+        }
+        if (changed) {
+          storageService.saveProfiles(profiles);
+          this._updateAccountPills();
+          this.updateLandingAuthStatus();
+        }
+      }
+
       // 1. Sync User Layout
       const layoutRes = await supabaseAuthService.loadUserLayout(user.id);
       if (layoutRes.success && layoutRes.layout) {
@@ -612,6 +658,10 @@ class OrbiModApp {
     // Open Centralized Channel Manager right on top of Deck
     document.getElementById('btn-header-manage-channels')?.addEventListener('click', () => {
       this.manageChannelsModal.open();
+    });
+
+    document.getElementById('btn-deck-account-hub')?.addEventListener('click', () => {
+      this.accountHubModal.open();
     });
 
     document.getElementById('btn-deck-logout')?.addEventListener('click', () => {
