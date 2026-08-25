@@ -465,36 +465,21 @@ class OrbiModApp {
   // ==========================================
 
   _bindLandingControls() {
-    // 1-Click Direct Entry Helper
-    const enterIfAuthenticated = () => {
-      const profiles = storageService.getProfiles();
-      const masterHub = storageService.getMasterHub();
-      const user = supabaseAuthService.getCurrentUser() || masterHub.google;
-      if (user || (profiles.twitch && profiles.twitch.valid) || (masterHub.twitch && masterHub.twitch.valid) || (profiles.kick && profiles.kick.valid) || (masterHub.kick && masterHub.kick.valid)) {
-        if (masterHub.twitch && masterHub.twitch.valid) profiles.twitch = masterHub.twitch;
-        if (masterHub.kick && masterHub.kick.valid) profiles.kick = masterHub.kick;
-        storageService.saveProfiles(profiles);
-        this.switchView('deck');
-        return true;
-      }
-      return false;
-    };
-
     // Top-Corner Login Button
     document.getElementById('btn-landing-login-corner')?.addEventListener('click', () => {
-      if (!enterIfAuthenticated()) {
-        this.unifiedAuthModal.open('twitch');
-      }
+      this.unifiedAuthModal.open('login');
     });
 
     // Hero CTA Buttons
     document.getElementById('btn-hero-start-auth')?.addEventListener('click', () => {
-      if (!enterIfAuthenticated()) {
-        this.unifiedAuthModal.open('twitch');
-      }
+      this.unifiedAuthModal.open('login');
     });
 
     document.getElementById('btn-hero-guest-deck')?.addEventListener('click', () => {
+      this.switchView('deck');
+    });
+
+    document.getElementById('btn-landing-go-dashboard')?.addEventListener('click', () => {
       this.switchView('deck');
     });
 
@@ -551,19 +536,7 @@ class OrbiModApp {
     });
 
     document.getElementById('btn-quick-enter-email')?.addEventListener('click', () => {
-      const user = supabaseAuthService.getCurrentUser();
-      const masterHub = storageService.getMasterHub();
-      if (user || (masterHub.google && masterHub.google.email)) {
-        const profiles = storageService.getProfiles();
-        if (masterHub.twitch && masterHub.twitch.valid) profiles.twitch = masterHub.twitch;
-        if (masterHub.kick && masterHub.kick.valid) profiles.kick = masterHub.kick;
-        storageService.saveProfiles(profiles);
-        const name = user ? (user.displayName || user.email) : masterHub.google.displayName;
-        this.showToast(`✉️ Sesión activa: ${name}`, 'success');
-        this.switchView('deck');
-      } else {
-        this.unifiedAuthModal.open('login');
-      }
+      this.unifiedAuthModal.open('login');
     });
 
     // Feature Cards
@@ -572,7 +545,8 @@ class OrbiModApp {
     });
 
     // Nav Auth Button in Header
-    document.getElementById('landing-user-profile-badge')?.addEventListener('click', () => {
+    document.getElementById('landing-user-profile-badge')?.addEventListener('click', (e) => {
+      if (e.target.closest('#btn-landing-go-dashboard')) return;
       const user = supabaseAuthService.getCurrentUser();
       if (user) {
         this.accountHubModal.open();
