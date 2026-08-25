@@ -100,14 +100,13 @@ export class TwitchClient {
   }
 
   sendMessage(channel, text) {
-    const cleanChan = channel.toLowerCase().replace('#', '');
-    if (this.ws && this.connected && this.token) {
-      this.ws.send(`PRIVMSG #${cleanChan} :${text}\r\n`);
-    }
+    // Read-only mode: No outbound PRIVMSG sent to streamers' chats
+    console.log('[Twitch] Moderación en modo lectura: envío de mensajes a chat deshabilitado.');
   }
 
   sendModCommand(channel, command) {
-    this.sendMessage(channel, command);
+    // Helix REST API is used for real mod actions (timeouts/bans)
+    console.log('[Twitch] Mod command via IRC ignored; Helix API is used instead.');
   }
 
   _parseIrc(raw) {

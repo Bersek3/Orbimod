@@ -46,10 +46,10 @@ class StorageService {
         theme: 'cyber-dark',
         fontSize: 'normal',
         shieldActive: false,
-        demoMode: true
+        demoMode: false
       };
     } catch (e) {
-      return { layout: 'layout-grid-2x2', soundEnabled: true, volume: 0.5, theme: 'cyber-dark', fontSize: 'normal', shieldActive: false, demoMode: true };
+      return { layout: 'layout-grid-2x2', soundEnabled: true, volume: 0.5, theme: 'cyber-dark', fontSize: 'normal', shieldActive: false, demoMode: false };
     }
   }
 

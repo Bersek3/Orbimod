@@ -49,7 +49,7 @@ export class LiveSimulator {
   constructor(onMessage, onEvent) {
     this.onMessage = onMessage;
     this.onEvent = onEvent;
-    this.active = true;
+    this.active = false;
     this.intervalId = null;
     this.raidIntervalId = null;
     this.channels = [];

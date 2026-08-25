@@ -599,6 +599,9 @@ class OrbiModApp {
   launchModDeck() {
     this.channels = this.allAvailableChannels.filter(c => this.selectedChannels.has(c.id));
     
+    // Stop any simulated messages
+    this.simulator.stop();
+
     // Header channel count
     const headerCount = document.getElementById('header-channels-count');
     if (headerCount) headerCount.textContent = this.channels.length;
@@ -1025,56 +1028,33 @@ class OrbiModApp {
   }
 
   sendMessage(channel, text) {
-    if (channel.platform === 'twitch') {
-      this.twitchClient.sendMessage(channel.name, text);
-    }
-
-    // Local echo
-    const card = Array.from(this.channelCards.values()).find(c => c.channel.name.toLowerCase() === channel.name.toLowerCase());
-    if (card) {
-      card.addMessage({
-        id: 'self-' + Date.now(),
-        platform: channel.platform,
-        channel: channel.name,
-        username: 'Tú (Mod)',
-        displayName: 'Tú (Mod)',
-        color: channel.platform === 'kick' ? '#53fc18' : '#bf94ff',
-        badges: ['moderator'],
-        text: text,
-        timestamp: new Date().toISOString(),
-        isMod: true,
-        isSub: true,
-        isVip: false
-      });
-    }
+    // Read-only Live Moderation: outbound messages are disabled
+    console.log(`[OrbiMod] Chat en modo solo lectura para #${channel.name}`);
   }
 
   addChannel(newChan) {
+    if (this.channels.some(c => c.name.toLowerCase() === newChan.name.toLowerCase() && c.platform === newChan.platform)) {
+      this.showToast('El canal ya está en tu lista activa', 'warning');
+      return;
+    }
+
     this.channels.push(newChan);
     storageService.saveChannels(this.channels);
     this.renderChannels();
-
-    if (newChan.platform === 'twitch') {
-      this.twitchClient.joinChannel(newChan.name);
-    } else {
-      this.kickClient.joinChannel(newChan.name);
-    }
-
-    this.simulator.setChannels(this.channels);
-    this.showToast(`Canal #${newChan.name} (${newChan.platform.toUpperCase()}) añadido`, 'success');
+    this.initConnections();
+    this.showToast(`Canal #${newChan.name} (${newChan.platform.toUpperCase()}) añadido al Deck`, 'success');
   }
 
-  removeChannel(id) {
-    const ch = this.channels.find(c => c.id === id);
-    if (ch) {
-      if (ch.platform === 'twitch') this.twitchClient.partChannel(ch.name);
-      else this.kickClient.partChannel(ch.name);
+  removeChannel(channelId) {
+    const target = this.channels.find(c => c.id === channelId);
+    if (target) {
+      if (target.platform === 'twitch') this.twitchClient.partChannel(target.name);
+      if (target.platform === 'kick') this.kickClient.partChannel(target.name);
     }
 
-    this.channels = this.channels.filter(c => c.id !== id);
+    this.channels = this.channels.filter(c => c.id !== channelId);
     storageService.saveChannels(this.channels);
     this.renderChannels();
-    this.simulator.setChannels(this.channels);
     this.showToast('Canal removido del deck', 'warning');
   }
 
@@ -1085,22 +1065,24 @@ class OrbiModApp {
     const twitchToken = profiles.twitch?.token || creds.twitchToken || null;
     const twitchUsername = profiles.twitch?.login || creds.twitchUsername || null;
 
-    // Twitch
+    // Twitch WebSocket (Read-only IRC listener)
     this.twitchClient.connect(twitchToken, twitchUsername);
     this.channels.filter(c => c.platform === 'twitch').forEach(c => {
       this.twitchClient.joinChannel(c.name);
     });
 
-    // Kick
+    // Kick Pusher WebSocket (Read-only chatroom listener)
     this.kickClient.connect();
     this.channels.filter(c => c.platform === 'kick').forEach(c => {
       this.kickClient.joinChannel(c.name);
     });
 
-    // Simulator
+    // Simulator is strictly OFF unless explicitly in demo mode
     this.simulator.setChannels(this.channels);
     if (this.settings.demoMode) {
       this.simulator.start();
+    } else {
+      this.simulator.stop();
     }
   }
 
