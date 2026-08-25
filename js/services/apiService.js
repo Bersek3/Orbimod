@@ -397,12 +397,20 @@ export class ApiService {
     return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
+  getKickRedirectUri() {
+    let uri = window.location.origin + window.location.pathname;
+    if (!uri.endsWith('/') && !uri.includes('.html')) {
+      uri += '/';
+    }
+    return uri;
+  }
+
   /**
    * Generates official Kick Developer OAuth 2.1 URL with PKCE
    */
   async getKickAuthUrl(clientId = null) {
     const cid = clientId || this.getKickClientId();
-    const redirectUri = window.location.origin + window.location.pathname;
+    const redirectUri = this.getKickRedirectUri();
     const scopes = 'user:read channel:read chat:write';
 
     // Generate PKCE code_verifier and code_challenge (mandatory by Kick OAuth 2.1)
@@ -421,7 +429,7 @@ export class ApiService {
   async exchangeKickAuthCode(code, clientId = null, clientSecret = null) {
     const cid = clientId || this.getKickClientId();
     const secret = clientSecret || this.getKickClientSecret();
-    const redirectUri = window.location.origin + window.location.pathname;
+    const redirectUri = this.getKickRedirectUri();
     const verifier = sessionStorage.getItem('kick_pkce_verifier') || '';
 
     try {
