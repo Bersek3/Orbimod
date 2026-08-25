@@ -1252,18 +1252,17 @@ export class UnifiedAuthModal {
       }
     });
 
-    // 2. Google Circle Click (1-Clic Instant Enter if logged in, else Google OAuth via Supabase)
+    // 2. Google Circle Click (1-Clic Instant Enter if active Supabase session exists, else Google OAuth via Supabase)
     this.modal.querySelector('#btn-auth-circle-google')?.addEventListener('click', async () => {
       const curUser = supabaseAuthService.getCurrentUser();
-      const hub = storageService.getMasterHub();
-      const google = curUser || hub.google;
-      if (google && google.email) {
+      if (curUser && curUser.id) {
+        const hub = storageService.getMasterHub();
         const profiles = storageService.getProfiles();
         if (hub.twitch && hub.twitch.valid) profiles.twitch = hub.twitch;
         if (hub.kick && hub.kick.valid) profiles.kick = hub.kick;
         storageService.saveProfiles(profiles);
         if (this.onLoginSuccess) {
-          this.onLoginSuccess({ platform: 'google', user: google });
+          this.onLoginSuccess({ platform: 'google', user: curUser });
         }
         this.close();
       } else {
