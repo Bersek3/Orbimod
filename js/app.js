@@ -457,35 +457,13 @@ class OrbiModApp {
   // VIEW 2: MOD DECK LAUNCH
   // ==========================================
 
-  launchModDeck() {
+  async launchModDeck() {
     this.channels = storageService.getChannels() || [];
-    if (this.channels.length === 0) {
-      this.channels = [
-        {
-          id: 'ch-twitch-los_del_provi',
-          name: 'los_del_provi',
-          platform: 'twitch',
-          avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop',
-          viewers: 1200,
-          isLive: true,
-          videoEnabled: true,
-          slowMode: 0,
-          subOnly: false,
-          followOnly: false,
-          emoteOnly: false
-        }
-      ];
-      storageService.saveChannels(this.channels);
-    }
     
     // Stop any simulated messages
     this.simulator.stop();
 
-    // Header channel count
-    const headerCount = document.getElementById('header-channels-count');
-    if (headerCount) headerCount.textContent = this.channels.length;
-
-    // Render channels in deck
+    // Render channels in deck immediately
     this.renderChannels();
 
     // Start connections
@@ -494,8 +472,12 @@ class OrbiModApp {
     // Update Profile pills
     this._updateAccountPills();
 
-    // Check live streams status in background
-    this.refreshChannelsLiveStatus();
+    // Verify accurate live status for all channels
+    if (this.channels.length > 0) {
+      this.channels = await apiService.checkLiveStatus(this.channels);
+      storageService.saveChannels(this.channels);
+      this.renderChannels();
+    }
   }
 
   _updateAccountPills() {
@@ -703,7 +685,7 @@ class OrbiModApp {
     this.channelCards.clear();
 
     const channelsToDisplay = this.showOnlyLive
-      ? this.channels.filter(c => c.isLive !== false)
+      ? this.channels.filter(c => Boolean(c.isLive))
       : this.channels;
 
     if (channelsToDisplay.length === 0 && this.channels.length > 0) {

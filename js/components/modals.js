@@ -34,8 +34,8 @@ export class ManageChannelsModal {
 
   render() {
     const channels = this.getChannels() || [];
-    const liveChannels = channels.filter(c => c.isLive !== false);
-    const offlineChannels = channels.filter(c => c.isLive === false);
+    const liveChannels = channels.filter(c => Boolean(c.isLive));
+    const offlineChannels = channels.filter(c => !Boolean(c.isLive));
 
     this.modal.innerHTML = `
       <div class="modal-container" style="max-width: 640px;">

@@ -137,7 +137,6 @@ export class ApiService {
       });
 
       if (!res.ok) {
-        // Fallback: If scope is missing or error
         return { success: false, channels: [], error: `No se pudo obtener canales moderados (${res.status})` };
       }
 
@@ -150,8 +149,8 @@ export class ApiService {
         platform: 'twitch',
         avatar: '',
         viewers: 0,
-        isLive: true,
-        videoEnabled: true,
+        isLive: false,
+        videoEnabled: false,
         slowMode: 0,
         subOnly: false,
         followOnly: false,
@@ -178,6 +177,31 @@ export class ApiService {
             });
           }
         } catch (e) {}
+
+        // Also check live streams in parallel
+        try {
+          const streamsRes = await fetch(`https://api.twitch.tv/helix/streams?${logins.replace(/login=/g, 'user_login=')}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Client-Id': clientId
+            }
+          });
+          if (streamsRes.ok) {
+            const streamsData = await streamsRes.json();
+            const liveMap = new Map((streamsData.data || []).map(s => [s.user_login.toLowerCase(), s]));
+            channels.forEach(ch => {
+              const stream = liveMap.get(ch.name.toLowerCase());
+              if (stream) {
+                ch.isLive = true;
+                ch.viewers = stream.viewer_count || 0;
+                ch.videoEnabled = true;
+              } else {
+                ch.isLive = false;
+                ch.viewers = 0;
+              }
+            });
+          }
+        } catch (e) {}
       }
 
       return { success: true, channels: channels };
@@ -193,6 +217,90 @@ export class ApiService {
     const clean = channelLogin.trim().toLowerCase().replace(/[@#]/g, '');
     if (!clean) return { success: false, error: 'Nombre de canal no proporcionado' };
 
+    let displayName = clean;
+    let avatar = `https://api.dicebear.com/7.x/identicon/svg?seed=${clean}`;
+    let isLive = false;
+    let viewers = 0;
+    let exists = false;
+
+    // Method 1: Twitch GQL (Fastest, most accurate public query without rate-limits)
+    try {
+      const gqlRes = await fetch('https://gql.twitch.tv/gql', {
+        method: 'POST',
+        headers: {
+          'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([{
+          operationName: 'UseLive',
+          variables: { channelLogin: clean },
+          extensions: {
+            persistedQuery: {
+              version: 1,
+              sha256Hash: '630141334e941198f396737a8e253cb37d35dc049f7f46124430155b93d6d532'
+            }
+          }
+        }])
+      });
+
+      if (gqlRes.ok) {
+        const gqlData = await gqlRes.json();
+        const userObj = gqlData?.[0]?.data?.user;
+        if (userObj) {
+          exists = true;
+          displayName = userObj.displayName || clean;
+          if (userObj.profileImageURL) avatar = userObj.profileImageURL;
+          
+          if (userObj.stream && userObj.stream.type === 'live') {
+            isLive = true;
+            viewers = userObj.stream.viewersCount || 0;
+          } else if (userObj.stream) {
+            isLive = true;
+            viewers = userObj.stream.viewersCount || 0;
+          } else {
+            isLive = false;
+            viewers = 0;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Twitch GQL lookup]', e);
+    }
+
+    // Method 2: Decapi Verification (Secondary fallback)
+    if (!exists) {
+      try {
+        const uptimeRes = await fetch(`https://decapi.me/twitch/uptime/${clean}`);
+        if (uptimeRes.ok) {
+          const txt = (await uptimeRes.text()).trim();
+          if (txt.toLowerCase().includes('not found') || txt.toLowerCase().includes('does not exist')) {
+            return { success: false, error: `Canal de Twitch #${clean} no existe` };
+          }
+          exists = true;
+          if (txt.toLowerCase().includes('offline') || txt.toLowerCase().includes('error')) {
+            isLive = false;
+            viewers = 0;
+          } else {
+            isLive = true;
+            try {
+              const vRes = await fetch(`https://decapi.me/twitch/viewercount/${clean}`);
+              if (vRes.ok) {
+                const vTxt = await vRes.text();
+                viewers = parseInt(vTxt.replace(/[^0-9]/g, ''), 10) || 0;
+              }
+            } catch (e) {}
+          }
+        }
+
+        const avRes = await fetch(`https://decapi.me/twitch/avatar/${clean}`);
+        if (avRes.ok) {
+          const avTxt = (await avRes.text()).trim();
+          if (avTxt.startsWith('http')) avatar = avTxt;
+        }
+      } catch (e) {}
+    }
+
+    // Method 3: Twitch Helix (If user has valid OAuth token)
     let token = '';
     let clientId = this.getTwitchClientId();
     try {
@@ -202,27 +310,8 @@ export class ApiService {
       if (p.twitch?.clientId) clientId = p.twitch.clientId;
     } catch (e) {}
 
-    let displayName = clean;
-    let avatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop';
-    let isLive = false;
-    let viewers = 0;
-    let found = false;
-
-    // 1. Try Twitch Helix if token is available
     if (token) {
       try {
-        const uRes = await fetch(`https://api.twitch.tv/helix/users?login=${encodeURIComponent(clean)}`, {
-          headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': clientId }
-        });
-        if (uRes.ok) {
-          const uData = await uRes.json();
-          if (uData.data && uData.data.length > 0) {
-            found = true;
-            displayName = uData.data[0].display_name || clean;
-            avatar = uData.data[0].profile_image_url || avatar;
-          }
-        }
-
         const sRes = await fetch(`https://api.twitch.tv/helix/streams?user_login=${encodeURIComponent(clean)}`, {
           headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': clientId }
         });
@@ -231,39 +320,10 @@ export class ApiService {
           if (sData.data && sData.data.length > 0) {
             isLive = true;
             viewers = sData.data[0].viewer_count || 0;
+          } else {
+            isLive = false;
+            viewers = 0;
           }
-        }
-      } catch (e) {
-        console.warn('Helix lookup error:', e);
-      }
-    }
-
-    // 2. Decapi fallback if Helix wasn't authenticated or didn't find
-    if (!found) {
-      try {
-        const uptimeRes = await fetch(`https://decapi.me/twitch/uptime/${clean}`);
-        if (uptimeRes.ok) {
-          const uptimeTxt = await uptimeRes.text();
-          if (uptimeTxt.toLowerCase().includes('channel not found') || uptimeTxt.toLowerCase().includes('user not found')) {
-            return { success: false, error: `Canal de Twitch #${clean} no existe` };
-          }
-          found = true;
-          if (!uptimeTxt.toLowerCase().includes('offline') && !uptimeTxt.toLowerCase().includes('error')) {
-            isLive = true;
-            const viewRes = await fetch(`https://decapi.me/twitch/viewercount/${clean}`);
-            if (viewRes.ok) {
-              const viewTxt = await viewRes.text();
-              viewers = parseInt(viewTxt, 10) || 0;
-            }
-          }
-        }
-      } catch (e) {}
-
-      try {
-        const avRes = await fetch(`https://decapi.me/twitch/avatar/${clean}`);
-        if (avRes.ok) {
-          const avUrl = await avRes.text();
-          if (avUrl.startsWith('http')) avatar = avUrl.trim();
         }
       } catch (e) {}
     }
@@ -278,7 +338,7 @@ export class ApiService {
         avatar: avatar,
         viewers: viewers,
         isLive: isLive,
-        videoEnabled: true,
+        videoEnabled: isLive,
         slowMode: 0,
         subOnly: false,
         followOnly: false,
@@ -318,6 +378,8 @@ export class ApiService {
    */
   async fetchKickChannel(channelSlug) {
     const cleanSlug = channelSlug.trim().toLowerCase().replace(/[@#]/g, '');
+    if (!cleanSlug) return { success: false, error: 'Nombre de canal no proporcionado' };
+
     try {
       const res = await fetch(`https://kick.com/api/v2/channels/${cleanSlug}`, {
         headers: { 'Accept': 'application/json' }
@@ -331,8 +393,9 @@ export class ApiService {
       }
 
       const data = await res.json();
-      const isLive = !!(data.livestream && data.livestream.is_live);
-      const viewers = (data.livestream && data.livestream.viewer_count) || 0;
+      const livestream = data.livestream;
+      const isLive = Boolean(livestream && livestream.is_live === true);
+      const viewers = isLive ? (livestream.viewer_count || 0) : 0;
       const avatar = (data.user && data.user.profile_pic) || 'https://files.kick.com/images/user/default/profile_image.png';
 
       return {
@@ -347,7 +410,7 @@ export class ApiService {
           avatar: avatar,
           viewers: viewers,
           isLive: isLive,
-          videoEnabled: true,
+          videoEnabled: isLive,
           slowMode: data.chatroom ? (data.chatroom.slow_mode ? 5 : 0) : 0,
           subOnly: data.chatroom ? !!data.chatroom.subscribers_mode : false,
           followOnly: data.chatroom ? !!data.chatroom.followers_mode : false,
@@ -368,33 +431,28 @@ export class ApiService {
   async checkLiveStatus(channels) {
     if (!channels || channels.length === 0) return channels;
 
-    const twitchChannels = channels.filter(c => c.platform === 'twitch');
-    const kickChannels = channels.filter(c => c.platform === 'kick');
-
-    // 1. Check Twitch Streams
-    for (const tc of twitchChannels) {
-      try {
-        const res = await this.fetchTwitchChannel(tc.name);
+    const promises = channels.map(async (ch) => {
+      if (ch.platform === 'twitch') {
+        const res = await this.fetchTwitchChannel(ch.name);
         if (res.success) {
-          tc.isLive = res.channel.isLive;
-          tc.viewers = res.channel.viewers;
-          if (res.channel.avatar && !tc.avatar) tc.avatar = res.channel.avatar;
+          ch.isLive = res.channel.isLive;
+          ch.viewers = res.channel.viewers;
+          if (res.channel.avatar) ch.avatar = res.channel.avatar;
+          if (res.channel.displayName) ch.displayName = res.channel.displayName;
         }
-      } catch (e) {}
-    }
-
-    // 2. Check Kick Streams
-    for (const kc of kickChannels) {
-      try {
-        const kRes = await this.fetchKickChannel(kc.name);
-        if (kRes.success) {
-          kc.isLive = kRes.channel.isLive;
-          kc.viewers = kRes.channel.viewers;
-          if (kRes.channel.avatar) kc.avatar = kRes.channel.avatar;
+      } else if (ch.platform === 'kick') {
+        const res = await this.fetchKickChannel(ch.name);
+        if (res.success) {
+          ch.isLive = res.channel.isLive;
+          ch.viewers = res.channel.viewers;
+          if (res.channel.avatar) ch.avatar = res.channel.avatar;
+          if (res.channel.displayName) ch.displayName = res.channel.displayName;
         }
-      } catch (e) {}
-    }
+      }
+      return ch;
+    });
 
+    await Promise.all(promises);
     return channels;
   }
 }
