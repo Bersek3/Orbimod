@@ -8,12 +8,13 @@ import { apiService } from '../services/apiService.js';
 import { storageService } from '../services/storageService.js';
 
 export class ChannelSearchHistoryBar {
-  constructor({ container, getActiveChannels, onAddChannel, onRemoveChannel, onChannelsUpdated, showToast }) {
+  constructor({ container, getActiveChannels, onAddChannel, onRemoveChannel, onChannelsUpdated, onHistoryUpdated, showToast }) {
     this.container = container;
     this.getActiveChannels = getActiveChannels;
     this.onAddChannel = onAddChannel;
     this.onRemoveChannel = onRemoveChannel;
     this.onChannelsUpdated = onChannelsUpdated;
+    this.onHistoryUpdated = onHistoryUpdated;
     this.showToast = showToast || console.log;
 
     this.selectedPlatform = 'twitch'; // 'twitch' | 'kick'
@@ -283,6 +284,7 @@ export class ChannelSearchHistoryBar {
         e.stopPropagation();
         const id = btn.dataset.id;
         storageService.removeFromHistory(id);
+        if (this.onHistoryUpdated) this.onHistoryUpdated();
         this.render();
       });
     });
@@ -307,6 +309,7 @@ export class ChannelSearchHistoryBar {
       const res = await apiService.fetchModeratedChannels(token, clientId, userId);
       if (res.success && res.channels.length > 0) {
         res.channels.forEach(ch => storageService.addToHistory(ch));
+        if (this.onHistoryUpdated) this.onHistoryUpdated();
         this.showToast(`⚡ Se sincronizaron ${res.channels.length} canales en tu historial`, 'success');
       } else {
         alert(res.error || 'No se encontraron canales moderados en esta cuenta de Twitch.');
@@ -324,6 +327,7 @@ export class ChannelSearchHistoryBar {
       if (history.length > 0) {
         history = await apiService.checkLiveStatus(history);
         storageService.saveChannelHistory(history);
+        if (this.onHistoryUpdated) this.onHistoryUpdated();
       }
       this.showToast('Estados en vivo actualizados', 'info');
       this.render();
@@ -334,6 +338,7 @@ export class ChannelSearchHistoryBar {
       e.stopPropagation();
       if (confirm('¿Deseas vaciar todo tu historial de canales guardados?')) {
         storageService.clearHistory();
+        if (this.onHistoryUpdated) this.onHistoryUpdated();
         this.showToast('Historial vaciado', 'info');
         this.render();
       }

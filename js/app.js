@@ -219,7 +219,19 @@ class OrbiModApp {
       onChannelsUpdated: () => {
         this.renderChannels();
       },
+      onHistoryUpdated: () => {
+        this.syncToSupabase();
+      },
       showToast: (msg, type) => this.showToast(msg, type)
+    });
+
+    // Listen to Supabase auth state changes for automatic real-time cloud restore
+    supabaseAuthService.onAuthStateChange(async (session) => {
+      if (session && session.user) {
+        await this.syncFromSupabase();
+        this._updateAccountPills();
+        this.updateLandingAuthStatus();
+      }
     });
 
     // Keep streams active in background tabs without pausing
@@ -230,10 +242,16 @@ class OrbiModApp {
     document.addEventListener('keydown', startKeepAlive, { once: true });
 
     // Apply layout
-    this.setLayout(this.selectedLayout);
+    this.setLayout(this.selectedLayout, true);
 
     // Check URL hash / params for OAuth redirect
     const didAuth = await this._checkOAuthRedirect();
+
+    // If already authenticated via Supabase session or master hub, sync immediately
+    if (supabaseAuthService.isAuthenticated()) {
+      await this.syncFromSupabase();
+    }
+
     this.updateLandingAuthStatus();
 
     const savedView = localStorage.getItem('orbimod_active_view');
@@ -649,24 +667,21 @@ class OrbiModApp {
     }
   }
 
-  handleUnifiedLoginSuccess(res) {
+  async handleUnifiedLoginSuccess(res) {
     if (res.platform === 'twitch') {
       this.showToast(`🟣 Conectado con Twitch como @${res.username || 'moderador'}`, 'twitch');
-      this.updateLandingAuthStatus();
-      this.switchView('deck');
     } else if (res.platform === 'google') {
       this.showToast(`🔴 Conectado con Google: ${res.user?.displayName || res.user?.email || 'Usuario'}`, 'success');
-      this.updateLandingAuthStatus();
-      this.switchView('deck');
     } else if (res.platform === 'kick') {
       this.showToast(`🟢 Conectado con Kick como @${res.username}`, 'success');
-      this.updateLandingAuthStatus();
-      this.switchView('deck');
     } else if (res.platform === 'email') {
       this.showToast(`✉️ Sesión iniciada como ${res.user?.displayName || res.user?.email}`, 'success');
-      this.updateLandingAuthStatus();
-      this.switchView('deck');
     }
+
+    await this.syncFromSupabase();
+    this.updateLandingAuthStatus();
+    this._updateAccountPills();
+    this.switchView('deck');
   }
 
   // ==========================================
@@ -703,10 +718,44 @@ class OrbiModApp {
   }
 
   async syncFromSupabase() {
-    const user = supabaseAuthService.getCurrentUser();
+    let user = supabaseAuthService.getCurrentUser();
     let profiles = storageService.getProfiles();
+    let effectiveUserId = user?.id || null;
+    let effectiveEmail = user?.email || null;
 
-    // 0. If user is authenticated in Supabase (Google or Email)
+    // 0. Resolve Master Profile if logged in with Twitch or Kick
+    if (!effectiveUserId && (profiles.twitch?.login || profiles.kick?.username)) {
+      try {
+        let matched = null;
+        if (profiles.twitch && profiles.twitch.valid) {
+          const found = await supabaseAuthService.findProfileByPlatform('twitch', profiles.twitch.login);
+          if (found.success) matched = found.profile;
+        }
+        if (!matched && profiles.kick && profiles.kick.valid) {
+          const found = await supabaseAuthService.findProfileByPlatform('kick', profiles.kick.username);
+          if (found.success) matched = found.profile;
+        }
+
+        if (matched) {
+          effectiveUserId = matched.id;
+          effectiveEmail = matched.email;
+          let changed = false;
+          if (matched.twitch_login && (!profiles.twitch || !profiles.twitch.valid)) {
+            profiles.twitch = { valid: true, login: matched.twitch_login, token: 'linked' };
+            changed = true;
+          }
+          if (matched.kick_username && (!profiles.kick || !profiles.kick.valid)) {
+            profiles.kick = { valid: true, username: matched.kick_username, token: 'linked' };
+            changed = true;
+          }
+          if (changed) {
+            storageService.saveProfiles(profiles);
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 1. If authenticated in Supabase (Google or Email)
     if (user && (user.id || user.email)) {
       try {
         const linkRes = await supabaseAuthService.loadLinkedAccounts(user.id, user.email);
@@ -755,94 +804,111 @@ class OrbiModApp {
       } catch (e) {
         console.warn('[Supabase loadLinkedAccounts error]', e);
       }
-    } else {
-      // If user logged in directly with Twitch or Kick without Supabase session yet
-      // Check if their Twitch/Kick username belongs to an existing Supabase master profile
-      try {
-        let matched = null;
-        if (profiles.twitch && profiles.twitch.valid) {
-          const found = await supabaseAuthService.findProfileByPlatform('twitch', profiles.twitch.login);
-          if (found.success) matched = found.profile;
-        }
-        if (!matched && profiles.kick && profiles.kick.valid) {
-          const found = await supabaseAuthService.findProfileByPlatform('kick', profiles.kick.username);
-          if (found.success) matched = found.profile;
-        }
-
-        if (matched) {
-          let changed = false;
-          if (matched.twitch_login && (!profiles.twitch || !profiles.twitch.valid)) {
-            profiles.twitch = { valid: true, login: matched.twitch_login, token: 'linked' };
-            changed = true;
-          }
-          if (matched.kick_username && (!profiles.kick || !profiles.kick.valid)) {
-            profiles.kick = { valid: true, username: matched.kick_username, token: 'linked' };
-            changed = true;
-          }
-          if (changed) {
-            storageService.saveProfiles(profiles);
-          }
-        }
-      } catch (e) {}
     }
 
     this._updateAccountPills();
     this.updateLandingAuthStatus();
 
-    // 1. Sync User Layout & Channels if user is authenticated
-    if (user && user.id) {
-      try {
-        const layoutRes = await supabaseAuthService.loadUserLayout(user.id);
-        if (layoutRes.success && layoutRes.layout) {
-          if (layoutRes.layout.layout_type) {
-            this.selectedLayout = layoutRes.layout.layout_type;
-            this.setLayout(this.selectedLayout);
-          }
-          if (Array.isArray(layoutRes.layout.channels) && layoutRes.layout.channels.length > 0) {
-            this.channels = layoutRes.layout.channels;
-            storageService.saveChannels(this.channels);
-          }
-        }
+    // 2. Load User Layout & Channels from Supabase Cloud
+    try {
+      const layoutRes = await supabaseAuthService.loadUserLayout(
+        effectiveUserId,
+        effectiveEmail,
+        profiles.twitch?.login,
+        profiles.kick?.username
+      );
 
-        // 2. Sync Moderated Channel History
-        const histRes = await supabaseAuthService.loadChannelHistory(user.id);
-        if (histRes.success && histRes.channels.length > 0) {
-          const localHistory = storageService.getChannelHistory();
-          const map = new Map();
-          histRes.channels.forEach(ch => {
-            map.set(ch.channel_id, {
-              id: ch.channel_id,
-              name: ch.name,
-              platform: ch.platform,
-              role: ch.role || 'mod',
-              avatar: ch.avatar || '',
-              addedAt: ch.added_at
-            });
-          });
-          localHistory.forEach(ch => map.set(ch.id, ch));
-          storageService.saveChannelHistory(Array.from(map.values()));
+      if (layoutRes.success && layoutRes.layout) {
+        const layoutData = layoutRes.layout;
+        if (layoutData.layout_type) {
+          this.selectedLayout = layoutData.layout_type;
+          this.setLayout(this.selectedLayout, true);
         }
-      } catch (e) {
-        console.warn('[Supabase Cloud Sync Error]', e);
+        if (layoutData.preferences && typeof layoutData.preferences === 'object') {
+          this.settings = { ...this.settings, ...layoutData.preferences };
+          storageService.saveSettings(this.settings);
+        }
+        if (Array.isArray(layoutData.channels) && layoutData.channels.length > 0) {
+          this.channels = layoutData.channels;
+          storageService.saveChannels(this.channels);
+        }
       }
+
+      // 3. Load Moderated Channel History from Supabase Cloud
+      const histRes = await supabaseAuthService.loadChannelHistory(
+        effectiveUserId,
+        effectiveEmail,
+        profiles.twitch?.login,
+        profiles.kick?.username
+      );
+
+      if (histRes.success && Array.isArray(histRes.channels) && histRes.channels.length > 0) {
+        const localHistory = storageService.getChannelHistory() || [];
+        const map = new Map();
+        histRes.channels.forEach(ch => {
+          map.set(ch.channel_id, {
+            id: ch.channel_id,
+            name: ch.name,
+            platform: ch.platform,
+            role: ch.role || 'mod',
+            avatar: ch.avatar || '',
+            addedAt: ch.added_at
+          });
+        });
+        localHistory.forEach(ch => map.set(ch.id, ch));
+        storageService.saveChannelHistory(Array.from(map.values()));
+      }
+    } catch (e) {
+      console.warn('[Supabase Cloud Sync Error]', e);
     }
+
+    // Refresh UI components with restored cloud state
+    if (this.currentView === 'deck') {
+      this.renderChannels();
+    }
+    this.searchHistoryBar?.render();
   }
 
   async syncToSupabase() {
-    const user = supabaseAuthService.getCurrentUser();
-    if (!user || !user.id) return;
+    let user = supabaseAuthService.getCurrentUser();
+    let profiles = storageService.getProfiles();
+    let effectiveUserId = user?.id || null;
+    let effectiveEmail = user?.email || null;
+
+    // If not directly logged into Supabase auth, look up by linked Twitch/Kick
+    if (!effectiveUserId && (profiles.twitch?.login || profiles.kick?.username)) {
+      try {
+        if (profiles.twitch?.login) {
+          const found = await supabaseAuthService.findProfileByPlatform('twitch', profiles.twitch.login);
+          if (found.success && found.profile?.id) effectiveUserId = found.profile.id;
+        }
+        if (!effectiveUserId && profiles.kick?.username) {
+          const found = await supabaseAuthService.findProfileByPlatform('kick', profiles.kick.username);
+          if (found.success && found.profile?.id) effectiveUserId = found.profile.id;
+        }
+      } catch (e) {}
+    }
+
+    if (!effectiveUserId && !user) return;
+
+    const targetId = effectiveUserId || user?.id;
 
     try {
-      await supabaseAuthService.saveUserLayout(user.id, {
-        layoutType: this.selectedLayout || this.settings.layout || 'grid-4',
+      await supabaseAuthService.saveUserLayout(targetId, {
+        layoutType: this.selectedLayout || this.settings.layout || 'layout-grid-2x2',
         channels: this.channels,
         activeWidgets: Array.from(this.activeWidgets || []),
-        preferences: { theme: 'cyber-dark' }
-      });
+        preferences: {
+          theme: this.settings.theme || 'cyber-dark',
+          soundEnabled: this.settings.soundEnabled ?? true,
+          volume: this.settings.volume ?? 0.5,
+          fontSize: this.settings.fontSize || 'normal'
+        }
+      }, effectiveEmail);
 
-      const history = storageService.getChannelHistory();
+      const history = storageService.getChannelHistory() || [];
       if (history.length > 0) {
-        await supabaseAuthService.saveChannelHistory(user.id, history);
+        await supabaseAuthService.saveChannelHistory(targetId, history, effectiveEmail);
       }
     } catch (e) {
       console.warn('[Supabase Cloud Save Error]', e);
@@ -1094,16 +1160,23 @@ class OrbiModApp {
     }, 2000);
   }
 
-  setLayout(layoutClass) {
+  setLayout(layoutClass, skipSync = false) {
+    this.selectedLayout = layoutClass;
     this.settings.layout = layoutClass;
     storageService.saveSettings(this.settings);
 
     const deck = document.getElementById('channels-deck');
-    deck.className = `channels-deck ${layoutClass}`;
+    if (deck) {
+      deck.className = `channels-deck ${layoutClass}`;
+    }
 
     document.querySelectorAll('.layout-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.layout === layoutClass);
     });
+
+    if (!skipSync) {
+      this.syncToSupabase();
+    }
   }
 
   renderChannels() {
@@ -1149,7 +1222,11 @@ class OrbiModApp {
           onToggleMode: (channel, mode, active) => this.handleRoomModeChange(channel, mode, active),
           onRemoveChannel: (id) => this.removeChannel(id),
           onReorder: (sourceId, targetId, insertAfter) => this.reorderChannels(sourceId, targetId, insertAfter),
-          onMoveStep: (id, dir) => this.moveChannelStep(id, dir)
+          onMoveStep: (id, dir) => this.moveChannelStep(id, dir),
+          onConfigChange: () => {
+            storageService.saveChannels(this.channels);
+            this.syncToSupabase();
+          }
         });
 
         this.channelCards.set(ch.id, cardInstance);

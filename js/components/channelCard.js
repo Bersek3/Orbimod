@@ -323,6 +323,10 @@ export class ChannelCard {
         // Kick
         reloadPlayer();
       }
+
+      if (this.options.onConfigChange) {
+        this.options.onConfigChange(this.channel);
+      }
     });
 
     // 2. Video Toggle (Dynamic creation / destruction to prevent memory leaks and WebGL context limits)
@@ -348,6 +352,10 @@ export class ChannelCard {
             <span>📹 Modo Chat Ligero (Haz clic en el ícono de cámara arriba para cargar video)</span>
           </div>
         `;
+      }
+
+      if (this.options.onConfigChange) {
+        this.options.onConfigChange(this.channel);
       }
     });
 
@@ -458,6 +466,9 @@ export class ChannelCard {
 
         if (this.options.onToggleMode) {
           this.options.onToggleMode(this.channel, mode, chip.classList.contains('active'));
+        }
+        if (this.options.onConfigChange) {
+          this.options.onConfigChange(this.channel);
         }
       });
     });

@@ -323,56 +323,116 @@ class SupabaseAuthService {
   /**
    * Save User Panel Layout & Channel Deck Preferences in Supabase
    */
-  async saveUserLayout(userId, layoutData) {
+  async saveUserLayout(userId, layoutData, email = null) {
     if (!userId || !layoutData) return { success: false };
     const client = this.getClient();
-    if (!client) return { success: false };
+    const userEmail = email || this.getCurrentUser()?.email || null;
 
-    try {
-      const { data, error } = await client
-        .from('user_layouts')
-        .upsert({
-          user_id: userId,
-          layout_type: layoutData.layoutType || 'grid-4',
-          channels: layoutData.channels || [],
-          active_widgets: layoutData.activeWidgets || [],
-          preferences: layoutData.preferences || {},
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
+    const payload = {
+      user_id: userId,
+      layout_type: layoutData.layoutType || layoutData.layout || 'layout-grid-2x2',
+      channels: Array.isArray(layoutData.channels) ? layoutData.channels : [],
+      active_widgets: Array.isArray(layoutData.activeWidgets) ? layoutData.activeWidgets : [],
+      preferences: layoutData.preferences || {},
+      user_email: userEmail,
+      updated_at: new Date().toISOString()
+    };
 
-      if (error) {
-        console.warn('[Supabase saveUserLayout error]', error);
-        return { success: false, error: error.message };
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from('user_layouts')
+          .upsert(payload, { onConflict: 'user_id' });
+
+        if (error) {
+          console.warn('[Supabase saveUserLayout upsert warn, fallback to update]', error);
+          const updateRes = await client.from('user_layouts').update(payload).eq('user_id', userId);
+          if (updateRes.error) {
+            await client.from('user_layouts').insert(payload);
+          }
+        }
+        return { success: true, data };
+      } catch (e) {
+        console.warn('[Supabase saveUserLayout client exception]', e);
       }
-      return { success: true, data };
+    }
+
+    // Direct REST Fallback
+    const url = this.supabaseConfig.url || DEFAULT_SUPABASE_URL;
+    const key = this.supabaseConfig.anonKey || DEFAULT_SUPABASE_KEY;
+    try {
+      const resp = await fetch(`${url}/rest/v1/user_layouts?on_conflict=user_id`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': key,
+          'Authorization': `Bearer ${key}`,
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(payload)
+      });
+      return { success: resp.ok };
     } catch (e) {
-      console.warn('[Supabase saveUserLayout exception]', e);
       return { success: false, error: e.message };
     }
   }
 
   /**
-   * Load User Panel Layout from Supabase
+   * Load User Panel Layout from Supabase with multi-platform resolution
    */
-  async loadUserLayout(userId) {
-    if (!userId) return { success: false };
+  async loadUserLayout(userId, email = null, twitchLogin = null, kickUsername = null) {
     const client = this.getClient();
-    if (!client) return { success: false };
+    let targetUserId = userId;
 
-    try {
-      const { data, error } = await client
-        .from('user_layouts')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+    // If userId not provided, try to resolve from profile lookup
+    if (!targetUserId && (email || twitchLogin || kickUsername)) {
+      try {
+        if (email) {
+          const p = await this.loadLinkedAccounts(null, email);
+          if (p.success && p.profile?.id) targetUserId = p.profile.id;
+        }
+        if (!targetUserId && twitchLogin) {
+          const p = await this.findProfileByPlatform('twitch', twitchLogin);
+          if (p.success && p.profile?.id) targetUserId = p.profile.id;
+        }
+        if (!targetUserId && kickUsername) {
+          const p = await this.findProfileByPlatform('kick', kickUsername);
+          if (p.success && p.profile?.id) targetUserId = p.profile.id;
+        }
+      } catch (e) {}
+    }
 
-      if (error) {
-        console.warn('[Supabase loadUserLayout error]', error);
-        return { success: false, error: error.message };
+    if (!targetUserId) return { success: false };
+
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from('user_layouts')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .maybeSingle();
+
+        if (!error && data) {
+          return { success: true, layout: data };
+        }
+      } catch (e) {
+        console.warn('[Supabase loadUserLayout client exception]', e);
       }
-      return { success: true, layout: data };
+    }
+
+    // Direct REST Fallback
+    const url = this.supabaseConfig.url || DEFAULT_SUPABASE_URL;
+    const key = this.supabaseConfig.anonKey || DEFAULT_SUPABASE_KEY;
+    try {
+      const resp = await fetch(`${url}/rest/v1/user_layouts?user_id=eq.${targetUserId}&select=*`, {
+        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+      });
+      const data = await resp.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return { success: true, layout: data[0] };
+      }
+      return { success: false };
     } catch (e) {
-      console.warn('[Supabase loadUserLayout exception]', e);
       return { success: false, error: e.message };
     }
   }
@@ -380,33 +440,51 @@ class SupabaseAuthService {
   /**
    * Save Moderated Channel History in Supabase
    */
-  async saveChannelHistory(userId, historyItems) {
-    if (!userId || !Array.isArray(historyItems)) return { success: false };
+  async saveChannelHistory(userId, historyItems, email = null) {
+    if (!userId || !Array.isArray(historyItems) || historyItems.length === 0) return { success: false };
     const client = this.getClient();
-    if (!client) return { success: false };
+    const userEmail = email || this.getCurrentUser()?.email || null;
 
-    try {
-      const rows = historyItems.map(item => ({
-        user_id: userId,
-        channel_id: item.id,
-        name: item.name,
-        platform: item.platform,
-        role: item.role || 'mod',
-        avatar: item.avatar || '',
-        added_at: item.addedAt ? new Date(item.addedAt).toISOString() : new Date().toISOString()
-      }));
+    const rows = historyItems.map(item => ({
+      user_id: userId,
+      channel_id: item.id || `ch-${item.platform}-${item.name}`,
+      name: item.name,
+      platform: item.platform,
+      role: item.role || (item.isModerator ? 'mod' : 'viewer'),
+      avatar: item.avatar || '',
+      user_email: userEmail,
+      added_at: item.addedAt ? new Date(item.addedAt).toISOString() : new Date().toISOString()
+    }));
 
-      const { data, error } = await client
-        .from('channel_history')
-        .upsert(rows, { onConflict: 'user_id,channel_id' });
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from('channel_history')
+          .upsert(rows, { onConflict: 'user_id,channel_id' });
 
-      if (error) {
-        console.warn('[Supabase saveChannelHistory error]', error);
-        return { success: false, error: error.message };
+        if (!error) return { success: true, data };
+        console.warn('[Supabase saveChannelHistory upsert warn]', error);
+      } catch (e) {
+        console.warn('[Supabase saveChannelHistory exception]', e);
       }
-      return { success: true, data };
+    }
+
+    // Direct REST Fallback
+    const url = this.supabaseConfig.url || DEFAULT_SUPABASE_URL;
+    const key = this.supabaseConfig.anonKey || DEFAULT_SUPABASE_KEY;
+    try {
+      const resp = await fetch(`${url}/rest/v1/channel_history?on_conflict=user_id,channel_id`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': key,
+          'Authorization': `Bearer ${key}`,
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(rows)
+      });
+      return { success: resp.ok };
     } catch (e) {
-      console.warn('[Supabase saveChannelHistory exception]', e);
       return { success: false, error: e.message };
     }
   }
@@ -414,25 +492,58 @@ class SupabaseAuthService {
   /**
    * Load Moderated Channel History from Supabase
    */
-  async loadChannelHistory(userId) {
-    if (!userId) return { success: false, channels: [] };
+  async loadChannelHistory(userId, email = null, twitchLogin = null, kickUsername = null) {
+    let targetUserId = userId;
+
+    if (!targetUserId && (email || twitchLogin || kickUsername)) {
+      try {
+        if (email) {
+          const p = await this.loadLinkedAccounts(null, email);
+          if (p.success && p.profile?.id) targetUserId = p.profile.id;
+        }
+        if (!targetUserId && twitchLogin) {
+          const p = await this.findProfileByPlatform('twitch', twitchLogin);
+          if (p.success && p.profile?.id) targetUserId = p.profile.id;
+        }
+        if (!targetUserId && kickUsername) {
+          const p = await this.findProfileByPlatform('kick', kickUsername);
+          if (p.success && p.profile?.id) targetUserId = p.profile.id;
+        }
+      } catch (e) {}
+    }
+
+    if (!targetUserId) return { success: false, channels: [] };
     const client = this.getClient();
-    if (!client) return { success: false, channels: [] };
 
-    try {
-      const { data, error } = await client
-        .from('channel_history')
-        .select('*')
-        .eq('user_id', userId)
-        .order('added_at', { ascending: false });
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from('channel_history')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .order('added_at', { ascending: false });
 
-      if (error) {
-        console.warn('[Supabase loadChannelHistory error]', error);
-        return { success: false, channels: [] };
+        if (!error && Array.isArray(data)) {
+          return { success: true, channels: data };
+        }
+      } catch (e) {
+        console.warn('[Supabase loadChannelHistory exception]', e);
       }
-      return { success: true, channels: data || [] };
+    }
+
+    // Direct REST Fallback
+    const url = this.supabaseConfig.url || DEFAULT_SUPABASE_URL;
+    const key = this.supabaseConfig.anonKey || DEFAULT_SUPABASE_KEY;
+    try {
+      const resp = await fetch(`${url}/rest/v1/channel_history?user_id=eq.${targetUserId}&order=added_at.desc&select=*`, {
+        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+      });
+      const data = await resp.json();
+      if (Array.isArray(data)) {
+        return { success: true, channels: data };
+      }
+      return { success: false, channels: [] };
     } catch (e) {
-      console.warn('[Supabase loadChannelHistory exception]', e);
       return { success: false, channels: [] };
     }
   }
