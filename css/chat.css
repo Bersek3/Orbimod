@@ -255,6 +255,101 @@
   height: 14px;
 }
 
+/* Interactive Volume Slider Widget Control */
+.channel-volume-control {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xs);
+  padding: 2px 6px 2px 2px;
+  gap: 4px;
+  height: 28px;
+  transition: all 0.2s ease;
+}
+
+.channel-volume-control:hover,
+.channel-volume-control.active {
+  background: rgba(0, 210, 211, 0.1);
+  border-color: rgba(0, 210, 211, 0.35);
+  box-shadow: 0 0 10px rgba(0, 210, 211, 0.15);
+}
+
+.volume-mute-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+
+.volume-mute-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.channel-volume-control.active .volume-mute-toggle-btn {
+  color: #00d2d3;
+}
+
+.volume-slider-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.channel-volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 52px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.channel-volume-slider:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.channel-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #00d2d3;
+  box-shadow: 0 0 8px rgba(0, 210, 211, 0.7);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.channel-volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
+
+.volume-percent-text {
+  font-size: 9.5px;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-dim);
+  min-width: 24px;
+  text-align: right;
+  user-select: none;
+}
+
+.channel-volume-control.active .volume-percent-text {
+  color: #00d2d3;
+  font-weight: 700;
+}
+
 /* Embedded Stream Player (Collapsible video with 16:9 stable embed) */
 .channel-player-container {
   width: 100%;

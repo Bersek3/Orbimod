@@ -110,12 +110,10 @@ export class ChannelCard {
       });
 
       this.twitchPlayer.addEventListener(window.Twitch.Player.READY, () => {
-        if (this.channel.audioEnabled) {
-          this.twitchPlayer.setMuted(false);
-          this.twitchPlayer.setVolume(1.0);
-        } else {
-          this.twitchPlayer.setMuted(true);
-        }
+        const vol = typeof this.channel.volume === 'number' ? this.channel.volume : (this.channel.audioEnabled ? 100 : 0);
+        const isMuted = vol === 0;
+        this.twitchPlayer.setMuted(isMuted);
+        this.twitchPlayer.setVolume(vol / 100);
       });
       return true;
     } catch (e) {
@@ -204,6 +202,10 @@ export class ChannelCard {
     const playerIframeSrc = this._getPlayerIframeSrc();
     const hasVideo = !!this.channel.videoEnabled;
     const hasAudio = !!this.channel.audioEnabled;
+    const currentVol = (typeof this.channel.volume === 'number') 
+      ? this.channel.volume 
+      : (this.channel.audioEnabled ? 100 : 0);
+    this.channel.volume = currentVol;
 
     const isMod = Boolean(this.channel.isModerator === true || this.channel.role === 'owner' || this.channel.role === 'mod');
     const isOwner = this.channel.role === 'owner';
@@ -255,14 +257,20 @@ export class ChannelCard {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
           </button>
 
-          <!-- Audio Toggle Button (Mute / Unmute) -->
-          <button class="icon-btn-subtle audio-toggle-btn ${hasAudio ? 'active' : ''}" title="${hasAudio ? 'Silenciar Audio' : 'Activar Sonido (Unmute)'}">
-            ${hasAudio ? `
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-            ` : `
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-            `}
-          </button>
+          <!-- Interactive Volume Slider Widget -->
+          <div class="channel-volume-control ${currentVol > 0 ? 'active' : ''}">
+            <button class="volume-mute-toggle-btn" title="${currentVol > 0 ? 'Silenciar (' + currentVol + '%)' : 'Activar Sonido'}">
+              ${currentVol > 0 ? `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              ` : `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              `}
+            </button>
+            <div class="volume-slider-wrapper">
+              <input type="range" class="channel-volume-slider" min="0" max="100" step="1" value="${currentVol}" title="Volumen: ${currentVol}%" />
+              <span class="volume-percent-text">${currentVol}%</span>
+            </div>
+          </div>
 
           <!-- Video Toggle Button -->
           <button class="icon-btn-subtle video-toggle-btn ${hasVideo ? 'active' : ''}" title="${hasVideo ? 'Ocultar Video Player' : 'Cargar Video Player'}">
@@ -347,8 +355,13 @@ export class ChannelCard {
   _bindEvents() {
     const playerContainer = this.element.querySelector('.channel-player-container');
     const videoBtn = this.element.querySelector('.video-toggle-btn');
-    const audioBtn = this.element.querySelector('.audio-toggle-btn');
     const reloadBtn = this.element.querySelector('.reload-player-btn');
+
+    // Volume Slider & Mute Controls
+    const volumeControl = this.element.querySelector('.channel-volume-control');
+    const muteToggleBtn = this.element.querySelector('.volume-mute-toggle-btn');
+    const volumeSlider = this.element.querySelector('.channel-volume-slider');
+    const volumeText = this.element.querySelector('.volume-percent-text');
 
     const reloadPlayer = () => {
       if (!this.channel.videoEnabled) return;
@@ -375,12 +388,27 @@ export class ChannelCard {
       setTimeout(() => reloadPlayer(), 50);
     }
 
-    // 1. Audio Toggle (Mute / Unmute stream on Kick and Twitch)
-    audioBtn?.addEventListener('click', () => {
-      this.channel.audioEnabled = !this.channel.audioEnabled;
+    // 1. Volume Slider & Mute/Unmute Functionality
+    const updateVolumeUI = (vol) => {
+      const isMuted = vol === 0;
+      this.channel.volume = vol;
+      this.channel.audioEnabled = !isMuted;
 
-      // If video was collapsed/disabled, enable video so user can hear the audio
-      if (this.channel.audioEnabled && !this.channel.videoEnabled) {
+      if (volumeSlider) volumeSlider.value = vol;
+      if (volumeText) volumeText.textContent = `${vol}%`;
+      if (volumeControl) volumeControl.classList.toggle('active', !isMuted);
+
+      if (muteToggleBtn) {
+        muteToggleBtn.title = isMuted ? 'Activar Sonido' : `Silenciar (${vol}%)`;
+        muteToggleBtn.innerHTML = isMuted ? `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        ` : `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        `;
+      }
+
+      // If volume increased and video was collapsed, expand it
+      if (!isMuted && !this.channel.videoEnabled) {
         this.channel.videoEnabled = true;
         if (videoBtn) {
           videoBtn.classList.add('active');
@@ -390,45 +418,38 @@ export class ChannelCard {
         reloadPlayer();
       }
 
-      // Update Audio button icon & title
-      audioBtn.classList.toggle('active', this.channel.audioEnabled);
-      audioBtn.title = this.channel.audioEnabled ? 'Silenciar Audio' : 'Activar Sonido (Unmute)';
-      audioBtn.innerHTML = this.channel.audioEnabled ? `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-      ` : `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-      `;
-
-      // Seamless in-place unmuting without destroying video context (prevents Error #1000)
+      // Apply volume level directly to Twitch Interactive Player
       if (this.channel.platform === 'twitch') {
         if (this.twitchPlayer) {
           try {
-            this.twitchPlayer.setMuted(!this.channel.audioEnabled);
-            if (this.channel.audioEnabled) {
-              this.twitchPlayer.setVolume(1.0);
-            }
+            this.twitchPlayer.setMuted(isMuted);
+            this.twitchPlayer.setVolume(vol / 100);
           } catch (e) {
-            console.warn('[Twitch setMuted error]', e);
-          }
-        } else {
-          // Fallback: try postMessage or lazy reload
-          const iframe = playerContainer.querySelector('iframe');
-          if (iframe && iframe.contentWindow) {
-            try {
-              iframe.contentWindow.postMessage({
-                eventName: 'setMuted',
-                params: { muted: !this.channel.audioEnabled }
-              }, '*');
-            } catch (e) {}
+            console.warn('[Twitch setVolume error]', e);
           }
         }
-      } else {
-        // Kick
-        reloadPlayer();
       }
 
       if (this.options.onConfigChange) {
         this.options.onConfigChange(this.channel);
+      }
+    };
+
+    volumeSlider?.addEventListener('input', (e) => {
+      const vol = parseInt(e.target.value, 10);
+      updateVolumeUI(vol);
+    });
+
+    volumeSlider?.addEventListener('click', (e) => e.stopPropagation());
+
+    muteToggleBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.channel.volume > 0) {
+        this._lastNonZeroVolume = this.channel.volume;
+        updateVolumeUI(0);
+      } else {
+        const targetVol = this._lastNonZeroVolume || 100;
+        updateVolumeUI(targetVol);
       }
     });
 
@@ -442,19 +463,10 @@ export class ChannelCard {
       if (this.channel.videoEnabled) {
         reloadPlayer();
       } else {
-        // If video disabled, mute audio button as well
-        this.channel.audioEnabled = false;
+        // If video disabled, mute volume as well
+        this._lastNonZeroVolume = this.channel.volume > 0 ? this.channel.volume : (this._lastNonZeroVolume || 100);
+        updateVolumeUI(0);
         this.twitchPlayer = null;
-        if (audioBtn) {
-          audioBtn.classList.remove('active');
-          audioBtn.title = 'Activar Sonido (Unmute)';
-          audioBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
-        }
-        playerContainer.innerHTML = `
-          <div class="video-placeholder-lazy" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); font-size: 11.5px; gap: 8px;">
-            <span>📹 Modo Chat Ligero (Haz clic en el ícono de cámara arriba para cargar video)</span>
-          </div>
-        `;
       }
 
       if (this.options.onConfigChange) {
