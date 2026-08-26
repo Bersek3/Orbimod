@@ -303,7 +303,7 @@
    TWITCH CUSTOM CLASS SUPPRESSION
    ========================================================================== */
 
-/* 1. Twitch En Vivo (Live Stream Video Player Inactive Screens, Info Cards & Overlays) */
+/* 1. Twitch En Vivo (Live Stream Video Player Inactive Screens, Info Cards, Social Panels & Top Bars) */
 .video-player__default-player,
 .video-player__inactive,
 .video-player__overlay,
@@ -324,6 +324,14 @@
 [class*="celebration__overlay"],
 [data-a-target="player-overlay-click-handler"],
 [data-a-target="ax-overlay"],
+[data-a-target="player-info-title"],
+[data-test-selector="stream-info-card-component__title"],
+[data-test-selector="stream-info-card-component__subtitle"],
+[data-test-selector="stream-info-card-component__description"],
+[data-a-target="player-info-game-name"],
+[data-a-target="follow-button"],
+[data-a-target="gift-button"],
+[data-a-target="subscribe-button"],
 .disclosure-tool,
 [class*="disclosure-tool"],
 .Layout-sc-1xcs6mc-0,
@@ -331,12 +339,27 @@
 .ScTransitionBase-sc-hx4quq-0,
 .fhZWme,
 .tw-transition,
+.gJnQfX,
 .jxnAvX,
 .bSdXJN,
 .gOTrNS,
+.glFavL,
+.tw-card,
+.pxwBq,
+.jauctw,
+.JMuPr,
 .iNtEof,
 .cYBTMF,
 .kNmocE,
+.kakmLO,
+.bohlnR,
+.fOnigQ,
+.cduYYK,
+.jOeezg,
+.tw-channel-status-text-indicator,
+.tw-avatar,
+.tw-image-avatar,
+.tw-core-button-icon,
 .InjectLayout-sc-1i43xsx-0.celebration__overlay,
 .InjectLayout-sc-1i43xsx-0.click-handler {
   display: none !important;
