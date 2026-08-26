@@ -299,24 +299,43 @@
   height: 0 !important;
 }
 
-/* Twitch Embed Player - Hide Intrusive Transition and Overlay Classes */
+/* ==========================================================================
+   TWITCH CUSTOM CLASS SUPPRESSION
+   ========================================================================== */
+
+/* 1. Twitch En Vivo (Live Stream Video Player Overlays) */
+.Layout-sc-1xcs6mc-0,
+[class*="Layout-sc-1xcs6mc-0"],
 .ScTransitionBase-sc-hx4quq-0,
 .fhZWme,
 .tw-transition,
-.ScTransitionBase-sc-hx4quq-0.fhZWme.tw-transition,
-[class*="ScTransitionBase"],
-[class*="fhZWme"],
-.Layout-sc-1xcs6mc-0,
 .video-player__default-player,
-.video-player__inactive,
-.Layout-sc-1xcs6mc-0.video-player__default-player.video-player__inactive,
-[class*="video-player__inactive"],
-[class*="video-player__default-player"] {
+.video-player__inactive {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
   height: 0 !important;
+}
+
+/* 2. Twitch Chat: Stream Chat Header & Community Highlight Cards */
+.Layout-sc-1xcs6mc-0.eepdmT.stream-chat-header,
+.stream-chat-header,
+[class*="stream-chat-header"],
+.eepdmT,
+[class*="eepdmT"],
+.Layout-sc-1xcs6mc-0.gDmVFp.community-highlight-stack__backlog-card,
+.community-highlight-stack__backlog-card,
+[class*="community-highlight-stack__backlog-card"],
+.gDmVFp,
+[class*="gDmVFp"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
 }
 
 /* Room Moderation Quick Modes Toolbar */
@@ -366,103 +385,7 @@
   font-weight: 700;
 }
 
-/* Chat Controls Header Bar (Mode Switcher & Filters) */
-.chat-controls-header-bar {
-  padding: 4px 10px;
-  background: rgba(12, 15, 24, 0.9);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-shrink: 0;
-}
 
-.chat-mode-tabs {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 2px 4px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.chat-mode-tab-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-dim);
-  font-size: 10.5px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.15s ease;
-}
-
-.chat-mode-tab-btn:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.chat-mode-tab-btn.active.orbimod {
-  background: rgba(145, 70, 255, 0.25);
-  color: #bf94ff;
-  font-weight: 700;
-}
-
-.chat-mode-tab-btn.active.native-twitch {
-  background: #9146FF;
-  color: #fff;
-  font-weight: 700;
-  box-shadow: 0 0 10px rgba(145, 70, 255, 0.4);
-}
-
-.chat-mode-tab-btn.active.native-kick {
-  background: #53FC18;
-  color: #000;
-  font-weight: 700;
-  box-shadow: 0 0 10px rgba(83, 252, 24, 0.4);
-}
-
-.chat-mode-tab-btn.popout-btn {
-  padding: 3px 5px;
-  font-size: 11px;
-}
-
-/* Quick Chat Filter Chips */
-.chat-filters-bar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.chat-filter-chip {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-dim);
-  font-size: 10.5px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.chat-filter-chip:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.chat-filter-chip.active {
-  background: rgba(145, 70, 255, 0.18);
-  color: #bf94ff;
-  border-color: rgba(145, 70, 255, 0.4);
-}
 
 /* Chat Feed Container - 100% Full Height */
 .channel-chat-section {

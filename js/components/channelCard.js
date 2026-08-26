@@ -180,6 +180,11 @@ export class ChannelCard {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
 
+          <!-- Popout Real Chat Button -->
+          <button class="icon-btn-subtle popout-chat-btn" title="Abrir Chat Real en Ventana Popout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+          </button>
+
           <!-- Audio Toggle Button (Mute / Unmute) -->
           <button class="icon-btn-subtle audio-toggle-btn ${hasAudio ? 'active' : ''}" title="${hasAudio ? 'Silenciar Audio' : 'Activar Sonido (Unmute)'}">
             ${hasAudio ? `
@@ -254,50 +259,16 @@ export class ChannelCard {
         </div>
       `}
 
-      <!-- Chat Controls & Mode Switcher Bar -->
-      <div class="chat-controls-header-bar">
-        <div class="chat-mode-tabs">
-          <button class="chat-mode-tab-btn orbimod ${!this.channel.useNativeChat ? 'active' : ''}" data-mode="orbimod" title="Chat Ultra-Rápido con AutoMod y Moderación de 1-Clic">
-            ⚡ OrbiMod
-          </button>
-          <button class="chat-mode-tab-btn native ${isTwitch ? 'native-twitch' : 'native-kick'} ${this.channel.useNativeChat ? 'active' : ''}" data-mode="native" title="Chat Oficial Real Embebido de ${isTwitch ? 'Twitch' : 'Kick'} con Emotes y Chatbox">
-            💬 Chat Real
-          </button>
-          <button class="chat-mode-tab-btn popout-btn" title="Abrir Chat Real en Ventana Independiente / Popout">
-            ↗️
-          </button>
-        </div>
-
-        <!-- Quick Chat Filter Chips (Visible in OrbiMod Mode) -->
-        <div class="chat-filters-bar" style="${this.channel.useNativeChat ? 'display: none;' : ''}">
-          <button class="chat-filter-chip active" data-filter="all">Todos</button>
-          <button class="chat-filter-chip" data-filter="mentions">@ Menciones</button>
-          <button class="chat-filter-chip" data-filter="first">✨ Primerizos</button>
-          <button class="chat-filter-chip" data-filter="subs">⭐ Subs</button>
-        </div>
-      </div>
-
-      <!-- Chat Feed Container (Pure Live Visualization & Mod Actions vs Official Real Embed) -->
+      <!-- 100% Real Native Official Platform Chat Section (Twitch & Kick) -->
       <div class="channel-chat-section">
-        <!-- 1. Unified OrbiMod Chat Feed -->
-        <div class="chat-messages-container" style="${this.channel.useNativeChat ? 'display: none;' : ''}"></div>
-        <div class="chat-paused-pill ${this.channel.platform}" style="display: none;">
-          ↓ Mensajes nuevos (${this.unreadCountWhilePaused})
-        </div>
-
-        <!-- 2. Official Native Platform Chat Embed -->
-        <div class="channel-native-chat-container" style="${this.channel.useNativeChat ? 'display: flex;' : 'display: none;'}">
-          ${this.channel.useNativeChat ? `
-            <iframe class="channel-native-chat-iframe" src="${this._getNativeChatSrc()}" frameborder="0" scrolling="yes" allow="autoplay; fullscreen; clipboard-write; encrypted-media;"></iframe>
-          ` : ''}
+        <div class="channel-native-chat-container">
+          <iframe class="channel-native-chat-iframe" src="${this._getNativeChatSrc()}" frameborder="0" scrolling="yes" allow="autoplay; fullscreen; clipboard-write; encrypted-media;"></iframe>
         </div>
       </div>
     `;
 
     this.element = card;
-    this.messagesContainer = card.querySelector('.chat-messages-container');
     this.nativeChatContainer = card.querySelector('.channel-native-chat-container');
-    this.pausedIndicator = card.querySelector('.chat-paused-pill');
 
     this._bindEvents();
     return card;
@@ -535,157 +506,54 @@ export class ChannelCard {
       });
     });
 
-    // Chat Quick Filter Chips
-    this.activeFilter = 'all';
-    this.element.querySelectorAll('.chat-filter-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        this.element.querySelectorAll('.chat-filter-chip').forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        this.activeFilter = chip.dataset.filter;
-        this._applyChatFilter();
-      });
-    });
-
-    // Chat Engine Mode Switcher (OrbiMod Ultra-Fast vs Real Native Platform Embed)
-    const chatFiltersBar = this.element.querySelector('.chat-filters-bar');
-    const orbimodBtn = this.element.querySelector('.chat-mode-tab-btn.orbimod');
-    const nativeBtn = this.element.querySelector('.chat-mode-tab-btn.native');
-    const popoutBtn = this.element.querySelector('.chat-mode-tab-btn.popout-btn');
-    const nativeContainer = this.element.querySelector('.channel-native-chat-container');
-    const isTwitch = this.channel.platform === 'twitch';
-
-    orbimodBtn?.addEventListener('click', () => {
-      this.channel.useNativeChat = false;
-      orbimodBtn.classList.add('active');
-      nativeBtn?.classList.remove('active', 'native-twitch', 'native-kick');
-      if (this.messagesContainer) this.messagesContainer.style.display = 'flex';
-      if (chatFiltersBar) chatFiltersBar.style.display = 'flex';
-      if (nativeContainer) nativeContainer.style.display = 'none';
-
-      if (this.options.onConfigChange) {
-        this.options.onConfigChange(this.channel);
-      }
-    });
-
-    nativeBtn?.addEventListener('click', () => {
-      this.channel.useNativeChat = true;
-      nativeBtn.classList.add('active', isTwitch ? 'native-twitch' : 'native-kick');
-      orbimodBtn?.classList.remove('active');
-      if (this.messagesContainer) this.messagesContainer.style.display = 'none';
-      if (chatFiltersBar) chatFiltersBar.style.display = 'none';
-      if (nativeContainer) {
-        nativeContainer.style.display = 'flex';
-        // Mount native iframe if not already present
-        if (!nativeContainer.querySelector('iframe')) {
-          nativeContainer.innerHTML = `<iframe class="channel-native-chat-iframe" src="${this._getNativeChatSrc()}" frameborder="0" scrolling="yes" allow="autoplay; fullscreen; clipboard-write; encrypted-media;"></iframe>`;
-        }
-      }
-
-      if (this.options.onConfigChange) {
-        this.options.onConfigChange(this.channel);
-      }
-    });
-
+    // Popout Real Native Chat Window
+    const popoutBtn = this.element.querySelector('.popout-chat-btn');
     popoutBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
       const popoutUrl = this._getPopoutChatUrl();
       const winName = `OrbiMod_Chat_${this.channel.platform}_${this.channel.name}`;
       window.open(popoutUrl, winName, 'width=420,height=720,status=no,toolbar=no,menubar=no,location=no,resizable=yes');
     });
-
-    // Scroll handling for paused chat
-    this.messagesContainer.addEventListener('scroll', () => {
-      const { scrollTop, scrollHeight, clientHeight } = this.messagesContainer;
-      const isAtBottom = scrollHeight - scrollTop - clientHeight < 40;
-
-      if (isAtBottom) {
-        this.isScrolledUp = false;
-        this.unreadCountWhilePaused = 0;
-        this.pausedIndicator.style.display = 'none';
-      } else {
-        this.isScrolledUp = true;
-      }
-    });
-
-    // Click on paused indicator to snap to bottom
-    this.pausedIndicator.addEventListener('click', () => {
-      this.scrollToBottom();
-    });
-
-  }
-
-  _applyChatFilter() {
-    const msgs = this.messagesContainer.querySelectorAll('.chat-message');
-    msgs.forEach(msgEl => {
-      if (this.activeFilter === 'all') {
-        msgEl.style.display = 'block';
-      } else if (this.activeFilter === 'mentions') {
-        msgEl.style.display = msgEl.classList.contains('highlight-mention') ? 'block' : 'none';
-      } else if (this.activeFilter === 'first') {
-        msgEl.style.display = msgEl.classList.contains('first-message') ? 'block' : 'none';
-      } else if (this.activeFilter === 'subs') {
-        const hasSub = msgEl.querySelector('.badge-subscriber');
-        msgEl.style.display = hasSub ? 'block' : 'none';
-      }
-    });
   }
 
   addMessage(msgObj) {
-    const isAtBottom = !this.isScrolledUp;
-
-    const msgEl = document.createElement('div');
-    msgEl.className = 'chat-message';
-    msgEl.id = `msg-${msgObj.id}`;
-    msgEl.dataset.msgId = msgObj.id;
-    msgEl.dataset.username = msgObj.username;
-
-    if (msgObj.isFirstMessage) msgEl.classList.add('first-message');
-    if (msgObj.highlighted) msgEl.classList.add('highlight-mention');
-
-    const timeString = new Date(msgObj.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const badgesHtml = renderBadgesHTML(msgObj.platform, msgObj.badges);
-    const userColor = msgObj.color || (msgObj.platform === 'kick' ? '#53fc18' : '#9146ff');
-
-    msgEl.innerHTML = `
-      <span class="msg-time">${timeString}</span>
-      <span class="msg-badges">${badgesHtml}</span>
-      <span class="msg-username" style="color: ${userColor}">${msgObj.displayName || msgObj.username}</span><span class="msg-colon">:</span>
-      <span class="message-body">${this._escapeHtml(msgObj.text)}</span>
-
-      <!-- Hover Action Bar -->
-      <div class="msg-actions-hover">
-        <button class="msg-action-btn delete-btn" title="Eliminar Mensaje (Delete)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M10 11v6M14 11v6"/></svg>
-        </button>
-        <button class="msg-action-btn timeout-btn" title="Sancionar / Timeout">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        </button>
-        <button class="msg-action-btn ban-btn" title="Banear Usuario Permanentemente">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg>
-        </button>
-        <button class="msg-action-btn inspect-btn" title="Inspeccionar Perfil y Notas">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </button>
-      </div>
-    `;
-
-    this._bindMessageEvents(msgEl, msgObj);
-
-    this.messagesContainer.appendChild(msgEl);
     this.messages.push(msgObj);
-
-    // Prune excess messages to maintain 60FPS performance
-    if (this.messagesContainer.children.length > this.maxMessages) {
-      this.messagesContainer.removeChild(this.messagesContainer.firstElementChild);
+    if (this.messages.length > this.maxMessages) {
       this.messages.shift();
     }
 
-    if (isAtBottom) {
-      this.scrollToBottom();
-    } else {
-      this.unreadCountWhilePaused++;
-      this.pausedIndicator.style.display = 'flex';
-      this.pausedIndicator.textContent = `↓ Mensajes nuevos (${this.unreadCountWhilePaused})`;
+    if (this.messagesContainer) {
+      const isAtBottom = !this.isScrolledUp;
+      const msgEl = document.createElement('div');
+      msgEl.className = 'chat-message';
+      msgEl.id = `msg-${msgObj.id}`;
+      msgEl.dataset.msgId = msgObj.id;
+      msgEl.dataset.username = msgObj.username;
+
+      if (msgObj.isFirstMessage) msgEl.classList.add('first-message');
+      if (msgObj.highlighted) msgEl.classList.add('highlight-mention');
+
+      const timeString = new Date(msgObj.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const badgesHtml = renderBadgesHTML(msgObj.platform, msgObj.badges);
+      const userColor = msgObj.color || (msgObj.platform === 'kick' ? '#53fc18' : '#9146ff');
+
+      msgEl.innerHTML = `
+        <span class="msg-time">${timeString}</span>
+        <span class="msg-badges">${badgesHtml}</span>
+        <span class="msg-username" style="color: ${userColor}">${msgObj.displayName || msgObj.username}</span><span class="msg-colon">:</span>
+        <span class="message-body">${this._escapeHtml(msgObj.text)}</span>
+      `;
+
+      this._bindMessageEvents(msgEl, msgObj);
+      this.messagesContainer.appendChild(msgEl);
+
+      if (this.messagesContainer.children.length > this.maxMessages) {
+        this.messagesContainer.removeChild(this.messagesContainer.firstElementChild);
+      }
+
+      if (isAtBottom) {
+        this.scrollToBottom();
+      }
     }
   }
 
