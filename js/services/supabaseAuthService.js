@@ -9,6 +9,29 @@ const DEFAULT_SUPABASE_KEY = 'sb_publishable_EMRaEigGHD97WRgY6uBy2Q_NoO4Jd0x';
 const STORAGE_KEY_AUTH = 'orbimod_supabase_session_v2';
 const STORAGE_KEY_CONFIG = 'orbimod_supabase_config_v2';
 
+export function getDeterministicUserUUID(emailOrId) {
+  if (!emailOrId) return '00000000-0000-0000-0000-000000000001';
+  const str = String(emailOrId).trim().toLowerCase();
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(str)) return str;
+
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+
+  const hex1 = ((h1 >>> 0) + 0x100000000).toString(16).slice(1);
+  const hex2 = ((h2 >>> 0) + 0x100000000).toString(16).slice(1);
+  const hex3 = (((h1 ^ h2) >>> 0) + 0x100000000).toString(16).slice(1);
+  const hex4 = (((Math.imul(h1, 31) + h2) >>> 0) + 0x100000000).toString(16).slice(1);
+
+  return hex1 + '-' + hex2.slice(0, 4) + '-4' + hex2.slice(4, 7) + '-a' + hex3.slice(0, 3) + '-' + hex3.slice(3, 8) + hex4.slice(0, 7);
+}
+
 class SupabaseAuthService {
   constructor() {
     this.supabaseConfig = this._loadConfig();
@@ -338,18 +361,19 @@ class SupabaseAuthService {
    * Save User Panel Layout & Channel Deck Preferences in Supabase
    */
   async saveUserLayout(userId, layoutData, email = null) {
-    if (!userId || !layoutData) return { success: false };
+    const rawEmail = (email || this.getCurrentUser()?.email || '').trim().toLowerCase();
+    const effectiveId = getDeterministicUserUUID(userId || rawEmail);
+    if (!effectiveId || !layoutData) return { success: false };
     const client = this.getClient();
-    const userEmail = (email || this.getCurrentUser()?.email || '').trim().toLowerCase() || null;
 
     const payload = {
-      user_id: userId,
+      user_id: effectiveId,
       layout_type: layoutData.layoutType || layoutData.layout || 'layout-grid-2x2',
       channels: Array.isArray(layoutData.channels) ? layoutData.channels : [],
       active_widgets: Array.isArray(layoutData.activeWidgets) ? layoutData.activeWidgets : [],
       preferences: {
         ...(layoutData.preferences || {}),
-        user_email: userEmail
+        user_email: rawEmail || null
       },
       updated_at: new Date().toISOString()
     };
@@ -361,7 +385,7 @@ class SupabaseAuthService {
           .upsert(payload, { onConflict: 'user_id' });
 
         if (error) {
-          const updateRes = await client.from('user_layouts').update(payload).eq('user_id', userId);
+          const updateRes = await client.from('user_layouts').update(payload).eq('user_id', effectiveId);
           if (updateRes.error) {
             await client.from('user_layouts').insert(payload);
           }
@@ -399,59 +423,26 @@ class SupabaseAuthService {
    */
   async loadUserLayout(userId, email = null, twitchLogin = null, kickUsername = null) {
     const client = this.getClient();
-    let targetUserId = userId;
     const cleanEmail = (email || this.getCurrentUser()?.email || '').trim().toLowerCase();
+    const targetUserId = getDeterministicUserUUID(userId || cleanEmail || twitchLogin || kickUsername);
 
-    // If userId not provided, try to resolve from profile lookup
-    if (!targetUserId && (cleanEmail || twitchLogin || kickUsername)) {
-      try {
-        if (cleanEmail) {
-          const p = await this.loadLinkedAccounts(null, cleanEmail);
-          if (p.success && p.profile?.id) targetUserId = p.profile.id;
-        }
-        if (!targetUserId && twitchLogin) {
-          const p = await this.findProfileByPlatform('twitch', twitchLogin);
-          if (p.success && p.profile?.id) targetUserId = p.profile.id;
-        }
-        if (!targetUserId && kickUsername) {
-          const p = await this.findProfileByPlatform('kick', kickUsername);
-          if (p.success && p.profile?.id) targetUserId = p.profile.id;
-        }
-      } catch (e) {}
-    }
-
-    if (!targetUserId && !cleanEmail) return { success: false };
+    if (!targetUserId) return { success: false };
 
     if (client) {
       try {
-        // 1. Try lookup by user_id
-        if (targetUserId) {
-          const { data, error } = await client
-            .from('user_layouts')
-            .select('*')
-            .eq('user_id', targetUserId)
-            .order('updated_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        const { data, error } = await client
+          .from('user_layouts')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-          if (!error && data && Array.isArray(data.channels) && data.channels.length > 0) {
-            return { success: true, layout: data };
-          }
+        if (!error && data && Array.isArray(data.channels) && data.channels.length > 0) {
+          return { success: true, layout: data };
         }
-
-        // 2. Try lookup by user_email
-        if (cleanEmail) {
-          const { data, error } = await client
-            .from('user_layouts')
-            .select('*')
-            .eq('user_email', cleanEmail)
-            .order('updated_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (!error && data) {
-            return { success: true, layout: data };
-          }
+        if (!error && data) {
+          return { success: true, layout: data };
         }
       } catch (e) {
         console.warn('[Supabase loadUserLayout client exception]', e);
@@ -461,24 +452,15 @@ class SupabaseAuthService {
     // Direct REST Fallback
     const url = this.supabaseConfig.url || DEFAULT_SUPABASE_URL;
     const key = this.supabaseConfig.anonKey || DEFAULT_SUPABASE_KEY;
+    const sessionToken = this.session?.accessToken && this.session.accessToken.length > 20 ? this.session.accessToken : key;
+
     try {
-      if (targetUserId) {
-        const resp = await fetch(`${url}/rest/v1/user_layouts?user_id=eq.${targetUserId}&select=*&order=updated_at.desc&limit=1`, {
-          headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
-        });
-        const data = await resp.json();
-        if (Array.isArray(data) && data.length > 0 && Array.isArray(data[0].channels) && data[0].channels.length > 0) {
-          return { success: true, layout: data[0] };
-        }
-      }
-      if (cleanEmail) {
-        const resp = await fetch(`${url}/rest/v1/user_layouts?user_email=eq.${cleanEmail}&select=*&order=updated_at.desc&limit=1`, {
-          headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
-        });
-        const data = await resp.json();
-        if (Array.isArray(data) && data.length > 0) {
-          return { success: true, layout: data[0] };
-        }
+      const resp = await fetch(`${url}/rest/v1/user_layouts?user_id=eq.${targetUserId}&select=*&order=updated_at.desc&limit=1`, {
+        headers: { 'apikey': key, 'Authorization': `Bearer ${sessionToken}` }
+      });
+      const data = await resp.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return { success: true, layout: data[0] };
       }
     } catch (e) {
       return { success: false, error: e.message };
