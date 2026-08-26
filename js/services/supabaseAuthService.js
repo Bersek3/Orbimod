@@ -123,6 +123,20 @@ class SupabaseAuthService {
   }
 
   /**
+   * Sign Out and clear Supabase active session
+   */
+  async signOut() {
+    this._saveSession(null);
+    const client = this.getClient();
+    if (client) {
+      try {
+        await client.auth.signOut();
+      } catch (e) {}
+    }
+    this._notifyListeners();
+  }
+
+  /**
    * Login with Email & Password via Supabase
    */
   async signInWithPassword(email, password) {

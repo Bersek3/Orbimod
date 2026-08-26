@@ -160,6 +160,23 @@ class OrbiModApp {
   }
 
   async init() {
+    // 1. Resolve active view immediately (prevent any landing flash on F5 inside deck)
+    const savedView = localStorage.getItem('orbimod_active_view');
+    const hash = window.location.hash.toLowerCase();
+    const shouldBeDeck = (hash === '#deck' || savedView === 'deck' || hash.includes('access_token='));
+
+    if (shouldBeDeck) {
+      document.documentElement.classList.add('deck-active-init');
+      this.currentView = 'deck';
+      document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
+      document.getElementById('view-deck')?.classList.add('active');
+    } else {
+      document.documentElement.classList.remove('deck-active-init');
+      this.currentView = 'landing';
+      document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
+      document.getElementById('view-landing')?.classList.add('active');
+    }
+
     this._bindHeaderControls();
     this._bindLandingControls();
     this._bindKeyboardShortcuts();
@@ -173,20 +190,34 @@ class OrbiModApp {
     this.searchHistoryBar = new ChannelSearchHistoryBar({
       container: document.getElementById('deck-channel-search-container'),
       getActiveChannels: () => this.channels,
-      onAddChannel: (chan) => {
-        this.addChannel(chan);
-      },
-      onRemoveChannel: (id) => {
-        this.removeChannel(id);
-      },
-      onChannelsUpdated: () => {
-        this.renderChannels();
-      },
-      onHistoryUpdated: () => {
-        this.syncToSupabase();
-      },
+      onAddChannel: (chan) => this.addChannel(chan),
+      onRemoveChannel: (id) => this.removeChannel(id),
+      onChannelsUpdated: () => this.renderChannels(),
+      onHistoryUpdated: () => this.syncToSupabase(),
       showToast: (msg, type) => this.showToast(msg, type)
     });
+
+    // Apply layout
+    this.setLayout(this.selectedLayout, true);
+
+    // Update initial UI states
+    this._updateAccountPills();
+    this.updateLandingAuthStatus();
+
+    // If deck view, render initial local channels and start connections immediately
+    if (shouldBeDeck) {
+      soundService.startBackgroundPlaybackKeepAlive();
+      this.channels = storageService.getChannels() || [];
+      this.renderChannels();
+      this.initConnections();
+    }
+
+    // Keep streams active in background tabs without pausing
+    const startKeepAlive = () => {
+      soundService.startBackgroundPlaybackKeepAlive();
+    };
+    document.addEventListener('click', startKeepAlive, { once: true });
+    document.addEventListener('keydown', startKeepAlive, { once: true });
 
     // Listen to Supabase auth state changes for automatic real-time cloud restore
     supabaseAuthService.onAuthStateChange(async (session) => {
@@ -197,16 +228,6 @@ class OrbiModApp {
       }
     });
 
-    // Keep streams active in background tabs without pausing
-    const startKeepAlive = () => {
-      soundService.startBackgroundPlaybackKeepAlive();
-    };
-    document.addEventListener('click', startKeepAlive, { once: true });
-    document.addEventListener('keydown', startKeepAlive, { once: true });
-
-    // Apply layout
-    this.setLayout(this.selectedLayout, true);
-
     // Check URL hash / params for OAuth redirect
     const didAuth = await this._checkOAuthRedirect();
 
@@ -216,15 +237,11 @@ class OrbiModApp {
     }
 
     this.updateLandingAuthStatus();
+    this._updateAccountPills();
 
-    const savedView = localStorage.getItem('orbimod_active_view');
-    const hash = window.location.hash.toLowerCase();
-
-    if (didAuth || hash === '#deck' || savedView === 'deck') {
-      soundService.startBackgroundPlaybackKeepAlive();
+    // If OAuth redirect happened, make sure deck is shown
+    if (didAuth && this.currentView !== 'deck') {
       this.switchView('deck');
-    } else {
-      this.switchView('landing');
     }
 
     this.showToast('OrbiMod listo', 'success');
@@ -450,10 +467,16 @@ class OrbiModApp {
       window.history.replaceState(null, null, viewName === 'deck' ? '#deck' : '#home');
     }
 
+    if (viewName === 'deck') {
+      document.documentElement.classList.add('deck-active-init');
+    } else {
+      document.documentElement.classList.remove('deck-active-init');
+    }
+
     document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
 
     const target = document.getElementById(`view-${viewName}`) || 
-                   (viewName === 'deck' ? document.getElementById('view-mod-deck') : null);
+                   (viewName === 'deck' ? document.getElementById('view-deck') : null);
     if (target) {
       target.classList.add('active');
     }
@@ -582,15 +605,18 @@ class OrbiModApp {
     });
   }
 
-  logout() {
+  async logout() {
     if (!confirm('¿Estás seguro de que deseas cerrar sesión y volver a la pantalla de inicio?')) {
       return;
     }
     localStorage.setItem('orbimod_active_view', 'landing');
+    document.documentElement.classList.remove('deck-active-init');
+    storageService.clearAllAuth();
     storageService.saveProfiles({ twitch: null, kick: null });
-    supabaseAuthService.signOut();
+    await supabaseAuthService.signOut();
     try { this.twitchClient?.disconnect?.(); } catch (e) {}
     try { this.kickClient?.disconnect?.(); } catch (e) {}
+    this._updateAccountPills();
     this.updateLandingAuthStatus();
     this.switchView('landing');
     this.showToast('🚪 Has cerrado sesión. Elige cómo volver a ingresar.', 'info');
@@ -627,6 +653,8 @@ class OrbiModApp {
     } else {
       if (cornerLoginBtn) cornerLoginBtn.style.display = 'flex';
       if (userProfileBadge) userProfileBadge.style.display = 'none';
+      if (userNameEl) userNameEl.textContent = '';
+      if (userAvatarEl) userAvatarEl.src = '';
     }
   }
 
@@ -791,8 +819,21 @@ class OrbiModApp {
           this.setLayout(this.selectedLayout, true);
         }
         if (layoutData.preferences && typeof layoutData.preferences === 'object') {
-          this.settings = { ...this.settings, ...layoutData.preferences };
+          const { macros, channelHistory, linkedProfiles, ...cleanPrefs } = layoutData.preferences;
+          this.settings = { ...this.settings, ...cleanPrefs };
           storageService.saveSettings(this.settings);
+          if (Array.isArray(macros) && macros.length > 0) {
+            storageService.saveMacros(macros);
+          }
+          if (Array.isArray(channelHistory) && channelHistory.length > 0) {
+            storageService.saveChannelHistory(channelHistory);
+          }
+          if (linkedProfiles && typeof linkedProfiles === 'object') {
+            const curProf = storageService.getProfiles();
+            if (linkedProfiles.twitch && !curProf.twitch) curProf.twitch = linkedProfiles.twitch;
+            if (linkedProfiles.kick && !curProf.kick) curProf.kick = linkedProfiles.kick;
+            storageService.saveProfiles(curProf);
+          }
         }
         if (Array.isArray(layoutData.channels) && layoutData.channels.length > 0) {
           this.channels = layoutData.channels;
@@ -869,6 +910,10 @@ class OrbiModApp {
     const targetId = effectiveUserId || user?.id;
 
     try {
+      const allMacros = storageService.getMacros();
+      const allHistory = storageService.getChannelHistory() || [];
+      const allProfiles = storageService.getProfiles();
+
       await supabaseAuthService.saveUserLayout(targetId, {
         layoutType: this.selectedLayout || this.settings.layout || 'layout-grid-2x2',
         channels: this.channels,
@@ -877,13 +922,17 @@ class OrbiModApp {
           theme: this.settings.theme || 'cyber-dark',
           soundEnabled: this.settings.soundEnabled ?? true,
           volume: this.settings.volume ?? 0.5,
-          fontSize: this.settings.fontSize || 'normal'
-        }
+          fontSize: this.settings.fontSize || 'normal',
+          autoModEnabled: this.settings.autoModEnabled ?? false,
+          highVolumeThreshold: this.settings.highVolumeThreshold ?? 25
+        },
+        macros: allMacros,
+        channelHistory: allHistory,
+        linkedProfiles: allProfiles
       }, effectiveEmail);
 
-      const history = storageService.getChannelHistory() || [];
-      if (history.length > 0) {
-        await supabaseAuthService.saveChannelHistory(targetId, history, effectiveEmail);
+      if (allHistory.length > 0) {
+        await supabaseAuthService.saveChannelHistory(targetId, allHistory, effectiveEmail);
       }
     } catch (e) {
       console.warn('[Supabase Cloud Save Error]', e);
@@ -892,31 +941,90 @@ class OrbiModApp {
 
   _updateAccountPills() {
     const profiles = storageService.getProfiles();
+    const masterHub = storageService.getMasterHub();
+    const emailUser = supabaseAuthService.getCurrentUser() || masterHub.google;
+
+    // 1. Top Deck Profile Hub Button
+    const nameEl = document.getElementById('deck-profile-name');
+    const subEl = document.getElementById('deck-profile-sub');
+    const avatarEl = document.getElementById('deck-profile-avatar');
+    const deckTwitchDot = document.getElementById('deck-profile-twitch-dot');
+    const deckKickDot = document.getElementById('deck-profile-kick-dot');
+
+    const isTwitch = !!((profiles.twitch && profiles.twitch.valid) || (masterHub.twitch && masterHub.twitch.valid));
+    const isKick = !!((profiles.kick && profiles.kick.valid) || (masterHub.kick && masterHub.kick.valid));
+
+    if (deckTwitchDot) deckTwitchDot.style.display = isTwitch ? 'block' : 'none';
+    if (deckKickDot) deckKickDot.style.display = isKick ? 'block' : 'none';
+
+    if (avatarEl) {
+      if (emailUser && (emailUser.avatar || emailUser.avatar_url)) {
+        avatarEl.src = emailUser.avatar || emailUser.avatar_url;
+      } else if (isTwitch && (profiles.twitch?.avatar || masterHub.twitch?.avatar)) {
+        avatarEl.src = profiles.twitch?.avatar || masterHub.twitch?.avatar;
+      } else if (isKick && (profiles.kick?.avatar || masterHub.kick?.avatar)) {
+        avatarEl.src = profiles.kick?.avatar || masterHub.kick?.avatar;
+      } else {
+        avatarEl.src = 'https://api.dicebear.com/7.x/identicon/svg?seed=orbimod';
+      }
+    }
+
+    if (nameEl && subEl) {
+      if (emailUser) {
+        nameEl.textContent = emailUser.displayName || emailUser.name || (emailUser.email ? emailUser.email.split('@')[0] : 'Usuario');
+        const platforms = [];
+        if (isTwitch) platforms.push('Twitch');
+        if (isKick) platforms.push('Kick');
+        subEl.textContent = platforms.length > 0 ? platforms.join(' + ') : 'Cuenta Cloud';
+      } else if (isTwitch || isKick) {
+        const tLogin = profiles.twitch?.login || masterHub.twitch?.login;
+        const kUser = profiles.kick?.username || masterHub.kick?.username;
+        nameEl.textContent = tLogin ? `@${tLogin}` : `@${kUser}`;
+        subEl.textContent = (isTwitch && isKick) ? 'Twitch + Kick' : (isTwitch ? 'Twitch Mod' : 'Kick Mod');
+      } else {
+        nameEl.textContent = 'Vincular Cuentas';
+        subEl.textContent = 'Twitch & Kick';
+      }
+    }
+
+    // 2. Bottom Ticker Connection Indicators
     const twitchDot = document.getElementById('twitch-conn-dot');
     const kickDot = document.getElementById('kick-conn-dot');
     const twitchText = document.getElementById('twitch-conn-text');
     const kickText = document.getElementById('kick-conn-text');
 
-    const hasTwitch = profiles.twitch && (profiles.twitch.login || profiles.twitch.username);
-    const hasTwitchLive = !!(hasTwitch && profiles.twitch.token && profiles.twitch.token !== 'linked');
+    const hasTwitch = isTwitch;
+    const hasTwitchLive = !!(hasTwitch && profiles.twitch?.token && profiles.twitch?.token !== 'linked');
 
     if (hasTwitch) {
       if (twitchDot) {
         twitchDot.style.background = hasTwitchLive ? 'var(--success-green)' : '#f59e0b';
         twitchDot.style.boxShadow = hasTwitchLive ? '0 0 8px var(--success-green)' : '0 0 8px #f59e0b';
       }
-      if (twitchText) twitchText.innerHTML = `Twitch: <strong>@${profiles.twitch.login || profiles.twitch.username}</strong>${hasTwitchLive ? '' : ' <small style="opacity:0.7;">(Vinculado)</small>'}`;
+      if (twitchText) twitchText.innerHTML = `Twitch: <strong>@${profiles.twitch?.login || masterHub.twitch?.login}</strong>${hasTwitchLive ? '' : ' <small style="opacity:0.7;">(Vinculado)</small>'}`;
+    } else {
+      if (twitchDot) {
+        twitchDot.style.background = 'var(--text-dim)';
+        twitchDot.style.boxShadow = 'none';
+      }
+      if (twitchText) twitchText.textContent = 'Twitch Chat';
     }
 
-    const hasKick = profiles.kick && (profiles.kick.username || profiles.kick.login);
-    const hasKickLive = !!(hasKick && profiles.kick.token && profiles.kick.token !== 'linked');
+    const hasKick = isKick;
+    const hasKickLive = !!(hasKick && profiles.kick?.token && profiles.kick?.token !== 'linked');
 
     if (hasKick) {
       if (kickDot) {
         kickDot.style.background = hasKickLive ? 'var(--success-green)' : '#f59e0b';
         kickDot.style.boxShadow = hasKickLive ? '0 0 8px var(--success-green)' : '0 0 8px #f59e0b';
       }
-      if (kickText) kickText.innerHTML = `Kick: <strong>@${profiles.kick.username || profiles.kick.login}</strong>${hasKickLive ? '' : ' <small style="opacity:0.7;">(Vinculado)</small>'}`;
+      if (kickText) kickText.innerHTML = `Kick: <strong>@${profiles.kick?.username || masterHub.kick?.username}</strong>${hasKickLive ? '' : ' <small style="opacity:0.7;">(Vinculado)</small>'}`;
+    } else {
+      if (kickDot) {
+        kickDot.style.background = 'var(--kick-green)';
+        kickDot.style.boxShadow = '0 0 8px var(--kick-green)';
+      }
+      if (kickText) kickText.textContent = 'Kick Pusher';
     }
   }
 
@@ -998,54 +1106,6 @@ class OrbiModApp {
     soundBtn.innerHTML = enabled ?
       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>` :
       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
-  }
-
-  _updateAccountPills() {
-    const profiles = storageService.getProfiles();
-    const masterHub = storageService.getMasterHub();
-    const emailUser = supabaseAuthService.getCurrentUser() || masterHub.google;
-
-    const nameEl = document.getElementById('deck-profile-name');
-    const subEl = document.getElementById('deck-profile-sub');
-    const avatarEl = document.getElementById('deck-profile-avatar');
-    const twitchDot = document.getElementById('deck-profile-twitch-dot');
-    const kickDot = document.getElementById('deck-profile-kick-dot');
-
-    const isTwitch = !!((profiles.twitch && profiles.twitch.valid) || (masterHub.twitch && masterHub.twitch.valid));
-    const isKick = !!((profiles.kick && profiles.kick.valid) || (masterHub.kick && masterHub.kick.valid));
-
-    if (twitchDot) twitchDot.style.display = isTwitch ? 'block' : 'none';
-    if (kickDot) kickDot.style.display = isKick ? 'block' : 'none';
-
-    if (avatarEl) {
-      if (emailUser && (emailUser.avatar || emailUser.avatar_url)) {
-        avatarEl.src = emailUser.avatar || emailUser.avatar_url;
-      } else if (isTwitch && (profiles.twitch?.avatar || masterHub.twitch?.avatar)) {
-        avatarEl.src = profiles.twitch?.avatar || masterHub.twitch?.avatar;
-      } else if (isKick && (profiles.kick?.avatar || masterHub.kick?.avatar)) {
-        avatarEl.src = profiles.kick?.avatar || masterHub.kick?.avatar;
-      } else {
-        avatarEl.src = 'https://api.dicebear.com/7.x/identicon/svg?seed=orbimod';
-      }
-    }
-
-    if (nameEl && subEl) {
-      if (emailUser) {
-        nameEl.textContent = emailUser.displayName || emailUser.name || (emailUser.email ? emailUser.email.split('@')[0] : 'Usuario');
-        const platforms = [];
-        if (isTwitch) platforms.push('Twitch');
-        if (isKick) platforms.push('Kick');
-        subEl.textContent = platforms.length > 0 ? platforms.join(' + ') : 'Google Mod';
-      } else if (isTwitch || isKick) {
-        const tLogin = profiles.twitch?.login || masterHub.twitch?.login;
-        const kUser = profiles.kick?.username || masterHub.kick?.username;
-        nameEl.textContent = tLogin ? `@${tLogin}` : `@${kUser}`;
-        subEl.textContent = (isTwitch && isKick) ? 'Twitch + Kick' : (isTwitch ? 'Twitch Mod' : 'Kick Mod');
-      } else {
-        nameEl.textContent = 'Vincular Cuentas';
-        subEl.textContent = 'Twitch & Kick';
-      }
-    }
   }
 
   _bindKeyboardShortcuts() {

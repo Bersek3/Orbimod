@@ -22,6 +22,19 @@
 
   <!-- Official Supabase JavaScript SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Instant Active View Preloader (Eliminates F5 Flash from Deck to Landing) -->
+  <script>
+    (function() {
+      try {
+        var hash = (window.location.hash || '').toLowerCase();
+        var saved = localStorage.getItem('orbimod_active_view');
+        if (hash === '#deck' || saved === 'deck' || hash.indexOf('access_token=') !== -1) {
+          document.documentElement.classList.add('deck-active-init');
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 
 <body>

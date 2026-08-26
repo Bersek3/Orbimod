@@ -321,14 +321,19 @@ class StorageService {
     this.saveMasterHub(hub);
   }
 
-  clearAuth() {
+  clearAllAuth() {
     try {
       localStorage.removeItem(STORAGE_KEYS.AUTH_CREDS);
       localStorage.removeItem(STORAGE_KEYS.USER_PROFILES);
-      localStorage.removeItem(STORAGE_KEYS.CHANNELS);
+      localStorage.removeItem('orbimod_master_hub_v2');
+      localStorage.removeItem('orbimod_supabase_session');
     } catch (e) {
       console.error('Failed to clear auth in storage', e);
     }
+  }
+
+  clearAuth() {
+    this.clearAllAuth();
   }
 }
 

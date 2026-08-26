@@ -1469,6 +1469,15 @@
   flex-direction: column;
 }
 
+html.deck-active-init #view-landing {
+  display: none !important;
+}
+
+html.deck-active-init #view-deck {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
 #view-landing {
   overflow-y: auto !important;
   overflow-x: hidden !important;
