@@ -42,6 +42,44 @@ export class ChannelCard {
     }
   }
 
+  _getNativeChatSrc() {
+    const isTwitch = this.channel.platform === 'twitch';
+    const cleanName = (this.channel.name || '').trim().toLowerCase().replace(/[@#]/g, '');
+    const hostname = window.location.hostname || 'localhost';
+
+    if (isTwitch) {
+      const parents = new Set([hostname]);
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        parents.add('localhost');
+        parents.add('127.0.0.1');
+      }
+      if (hostname.includes('github.io')) parents.add(hostname);
+      const parentParams = Array.from(parents).map(p => `parent=${encodeURIComponent(p)}`).join('&');
+      return `https://www.twitch.tv/embed/${encodeURIComponent(cleanName)}/chat?${parentParams}&darkpopout`;
+    } else {
+      return `https://kick.com/popout/${encodeURIComponent(cleanName)}/chat`;
+    }
+  }
+
+  _getPopoutChatUrl() {
+    const isTwitch = this.channel.platform === 'twitch';
+    const cleanName = (this.channel.name || '').trim().toLowerCase().replace(/[@#]/g, '');
+    const hostname = window.location.hostname || 'localhost';
+
+    if (isTwitch) {
+      const parents = new Set([hostname]);
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        parents.add('localhost');
+        parents.add('127.0.0.1');
+      }
+      if (hostname.includes('github.io')) parents.add(hostname);
+      const parentParams = Array.from(parents).map(p => `parent=${encodeURIComponent(p)}`).join('&');
+      return `https://www.twitch.tv/popout/${encodeURIComponent(cleanName)}/chat?${parentParams}&darkpopout`;
+    } else {
+      return `https://kick.com/popout/${encodeURIComponent(cleanName)}/chat`;
+    }
+  }
+
   _initTwitchEmbedPlayer(containerEl) {
     if (!window.Twitch || !window.Twitch.Player) return false;
     const cleanName = (this.channel.name || '').trim().toLowerCase().replace(/[@#]/g, '');
@@ -216,25 +254,49 @@ export class ChannelCard {
         </div>
       `}
 
-      <!-- Quick Chat Filter Chips -->
-      <div class="chat-filters-bar">
-        <button class="chat-filter-chip active" data-filter="all">Todos</button>
-        <button class="chat-filter-chip" data-filter="mentions">@ Menciones</button>
-        <button class="chat-filter-chip" data-filter="first">✨ Primerizos</button>
-        <button class="chat-filter-chip" data-filter="subs">⭐ Subs</button>
+      <!-- Chat Controls & Mode Switcher Bar -->
+      <div class="chat-controls-header-bar">
+        <div class="chat-mode-tabs">
+          <button class="chat-mode-tab-btn orbimod ${!this.channel.useNativeChat ? 'active' : ''}" data-mode="orbimod" title="Chat Ultra-Rápido con AutoMod y Moderación de 1-Clic">
+            ⚡ OrbiMod
+          </button>
+          <button class="chat-mode-tab-btn native ${isTwitch ? 'native-twitch' : 'native-kick'} ${this.channel.useNativeChat ? 'active' : ''}" data-mode="native" title="Chat Oficial Real Embebido de ${isTwitch ? 'Twitch' : 'Kick'} con Emotes y Chatbox">
+            💬 Chat Real
+          </button>
+          <button class="chat-mode-tab-btn popout-btn" title="Abrir Chat Real en Ventana Independiente / Popout">
+            ↗️
+          </button>
+        </div>
+
+        <!-- Quick Chat Filter Chips (Visible in OrbiMod Mode) -->
+        <div class="chat-filters-bar" style="${this.channel.useNativeChat ? 'display: none;' : ''}">
+          <button class="chat-filter-chip active" data-filter="all">Todos</button>
+          <button class="chat-filter-chip" data-filter="mentions">@ Menciones</button>
+          <button class="chat-filter-chip" data-filter="first">✨ Primerizos</button>
+          <button class="chat-filter-chip" data-filter="subs">⭐ Subs</button>
+        </div>
       </div>
 
-      <!-- Chat Feed Container (Pure Live Visualization & Mod Actions) -->
+      <!-- Chat Feed Container (Pure Live Visualization & Mod Actions vs Official Real Embed) -->
       <div class="channel-chat-section">
-        <div class="chat-messages-container"></div>
+        <!-- 1. Unified OrbiMod Chat Feed -->
+        <div class="chat-messages-container" style="${this.channel.useNativeChat ? 'display: none;' : ''}"></div>
         <div class="chat-paused-pill ${this.channel.platform}" style="display: none;">
           ↓ Mensajes nuevos (${this.unreadCountWhilePaused})
+        </div>
+
+        <!-- 2. Official Native Platform Chat Embed -->
+        <div class="channel-native-chat-container" style="${this.channel.useNativeChat ? 'display: flex;' : 'display: none;'}">
+          ${this.channel.useNativeChat ? `
+            <iframe class="channel-native-chat-iframe" src="${this._getNativeChatSrc()}" frameborder="0" scrolling="yes" allow="autoplay; fullscreen; clipboard-write; encrypted-media;"></iframe>
+          ` : ''}
         </div>
       </div>
     `;
 
     this.element = card;
     this.messagesContainer = card.querySelector('.chat-messages-container');
+    this.nativeChatContainer = card.querySelector('.channel-native-chat-container');
     this.pausedIndicator = card.querySelector('.chat-paused-pill');
 
     this._bindEvents();
@@ -482,6 +544,53 @@ export class ChannelCard {
         this.activeFilter = chip.dataset.filter;
         this._applyChatFilter();
       });
+    });
+
+    // Chat Engine Mode Switcher (OrbiMod Ultra-Fast vs Real Native Platform Embed)
+    const chatFiltersBar = this.element.querySelector('.chat-filters-bar');
+    const orbimodBtn = this.element.querySelector('.chat-mode-tab-btn.orbimod');
+    const nativeBtn = this.element.querySelector('.chat-mode-tab-btn.native');
+    const popoutBtn = this.element.querySelector('.chat-mode-tab-btn.popout-btn');
+    const nativeContainer = this.element.querySelector('.channel-native-chat-container');
+    const isTwitch = this.channel.platform === 'twitch';
+
+    orbimodBtn?.addEventListener('click', () => {
+      this.channel.useNativeChat = false;
+      orbimodBtn.classList.add('active');
+      nativeBtn?.classList.remove('active', 'native-twitch', 'native-kick');
+      if (this.messagesContainer) this.messagesContainer.style.display = 'flex';
+      if (chatFiltersBar) chatFiltersBar.style.display = 'flex';
+      if (nativeContainer) nativeContainer.style.display = 'none';
+
+      if (this.options.onConfigChange) {
+        this.options.onConfigChange(this.channel);
+      }
+    });
+
+    nativeBtn?.addEventListener('click', () => {
+      this.channel.useNativeChat = true;
+      nativeBtn.classList.add('active', isTwitch ? 'native-twitch' : 'native-kick');
+      orbimodBtn?.classList.remove('active');
+      if (this.messagesContainer) this.messagesContainer.style.display = 'none';
+      if (chatFiltersBar) chatFiltersBar.style.display = 'none';
+      if (nativeContainer) {
+        nativeContainer.style.display = 'flex';
+        // Mount native iframe if not already present
+        if (!nativeContainer.querySelector('iframe')) {
+          nativeContainer.innerHTML = `<iframe class="channel-native-chat-iframe" src="${this._getNativeChatSrc()}" frameborder="0" scrolling="yes" allow="autoplay; fullscreen; clipboard-write; encrypted-media;"></iframe>`;
+        }
+      }
+
+      if (this.options.onConfigChange) {
+        this.options.onConfigChange(this.channel);
+      }
+    });
+
+    popoutBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const popoutUrl = this._getPopoutChatUrl();
+      const winName = `OrbiMod_Chat_${this.channel.platform}_${this.channel.name}`;
+      window.open(popoutUrl, winName, 'width=420,height=720,status=no,toolbar=no,menubar=no,location=no,resizable=yes');
     });
 
     // Scroll handling for paused chat
