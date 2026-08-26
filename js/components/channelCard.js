@@ -123,6 +123,54 @@ export class ChannelCard {
     }
   }
 
+  _cleanTwitchIframe(iframe) {
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) {
+        const style = doc.createElement('style');
+        style.textContent = `
+          .video-player__default-player,
+          .video-player__inactive,
+          .video-player__overlay,
+          .top-bar,
+          .stream-info-card,
+          .stream-info-social-panel,
+          .celebration__overlay,
+          .disclosure-tool,
+          .Layout-sc-1xcs6mc-0,
+          .ScTransitionBase-sc-hx4quq-0,
+          [data-a-target="player-overlay-click-handler"] {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            height: 0 !important;
+          }
+        `;
+        doc.head?.appendChild(style);
+      }
+    } catch (e) {}
+  }
+
+  _cleanKickIframe(iframe) {
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) {
+        const style = doc.createElement('style');
+        style.textContent = `
+          .z-controls,
+          [class*="z-controls"],
+          [class*="bg-linear-to-b"][class*="from-neutral-950"],
+          [class*="right-4"][class*="bottom-12"] {
+            display: none !important;
+            opacity: 0 !important;
+            height: 0 !important;
+          }
+        `;
+        doc.head?.appendChild(style);
+      }
+    } catch (e) {}
+  }
+
   render() {
     const card = document.createElement('div');
     card.className = `channel-card ${this.channel.platform}`;

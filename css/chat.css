@@ -303,19 +303,49 @@
    TWITCH CUSTOM CLASS SUPPRESSION
    ========================================================================== */
 
-/* 1. Twitch En Vivo (Live Stream Video Player Overlays) */
+/* 1. Twitch En Vivo (Live Stream Video Player Inactive Screens, Info Cards & Overlays) */
+.video-player__default-player,
+.video-player__inactive,
+.video-player__overlay,
+[class*="video-player__default-player"],
+[class*="video-player__inactive"],
+[class*="video-player__overlay"],
+.top-bar,
+.top-bar--pointer-enabled,
+[class*="top-bar"],
+.stream-info-card,
+.stream-info-card__image,
+.stream-info-card__body,
+[class*="stream-info-card"],
+.stream-info-social-panel,
+[data-a-target="player-stream-info-social-panel"],
+[class*="stream-info-social-panel"],
+.celebration__overlay,
+[class*="celebration__overlay"],
+[data-a-target="player-overlay-click-handler"],
+[data-a-target="ax-overlay"],
+.disclosure-tool,
+[class*="disclosure-tool"],
 .Layout-sc-1xcs6mc-0,
 [class*="Layout-sc-1xcs6mc-0"],
 .ScTransitionBase-sc-hx4quq-0,
 .fhZWme,
 .tw-transition,
-.video-player__default-player,
-.video-player__inactive {
+.jxnAvX,
+.bSdXJN,
+.gOTrNS,
+.iNtEof,
+.cYBTMF,
+.kNmocE,
+.InjectLayout-sc-1i43xsx-0.celebration__overlay,
+.InjectLayout-sc-1i43xsx-0.click-handler {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
   height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
 }
 
 /* 2. Twitch Chat: Stream Chat Header & Community Highlight Cards */
