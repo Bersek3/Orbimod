@@ -35,8 +35,8 @@ export class ChannelCard {
       }
       const parentParams = Array.from(parents).map(p => `parent=${encodeURIComponent(p)}`).join('&');
 
-      // Twitch stream starts muted in URL for safe autoplay, then unmuted via JS API on user gesture
-      return `https://player.twitch.tv/?channel=${encodeURIComponent(cleanName)}&${parentParams}&autoplay=true&muted=true&playsinline=true`;
+      // Twitch stream starts muted in URL for safe autoplay with controls=false to completely remove top-bar and overlays
+      return `https://player.twitch.tv/?channel=${encodeURIComponent(cleanName)}&${parentParams}&autoplay=true&muted=true&playsinline=true&controls=false`;
     } else {
       return `https://player.kick.com/${encodeURIComponent(cleanName)}?autoplay=true&muted=${isMuted}`;
     }
@@ -105,7 +105,8 @@ export class ChannelCard {
         height: '100%',
         autoplay: true,
         muted: !this.channel.audioEnabled,
-        playsinline: true
+        playsinline: true,
+        controls: false
       });
 
       this.twitchPlayer.addEventListener(window.Twitch.Player.READY, () => {
