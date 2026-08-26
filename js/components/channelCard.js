@@ -179,10 +179,32 @@ export class ChannelCard {
         style.textContent = `
           .z-controls,
           [class*="z-controls"],
+          .absolute.inset-0.z-controls,
+          [class*="inset-0"][class*="z-controls"],
+          .absolute.top-0.right-0.left-0.z-controls,
+          .absolute.right-4.bottom-12,
+          .absolute.right-4.bottom-2.left-4,
+          .absolute.top-4.left-4,
+          .absolute.top-2.right-4,
+          [class*="top-4"][class*="left-4"],
+          [class*="top-2"][class*="right-4"],
+          [class*="right-4"][class*="bottom-2"],
+          [class*="right-4"][class*="bottom-12"],
           [class*="bg-linear-to-b"][class*="from-neutral-950"],
-          [class*="right-4"][class*="bottom-12"] {
+          [class*="bg-neutral-950"],
+          [aria-label="Kick"],
+          a[href*="kick.com"],
+          button[aria-label="Pause"],
+          button[aria-label="Play"],
+          [data-testid="video-player-fullscreen"],
+          [data-ds-icon="QualityHD"],
+          [data-ds-icon="PeopleGroup"],
+          [data-ds-icon="Online"],
+          [data-ds-icon="FullscreenExpand"],
+          [class*="text-surface-onSurface"] {
             display: none !important;
             opacity: 0 !important;
+            visibility: hidden !important;
             height: 0 !important;
           }
         `;
