@@ -202,14 +202,17 @@ class StorageService {
     try {
       const logs = this.getAuditLogs();
       logs.unshift({
-        id: 'audit-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-        action: entry.action, // 'TIMEOUT', 'BAN', 'UNBAN', 'DELETE', 'MODE_CHANGE', 'SHIELD'
+        id: entry.id || ('audit-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)),
+        action: entry.action || 'MOD', // 'TIMEOUT', 'BAN', 'UNBAN', 'DELETE', 'MODE_CHANGE', 'SHIELD'
         targetUser: entry.targetUser || null,
-        channel: entry.channel,
+        channel: entry.channel || 'General',
         platform: entry.platform || 'twitch',
-        mod: entry.mod || 'Tú (Lead Mod)',
+        mod: entry.mod || 'Moderador',
+        duration: entry.duration || null,
+        permanent: entry.permanent !== undefined ? entry.permanent : (entry.action === 'BAN'),
+        reason: entry.reason || '',
         details: entry.details || '',
-        timestamp: new Date().toISOString()
+        timestamp: entry.timestamp || new Date().toISOString()
       });
       // Keep last 300 logs
       const trimmed = logs.slice(0, 300);

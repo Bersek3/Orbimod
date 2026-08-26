@@ -172,37 +172,77 @@ export class TwitchClient {
           if (this.onMessage) this.onMessage(msgObj);
         }
       }
-      // CLEARCHAT (Timeout or Ban event)
+      // CLEARCHAT (Timeout or Ban event or Chat Cleared)
       else if (rest.includes('CLEARCHAT')) {
         const chanMatch = rest.match(/#([^ ]+)(?: :(.+))?/);
         if (chanMatch) {
           const channel = chanMatch[1];
           const targetUser = chanMatch[2] || null;
           const duration = tags['ban-duration'] ? parseInt(tags['ban-duration']) : null;
+          const isTimeout = Boolean(duration);
 
           if (this.onModAction) {
-            this.onModAction({
-              type: duration ? 'TIMEOUT' : 'BAN',
-              platform: 'twitch',
-              channel: channel.toLowerCase(),
-              targetUser: targetUser,
-              duration: duration
-            });
+            if (targetUser) {
+              this.onModAction({
+                type: isTimeout ? 'TIMEOUT' : 'BAN',
+                platform: 'twitch',
+                channel: channel.toLowerCase(),
+                targetUser: targetUser,
+                mod: 'Moderador Twitch',
+                duration: duration,
+                details: isTimeout 
+                  ? `Silenciado por ${duration >= 60 ? Math.round(duration / 60) + ' min (' + duration + 's)' : duration + 's'}` 
+                  : `Veto permanente del canal`
+              });
+            } else {
+              this.onModAction({
+                type: 'MODE_CHANGE',
+                platform: 'twitch',
+                channel: channel.toLowerCase(),
+                mod: 'Moderador Twitch',
+                details: 'El chat fue vaciado por un moderador (/clear)'
+              });
+            }
           }
         }
       }
       // CLEARMSG (Single message deleted)
       else if (rest.includes('CLEARMSG')) {
         const targetMsgId = tags['target-msg-id'];
-        const chanMatch = rest.match(/#([^ ]+)/);
+        const targetLogin = tags['login'] || null;
+        const chanMatch = rest.match(/#([^ ]+)(?: :(.*))?/);
         const channel = chanMatch ? chanMatch[1] : '';
+        const msgText = chanMatch ? chanMatch[2] : '';
 
         if (this.onModAction) {
           this.onModAction({
             type: 'DELETE',
             platform: 'twitch',
             channel: channel.toLowerCase(),
-            targetMsgId: targetMsgId
+            targetMsgId: targetMsgId,
+            targetUser: targetLogin,
+            mod: 'Moderador Twitch',
+            details: msgText ? `Mensaje eliminado: "${msgText.slice(0, 60)}"` : 'Mensaje eliminado del chat'
+          });
+        }
+      }
+      // ROOMSTATE (Chat settings updated)
+      else if (rest.includes('ROOMSTATE')) {
+        const chanMatch = rest.match(/#([^ ]+)/);
+        const channel = chanMatch ? chanMatch[1] : '';
+        const modes = [];
+        if (tags['slow'] && tags['slow'] !== '0') modes.push(`Modo Lento (${tags['slow']}s)`);
+        if (tags['subs-only'] === '1') modes.push('Solo Suscriptores');
+        if (tags['followers-only'] && tags['followers-only'] !== '-1') modes.push(`Solo Seguidores (${tags['followers-only']}m)`);
+        if (tags['emote-only'] === '1') modes.push('Solo Emotes');
+
+        if (modes.length > 0 && this.onModAction) {
+          this.onModAction({
+            type: 'MODE_CHANGE',
+            platform: 'twitch',
+            channel: channel.toLowerCase(),
+            mod: 'Moderador Twitch',
+            details: `Ajustes del chat: ${modes.join(', ')}`
           });
         }
       }

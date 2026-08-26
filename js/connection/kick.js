@@ -142,7 +142,29 @@ export class KickClient {
       return;
     }
 
-    if (eventName === 'App\\Events\\ChatMessageEvent') {
+    // Map channel name from pusher channel string or channel registry
+    let channelName = '';
+    if (msg.channel) {
+      const chanMatch = msg.channel.match(/(?:chatrooms?|channels?)\.([^\.]+)/i);
+      const cId = chanMatch ? chanMatch[1] : msg.channel;
+      for (const [name, id] of this.channels.entries()) {
+        if (String(id) === String(cId) || String(id) === String(msg.channel) || String(name) === String(cId)) {
+          channelName = name;
+          break;
+        }
+      }
+    }
+    if (!channelName && data.channel && data.channel.slug) {
+      channelName = data.channel.slug;
+    }
+    if (!channelName && this.channels.size === 1) {
+      channelName = Array.from(this.channels.keys())[0];
+    }
+    if (!channelName) {
+      channelName = 'kick';
+    }
+
+    if (eventName === 'App\\Events\\ChatMessageEvent' || eventName === 'ChatMessageEvent') {
       const sender = data.sender || {};
       const badges = [];
 
@@ -152,23 +174,10 @@ export class KickClient {
         });
       }
 
-      // Map channel name from pusher channel string
-      let channelName = '';
-      const chanMatch = msg.channel ? msg.channel.match(/chatrooms\.(.+)\.v2/) : null;
-      if (chanMatch) {
-        const cId = chanMatch[1];
-        for (const [name, id] of this.channels.entries()) {
-          if (String(id) === String(cId)) {
-            channelName = name;
-            break;
-          }
-        }
-      }
-
       const msgObj = {
         id: data.id || ('kc-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)),
         platform: 'kick',
-        channel: channelName || 'kick',
+        channel: channelName,
         username: sender.username || 'UsuarioKick',
         displayName: sender.username || 'UsuarioKick',
         color: (sender.identity && sender.identity.color) || '#53fc18',
@@ -183,21 +192,67 @@ export class KickClient {
 
       if (this.onMessage) this.onMessage(msgObj);
     }
-    else if (eventName === 'App\\Events\\MessageDeletedEvent') {
+    else if (eventName === 'App\\Events\\MessageDeletedEvent' || eventName === 'MessageDeletedEvent' || eventName?.includes('Deleted')) {
+      const mod = data.deleted_by || data.moderator || data.mod || {};
+      const msgObj = data.message || {};
+      const targetUser = msgObj.sender?.username || msgObj.username || data.user?.username || null;
+      const modUsername = mod.username || mod.name || (mod.slug ? mod.slug : 'Moderador Kick');
+      const content = msgObj.content || data.content || '';
+
       if (this.onModAction) {
         this.onModAction({
           type: 'DELETE',
           platform: 'kick',
-          targetMsgId: data.message ? data.message.id : data.id
+          channel: channelName,
+          targetMsgId: msgObj.id || data.id,
+          targetUser: targetUser,
+          mod: modUsername,
+          details: content ? `Mensaje eliminado: "${content.slice(0, 60)}"` : 'Mensaje eliminado del chat'
         });
       }
     }
-    else if (eventName === 'App\\Events\\UserBannedEvent') {
+    else if (eventName === 'App\\Events\\UserBannedEvent' || eventName === 'UserBannedEvent' || eventName?.includes('Banned')) {
+      const user = data.user || data.banned_user || {};
+      const mod = data.banned_by || data.moderator || data.mod || {};
+      const targetUsername = user.username || user.name || data.username || 'desconocido';
+      const modUsername = mod.username || mod.name || (mod.slug ? mod.slug : 'Moderador Kick');
+      
+      const isPermanent = data.permanent !== undefined ? Boolean(data.permanent) : (data.duration === 0 || !data.duration);
+      const duration = data.duration ? parseInt(data.duration) : (data.duration_seconds || null);
+      const reason = data.reason || (isPermanent ? 'Veto permanente del canal' : `Silenciado por ${duration}s`);
+
       if (this.onModAction) {
         this.onModAction({
-          type: 'BAN',
+          type: isPermanent ? 'BAN' : 'TIMEOUT',
           platform: 'kick',
-          targetUser: data.user ? data.user.username : 'desconocido'
+          channel: channelName,
+          targetUser: targetUsername,
+          mod: modUsername,
+          duration: duration,
+          permanent: isPermanent,
+          reason: reason,
+          details: isPermanent 
+            ? `Veto permanente ejecutado por @${modUsername}${data.reason ? ' • Motivo: "' + data.reason + '"' : ''}` 
+            : `Silenciado por ${duration >= 60 ? Math.round(duration / 60) + ' min (' + duration + 's)' : duration + 's'} por @${modUsername}${data.reason ? ' • Motivo: "' + data.reason + '"' : ''}`
+        });
+      }
+    }
+    else if (eventName === 'App\\Events\\ChatroomUpdatedEvent' || eventName === 'ChatroomUpdatedEvent') {
+      const mod = data.updated_by || data.moderator || {};
+      const modUsername = mod.username || 'Moderador Kick';
+      const modes = [];
+      if (data.slow_mode) modes.push(`Modo Lento (${data.slow_mode_duration || 5}s)`);
+      if (data.subscribers_only) modes.push('Solo Suscriptores');
+      if (data.followers_only) modes.push('Solo Seguidores');
+      if (data.emotes_only) modes.push('Solo Emotes');
+
+      if (this.onModAction) {
+        this.onModAction({
+          type: 'MODE_CHANGE',
+          platform: 'kick',
+          channel: channelName,
+          mod: modUsername,
+          details: modes.length > 0 ? `Modos actualizados: ${modes.join(', ')}` : 'Ajustes del chatroom actualizados'
         });
       }
     }

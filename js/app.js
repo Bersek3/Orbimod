@@ -1324,9 +1324,22 @@ class OrbiModApp {
     }
   }
 
+  _getCurrentModName(platform) {
+    const profiles = storageService.getProfiles();
+    const masterHub = storageService.getMasterHub();
+    if (platform === 'twitch') {
+      return profiles.twitch?.login || masterHub.twitch?.login || 'Lead Mod';
+    } else if (platform === 'kick') {
+      return profiles.kick?.username || masterHub.kick?.username || 'Lead Mod';
+    }
+    const emailUser = supabaseAuthService.getCurrentUser();
+    return emailUser?.displayName || emailUser?.email?.split('@')[0] || 'Lead Mod';
+  }
+
   // --- Moderation Operations ---
   handleTimeout(channel, userObj, duration = 600, reason = 'Violación de normas') {
     const username = userObj.username;
+    const activeMod = this._getCurrentModName(channel.platform);
     soundService.playTimeoutSound();
 
     // 1. Local Storage Audit & Sanction
@@ -1335,8 +1348,10 @@ class OrbiModApp {
       targetUser: username,
       channel: channel.name,
       platform: channel.platform,
-      mod: 'Tú (Lead Mod)',
-      details: `${duration}s por "${reason}"`
+      mod: activeMod,
+      duration: duration,
+      reason: reason,
+      details: `Silenciado por ${duration >= 60 ? Math.round(duration / 60) + ' min (' + duration + 's)' : duration + 's'} por @${activeMod}${reason ? ' • Motivo: "' + reason + '"' : ''}`
     });
 
     const userKey = `${username.toLowerCase()}@${channel.platform}`;
@@ -1368,11 +1383,13 @@ class OrbiModApp {
       }
     }
 
-    this.showToast(`Timeout a @${username} por ${duration}s en #${channel.name}`, 'warning');
+    this.showToast(`⏱️ Timeout a @${username} (${duration >= 60 ? Math.round(duration / 60) + 'm' : duration + 's'}) en #${channel.name}`, 'warning');
+    this.auditLogDrawer?.render();
   }
 
-  handleBan(channel, userObj, reason = 'Baneo permanente') {
+  handleBan(channel, userObj, reason = 'Veto permanente del canal') {
     const username = userObj.username;
+    const activeMod = this._getCurrentModName(channel.platform);
     soundService.playBanSound();
 
     storageService.addAuditLog({
@@ -1380,8 +1397,10 @@ class OrbiModApp {
       targetUser: username,
       channel: channel.name,
       platform: channel.platform,
-      mod: 'Tú (Lead Mod)',
-      details: reason
+      mod: activeMod,
+      permanent: true,
+      reason: reason,
+      details: `Veto permanente ejecutado por @${activeMod}${reason ? ' • Motivo: "' + reason + '"' : ''}`
     });
 
     const userKey = `${username.toLowerCase()}@${channel.platform}`;
@@ -1409,18 +1428,20 @@ class OrbiModApp {
       }
     }
 
-    this.showToast(`@${username} BANEADO permanentemente de #${channel.name}`, 'danger');
+    this.showToast(`🔨 @${username} VETADO permanentemente de #${channel.name}`, 'danger');
+    this.auditLogDrawer?.render();
   }
 
   handleUnban(channel, userObj) {
     const username = userObj.username;
+    const activeMod = this._getCurrentModName(channel.platform);
     storageService.addAuditLog({
       action: 'UNBAN',
       targetUser: username,
       channel: channel.name,
       platform: channel.platform,
-      mod: 'Tú (Lead Mod)',
-      details: 'Perdón / Desbaneo manual'
+      mod: activeMod,
+      details: `Usuario desbaneado por @${activeMod}`
     });
 
     if (channel.platform === 'twitch') {
@@ -1436,35 +1457,38 @@ class OrbiModApp {
       }
     }
 
-    this.showToast(`@${username} ha sido desbaneado en #${channel.name}`, 'success');
+    this.showToast(`✓ @${username} ha sido desbaneado en #${channel.name}`, 'success');
+    this.auditLogDrawer?.render();
   }
 
   handleDelete(channel, msgObj, reason = 'Eliminado') {
+    const activeMod = this._getCurrentModName(channel.platform);
     storageService.addAuditLog({
       action: 'DELETE',
       targetUser: msgObj.username,
       channel: channel.name,
       platform: channel.platform,
-      mod: 'Tú (Lead Mod)',
-      details: `Mensaje: "${(msgObj.text || '').slice(0, 40)}"`
+      mod: activeMod,
+      details: `Mensaje eliminado: "${(msgObj.text || '').slice(0, 60)}"`
     });
 
     if (channel.platform === 'twitch' && msgObj.id) {
       this.twitchClient.sendModCommand(channel.name, `/delete ${msgObj.id}`);
+    } else if (channel.platform === 'kick' && msgObj.id) {
+      apiService.kickDeleteMessage(msgObj.id);
     }
 
-    const card = Array.from(this.channelCards.values()).find(c => c.channel.name.toLowerCase() === channel.name.toLowerCase());
-    if (card && msgObj.id) {
-      card.markMessageDeleted(msgObj.id);
-    }
+    this.channelCards.forEach(c => c.markMessageDeleted(msgObj.id));
+    this.auditLogDrawer?.render();
   }
 
   handleRoomModeChange(channel, mode, active) {
+    const activeMod = this._getCurrentModName(channel.platform);
     storageService.addAuditLog({
       action: 'MODE_CHANGE',
       channel: channel.name,
       platform: channel.platform,
-      mod: 'Tú (Lead Mod)',
+      mod: activeMod,
       details: `Modo ${mode.toUpperCase()} -> ${active ? 'ACTIVADO' : 'DESACTIVADO'}`
     });
 
@@ -1477,6 +1501,7 @@ class OrbiModApp {
     }
 
     this.showToast(`Modo ${mode} en #${channel.name} ${active ? 'activado' : 'desactivado'}`, 'twitch');
+    this.auditLogDrawer?.render();
   }
 
   handleShieldToggle(active) {
