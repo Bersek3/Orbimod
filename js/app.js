@@ -5,18 +5,16 @@
 
 import { storageService } from './services/storageService.js';
 import { soundService } from './services/soundService.js';
-import { automodService } from './services/automodService.js';
 import { apiService } from './services/apiService.js';
 import { TwitchClient } from './connection/twitch.js';
 import { KickClient } from './connection/kick.js';
 import { LiveSimulator } from './connection/simulator.js';
 import { ChannelCard } from './components/channelCard.js';
 import { UserInspectorDrawer } from './components/userInspector.js';
-import { AutoModQueueDrawer } from './components/automodQueue.js';
 import { AuditLogDrawer } from './components/auditLog.js';
 import { EventRadarDrawer } from './components/eventRadar.js';
 import { MacroManagerModal } from './components/macroManager.js';
-import { ManageChannelsModal, AddChannelModal, AutoModSettingsModal, ConnectionHubModal, HotkeysModal, UnifiedAuthModal, UnifiedAccountHubModal } from './components/modals.js';
+import { ManageChannelsModal, AddChannelModal, ConnectionHubModal, HotkeysModal, UnifiedAuthModal, UnifiedAccountHubModal } from './components/modals.js';
 import { ChannelSearchHistoryBar } from './components/channelSearchHistoryBar.js';
 import { supabaseAuthService } from './services/supabaseAuthService.js';
 
@@ -47,46 +45,13 @@ class OrbiModApp {
       }
     );
 
-    this.automodDrawer = new AutoModQueueDrawer(
-      document.getElementById('automod-queue-drawer'),
+    this.auditLogDrawer = new AuditLogDrawer(
+      document.getElementById('audit-log-drawer'),
       {
-        onApprove: (item) => {
-          this.showToast(`Mensaje de @${item.username} aprobado`, 'success');
-          const card = this.channelCards.get(`ch-${item.channel}`) || Array.from(this.channelCards.values()).find(c => c.channel.name.toLowerCase() === item.channel.toLowerCase());
-          if (card) {
-            card.addMessage({
-              id: item.messageId,
-              platform: item.platform,
-              channel: item.channel,
-              username: item.username,
-              displayName: item.displayName,
-              color: item.color,
-              badges: item.badges,
-              text: item.text,
-              timestamp: item.timestamp,
-              isMod: false,
-              isSub: false,
-              isVip: false
-            });
-          }
-        },
-        onReject: (item) => {
-          this.handleDelete({ name: item.channel, platform: item.platform }, { id: item.messageId, username: item.username, text: item.text }, 'Rechazado por AutoMod');
-        },
-        onTimeout: (item, dur) => {
-          this.handleTimeout({ name: item.channel, platform: item.platform }, { username: item.username }, dur, item.reason);
-        },
-        onBan: (item) => {
-          this.handleBan({ name: item.channel, platform: item.platform }, { username: item.username }, item.reason);
-        },
-        onOpenSettings: () => {
-          this.automodDrawer.close();
-          this.automodSettingsModal.open();
-        }
+        onFetchRealLogs: () => this.syncRealModerationLogs(),
+        getChannels: () => this.channels
       }
     );
-
-    this.auditLogDrawer = new AuditLogDrawer(document.getElementById('audit-log-drawer'));
 
     this.eventRadarDrawer = new EventRadarDrawer(
       document.getElementById('event-radar-drawer'),
@@ -100,7 +65,7 @@ class OrbiModApp {
       }
     );
 
-    this.showOnlyLive = true;
+    this.showOnlyLive = false;
 
     this.manageChannelsModal = new ManageChannelsModal(
       document.getElementById('generic-modal'),
@@ -152,11 +117,6 @@ class OrbiModApp {
       }
     );
 
-    this.automodSettingsModal = new AutoModSettingsModal(
-      document.getElementById('generic-modal'),
-      () => this.showToast('Reglas de AutoMod actualizadas', 'success')
-    );
-
     this.hotkeysModal = new HotkeysModal(document.getElementById('generic-modal'));
 
     this.unifiedAuthModal = new UnifiedAuthModal(
@@ -200,7 +160,6 @@ class OrbiModApp {
     this._bindLandingControls();
     this._bindKeyboardShortcuts();
     this._startVelocityMeter();
-    this._setupAutoModListener();
 
     // Sound toggle init & background keep-alive
     soundService.toggleSound(this.settings.soundEnabled);
@@ -967,7 +926,6 @@ class OrbiModApp {
     // Backdrop Drawer closer
     document.getElementById('drawer-backdrop')?.addEventListener('click', () => {
       this.inspectorDrawer.close();
-      this.automodDrawer.close();
       this.auditLogDrawer.close();
       this.eventRadarDrawer.close();
     });
@@ -981,8 +939,7 @@ class OrbiModApp {
       });
     });
 
-    // AutoMod & Audit Drawers
-    document.getElementById('btn-automod-queue')?.addEventListener('click', () => this.automodDrawer.open());
+    // Real Moderation Audit Drawer
     document.getElementById('btn-audit-log')?.addEventListener('click', () => this.auditLogDrawer.open());
 
     // Live vs All Filter Toggle
@@ -1080,7 +1037,6 @@ class OrbiModApp {
       // ESC closes any open drawer or modal
       if (e.key === 'Escape') {
         this.inspectorDrawer.close();
-        this.automodDrawer.close();
         this.auditLogDrawer.close();
         this.eventRadarDrawer.close();
         document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
@@ -1109,9 +1065,6 @@ class OrbiModApp {
           e.preventDefault();
           this.setLayout('layout-single-focus');
           this.showToast('Vista cambiada: 🎯 Focus 1', 'info');
-        } else if (e.key.toLowerCase() === 'a') {
-          e.preventDefault();
-          this.automodDrawer.open();
         } else if (e.key.toLowerCase() === 'l') {
           e.preventDefault();
           this.auditLogDrawer.open();
@@ -1136,17 +1089,6 @@ class OrbiModApp {
           this.sendMessage(targetChan, match.text);
           this.showToast(`Macro "${match.name}" enviado a #${targetChan.name}`, 'twitch');
         }
-      }
-    });
-  }
-
-  _setupAutoModListener() {
-    automodService.onQueueChange((queue) => {
-      const pending = queue.filter(i => i.status === 'pending').length;
-      const countEl = document.getElementById('automod-badge-count');
-      if (countEl) {
-        countEl.textContent = pending;
-        countEl.style.display = pending > 0 ? 'flex' : 'none';
       }
     });
   }
@@ -1296,35 +1238,14 @@ class OrbiModApp {
     this.showToast(`↕️ Canal #${moved.name} movido`, 'info');
   }
 
-  // --- Real-time Message Flow & AutoMod Evaluation ---
+  // --- Real-time Message Flow ---
   handleIncomingMessage(msg) {
     this.totalMessagesCount++;
     this.recentMsgCount++;
     this.uniqueChatters.add(msg.username.toLowerCase());
     this._updateHeaderMetrics();
 
-    // 1. Evaluate with AutoMod Engine
-    const evalResult = automodService.evaluate(msg.text, msg.username, msg.channel, msg.platform);
-
-    if (!evalResult.passed) {
-      // Message flagged! Queue for review
-      automodService.queueForReview(msg, evalResult.reason, evalResult.ruleType);
-
-      // Log in Audit Log
-      storageService.addAuditLog({
-        action: 'AUTOMOD_FLAG',
-        targetUser: msg.username,
-        channel: msg.channel,
-        platform: msg.platform,
-        mod: 'AutoMod Shield',
-        details: `${evalResult.reason} -> "${msg.text.slice(0, 45)}..."`
-      });
-
-      this.showToast(`AutoMod bloqueó mensaje de @${msg.username} en #${msg.channel}`, 'danger');
-      return; // Do not show in normal chat until approved
-    }
-
-    // 2. Route to appropriate Channel Card
+    // Route directly to appropriate Channel Card
     const targetCard = Array.from(this.channelCards.values()).find(
       c => c.channel.name.toLowerCase() === msg.channel.toLowerCase()
     );
@@ -1334,10 +1255,72 @@ class OrbiModApp {
     }
   }
 
+  // --- Real Platform Moderator Action Feed (Twitch & Kick Mod View) ---
   handlePlatformModAction(action) {
-    // Action from Twitch IRC / Kick pusher (e.g. CLEARCHAT, CLEARMSG)
+    if (!action) return;
+
+    // Delete message visual removal in UI
     if (action.type === 'DELETE' && action.targetMsgId) {
       this.channelCards.forEach(c => c.markMessageDeleted(action.targetMsgId));
+    }
+
+    let actionDetails = action.details || '';
+    if (action.type === 'TIMEOUT') {
+      const dur = action.duration;
+      actionDetails = dur ? `Silenciado por ${dur >= 60 ? Math.round(dur / 60) + ' min' : dur + 's'}` : 'Silenciado temporalmente';
+    } else if (action.type === 'BAN') {
+      actionDetails = 'Baneo permanente del canal';
+    } else if (action.type === 'DELETE') {
+      actionDetails = 'Mensaje eliminado del chat';
+    } else if (action.type === 'UNBAN') {
+      actionDetails = 'Usuario desbaneado';
+    }
+
+    const logEntry = {
+      action: action.type || 'MOD',
+      targetUser: action.targetUser || null,
+      channel: action.channel || 'Canal',
+      platform: action.platform || 'twitch',
+      mod: action.mod || (action.platform === 'kick' ? 'Mod Kick' : 'Mod Twitch'),
+      details: actionDetails,
+      timestamp: action.timestamp || new Date().toISOString()
+    };
+
+    storageService.addAuditLog(logEntry);
+    this.auditLogDrawer?.render();
+  }
+
+  async syncRealModerationLogs() {
+    const profiles = storageService.getProfiles();
+    const creds = storageService.getAuthCreds();
+    const token = profiles.twitch?.token || creds.twitchToken;
+    const userId = profiles.twitch?.userId;
+
+    if (!token || !userId) {
+      this.showToast('Inicia sesión con Twitch para consultar el historial de moderación de la API', 'warning');
+      return;
+    }
+
+    let count = 0;
+    for (const ch of this.channels.filter(c => c.platform === 'twitch')) {
+      try {
+        const broadcasterRes = await apiService.fetchTwitchChannel(ch.name);
+        if (broadcasterRes.exists && broadcasterRes.userId) {
+          const res = await apiService.fetchTwitchModerationActions(broadcasterRes.userId, userId, token);
+          if (res.success && res.actions && res.actions.length > 0) {
+            res.actions.forEach(a => {
+              storageService.addAuditLog(a);
+              count++;
+            });
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (count > 0) {
+      this.showToast(`✓ Se sincronizaron ${count} acciones reales de moderación`, 'success');
+    } else {
+      this.showToast('No hay nuevas acciones recientes registradas en la API', 'info');
     }
   }
 
@@ -1510,13 +1493,12 @@ class OrbiModApp {
 
     if (active) {
       soundService.playRaidAlert();
-      automodService.updateConfig({ blockLinks: true, capsThreshold: 50 });
       this.channels.forEach(ch => {
         ch.slowMode = 10;
         ch.followOnly = true;
       });
       this.renderChannels();
-      this.showToast('🛡️ MODO ESCUDO ACTIVADO: Bloqueo estricto y modo lento activado en todos los canales', 'danger');
+      this.showToast('🛡️ MODO ESCUDO ACTIVADO: Modo lento y solo seguidores en todos los canales', 'danger');
     } else {
       this.showToast('Modo escudo desactivado', 'success');
     }

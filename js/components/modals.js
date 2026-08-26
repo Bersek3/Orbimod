@@ -4,7 +4,6 @@
  */
 
 import { storageService } from '../services/storageService.js';
-import { automodService } from '../services/automodService.js';
 import { apiService } from '../services/apiService.js';
 import { supabaseAuthService } from '../services/supabaseAuthService.js';
 
@@ -886,117 +885,8 @@ export class ConnectionHubModal {
 }
 
 // ==========================================
-// 3. AUTOMOD SETTINGS MODAL
+// 3. CONNECTION & MOD HUB MODAL
 // ==========================================
-export class AutoModSettingsModal {
-  constructor(modalElement, onSave) {
-    this.modal = modalElement;
-    this.onSave = onSave;
-  }
-
-  open() {
-    this.render();
-    this.modal.classList.add('open');
-  }
-
-  close() {
-    this.modal.classList.remove('open');
-  }
-
-  render() {
-    const config = automodService.config;
-
-    this.modal.innerHTML = `
-      <div class="modal-container" style="max-width: 650px;">
-        <div class="modal-header">
-          <div class="modal-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span>Configuración de AutoMod & Filtros</span>
-          </div>
-          <button class="icon-btn-subtle close-modal-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        <div class="modal-body">
-          <div style="background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;">
-            <div>
-              <div style="font-weight: 700; color: #fff;">AutoMod Activo</div>
-              <div style="font-size: 11px; color: var(--text-dim);">Analiza todos los chats en tiempo real</div>
-            </div>
-            <input type="checkbox" class="automod-master-switch" ${config.enabled ? 'checked' : ''} style="width: 20px; height: 20px;">
-          </div>
-
-          <div class="form-group">
-            <div class="form-label">
-              <span>Protección contra Enlaces y Phishing</span>
-              <label><input type="checkbox" class="block-links-switch" ${config.blockLinks ? 'checked' : ''}> Activar</label>
-            </div>
-            <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 4px;">Lista blanca de dominios permitidos (separados por coma):</div>
-            <input type="text" class="form-input whitelist-input" value="${config.linkWhitelist.join(', ')}">
-          </div>
-
-          <div class="form-group">
-            <div class="form-label">
-              <span>Palabras Prohibidas y Expresiones Regulares (Regex)</span>
-              <span class="mono" style="font-size: 10px;">${config.blacklistWords.length} términos</span>
-            </div>
-            <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 4px;">Usa palabras normales, comodines (*palabra*) o regex (/patron/i) separados por coma:</div>
-            <textarea class="form-textarea blacklist-input" style="min-height: 90px;">${config.blacklistWords.join(', ')}</textarea>
-          </div>
-
-          <div class="form-group">
-            <div class="form-label">
-              <span>Sensibilidad de Mayúsculas (Caps Limit)</span>
-              <span class="mono caps-val-label">${config.capsThreshold}%</span>
-            </div>
-            <input type="range" class="caps-slider" min="40" max="100" value="${config.capsThreshold}" style="accent-color: var(--twitch-purple);">
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn btn-secondary close-modal-btn">Cancelar</button>
-          <button class="btn btn-primary save-automod-btn">Guardar Reglas</button>
-        </div>
-      </div>
-    `;
-
-    this._bindEvents();
-  }
-
-  _bindEvents() {
-    this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
-
-    const capsSlider = this.modal.querySelector('.caps-slider');
-    const capsLabel = this.modal.querySelector('.caps-val-label');
-    capsSlider?.addEventListener('input', (e) => {
-      capsLabel.textContent = `${e.target.value}%`;
-    });
-
-    const saveBtn = this.modal.querySelector('.save-automod-btn');
-    saveBtn?.addEventListener('click', () => {
-      const enabled = this.modal.querySelector('.automod-master-switch').checked;
-      const blockLinks = this.modal.querySelector('.block-links-switch').checked;
-      const whitelistRaw = this.modal.querySelector('.whitelist-input').value;
-      const blacklistRaw = this.modal.querySelector('.blacklist-input').value;
-      const capsThreshold = parseInt(capsSlider.value);
-
-      const linkWhitelist = whitelistRaw.split(',').map(s => s.trim()).filter(Boolean);
-      const blacklistWords = blacklistRaw.split(',').map(s => s.trim()).filter(Boolean);
-
-      automodService.updateConfig({
-        enabled,
-        blockLinks,
-        linkWhitelist,
-        blacklistWords,
-        capsThreshold
-      });
-
-      if (this.onSave) this.onSave();
-      this.close();
-    });
-  }
-}
 
 // ==========================================
 // 4. HOTKEY CHEATSHEET MODAL
@@ -1034,11 +924,7 @@ export class HotkeysModal {
             <span class="kbd-badge">ESC</span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-subtle);">
-            <span style="color: var(--text-main); font-size: 13px;">Abrir Cola de AutoMod</span>
-            <span class="kbd-badge">Alt + A</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-subtle);">
-            <span style="color: var(--text-main); font-size: 13px;">Abrir Registro de Auditoría</span>
+            <span style="color: var(--text-main); font-size: 13px;">Abrir Registro de Moderación Real</span>
             <span class="kbd-badge">Alt + L</span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-subtle);">

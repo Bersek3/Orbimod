@@ -9,7 +9,6 @@ const STORAGE_KEYS = {
   CHANNEL_HISTORY: 'nexus_mod_channel_history_v1',
   SETTINGS: 'nexus_mod_settings_v1',
   MACROS: 'nexus_mod_macros_v1',
-  AUTOMOD_RULES: 'nexus_mod_automod_v1',
   USER_NOTES: 'nexus_mod_user_notes_v1',
   USER_HISTORY: 'nexus_mod_user_history_v1',
   AUDIT_LOGS: 'nexus_mod_audit_logs_v1',
@@ -123,42 +122,6 @@ class StorageService {
       localStorage.setItem(STORAGE_KEYS.MACROS, JSON.stringify(macros));
     } catch (e) {
       console.error('Failed to save macros', e);
-    }
-  }
-
-  // AutoMod Rules & Blacklist
-  getAutoModConfig() {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.AUTOMOD_RULES);
-      return data ? JSON.parse(data) : {
-        enabled: true,
-        blockLinks: true,
-        linkWhitelist: ['twitch.tv', 'kick.com', 'youtube.com', 'discord.gg', 'twitter.com', 'x.com', 'spotify.com'],
-        blacklistWords: ['free nitro', 'viewbot', 'cheap followers', 't.me/', 'discord.gg/scam', 'hack', 'buy followers', 'f*ck', 'nazi', 'doxx'],
-        capsThreshold: 70, // percentage
-        minCapsLength: 10,
-        repeatThreshold: 6, // consecutive repeated characters
-        actionOnMatch: 'flag' // 'flag', 'timeout_600', 'delete', 'ban'
-      };
-    } catch (e) {
-      return {
-        enabled: true,
-        blockLinks: true,
-        linkWhitelist: ['twitch.tv', 'kick.com', 'youtube.com', 'discord.gg'],
-        blacklistWords: ['free nitro', 'viewbot', 'cheap followers', 't.me/'],
-        capsThreshold: 70,
-        minCapsLength: 10,
-        repeatThreshold: 6,
-        actionOnMatch: 'flag'
-      };
-    }
-  }
-
-  saveAutoModConfig(config) {
-    try {
-      localStorage.setItem(STORAGE_KEYS.AUTOMOD_RULES, JSON.stringify(config));
-    } catch (e) {
-      console.error('Failed to save automod rules', e);
     }
   }
 

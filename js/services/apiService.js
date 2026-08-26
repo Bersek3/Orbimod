@@ -211,6 +211,41 @@ export class ApiService {
   }
 
   /**
+   * Fetches official Twitch Helix Moderation Action Logs from /helix/moderation/moderators/actions
+   */
+  async fetchTwitchModerationActions(broadcasterId, moderatorId, token, clientId = null) {
+    if (!token || !broadcasterId || !moderatorId) return { success: false, actions: [] };
+    const cleanToken = token.replace(/^oauth:/i, '').trim();
+    const cid = clientId || this.getTwitchClientId();
+
+    try {
+      const res = await fetch(`https://api.twitch.tv/helix/moderation/moderators/actions?broadcaster_id=${broadcasterId}&moderator_id=${moderatorId}&first=50`, {
+        headers: {
+          'Client-Id': cid,
+          'Authorization': `Bearer ${cleanToken}`
+        }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const actions = (json.data || []).map(a => ({
+          id: 'tw-mod-' + (a.created_at || Date.now()) + '-' + (a.user_id || Math.random()),
+          action: (a.action || 'MOD').toUpperCase(),
+          targetUser: a.user_name || a.user_login || null,
+          channel: a.broadcaster_name || a.broadcaster_login,
+          platform: 'twitch',
+          mod: a.moderator_name || a.moderator_login || 'Moderador',
+          details: Array.isArray(a.args) ? a.args.join(' | ') : (a.action || 'Acción de moderación'),
+          timestamp: a.created_at || new Date().toISOString()
+        }));
+        return { success: true, actions };
+      }
+    } catch (e) {
+      console.warn('[Twitch Helix Mod Actions error]', e);
+    }
+    return { success: false, actions: [] };
+  }
+
+  /**
    * Fetches accurate Twitch channel profile & real-time live status
    */
   async fetchTwitchChannel(channelLogin) {
