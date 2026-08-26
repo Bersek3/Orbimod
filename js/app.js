@@ -136,6 +136,18 @@ class OrbiModApp {
           await this.syncToSupabase();
           await this.syncFromSupabase();
         },
+        onImportSuccess: async (data) => {
+          this.channels = data.channels || [];
+          if (data.settings?.layout) {
+            this.selectedLayout = data.settings.layout;
+            this.setLayout(this.selectedLayout, true);
+          }
+          this.renderChannels();
+          this.initConnections();
+          this.searchHistoryBar?.render();
+          this._updateAccountPills();
+          await this.syncToSupabase();
+        },
         showToast: (m, t) => this.showToast(m, t)
       }
     );

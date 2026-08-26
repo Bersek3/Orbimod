@@ -1426,6 +1426,25 @@ export class UnifiedAccountHubModal {
             </div>
           </div>
 
+          <!-- Multi-Browser 1-Click Code Sync / Transfer -->
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-size: 13px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px;">
+              <span>⚡</span>
+              <span>Transferir Configuración entre Navegadores (Chrome ⇄ Brave ⇄ PC)</span>
+            </div>
+            <div style="font-size: 11.5px; color: var(--text-dim);">
+              Pasa todos tus streamers, disposición de paneles y ajustes de un navegador a otro con 1 solo clic:
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-hub-export-sync-code" class="btn btn-secondary" style="flex: 1; font-size: 11px; padding: 7px 12px; display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.4); color: #93c5fd;">
+                📋 <span>Copiar Código de Mis Canales</span>
+              </button>
+              <button id="btn-hub-import-sync-code" class="btn btn-primary" style="flex: 1; font-size: 11px; padding: 7px 12px; display: flex; align-items: center; justify-content: center; gap: 6px; background: #2563eb;">
+                📥 <span>Pegar e Importar</span>
+              </button>
+            </div>
+          </div>
+
           <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
             <button class="btn btn-secondary close-modal-btn" style="font-size: 11.5px; padding: 6px 16px;">
               Cerrar
@@ -1440,6 +1459,62 @@ export class UnifiedAccountHubModal {
 
   _bindEvents() {
     this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
+
+    // Export Sync Code
+    this.modal.querySelector('#btn-hub-export-sync-code')?.addEventListener('click', () => {
+      const data = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        channels: storageService.getChannels() || [],
+        settings: storageService.getSettings() || {},
+        macros: storageService.getMacros() || [],
+        history: storageService.getChannelHistory() || [],
+        profiles: storageService.getProfiles() || {}
+      };
+      const jsonStr = JSON.stringify(data);
+      const code = 'ORBIMOD:' + btoa(unescape(encodeURIComponent(jsonStr)));
+      navigator.clipboard.writeText(code).then(() => {
+        if (this.showToast) this.showToast('📋 ¡Código de canales copiado! Pégalo en tu otro navegador con "Pegar e Importar".', 'success');
+      }).catch(() => {
+        prompt('Copia tu código de sincronización:', code);
+      });
+    });
+
+    // Import Sync Code
+    this.modal.querySelector('#btn-hub-import-sync-code')?.addEventListener('click', async () => {
+      let code = prompt('Pega aquí el código de sincronización copiado desde tu otro navegador:');
+      if (!code) return;
+      code = code.trim();
+      if (code.startsWith('ORBIMOD:')) {
+        code = code.substring(8);
+      }
+      try {
+        const jsonStr = decodeURIComponent(escape(atob(code)));
+        const data = JSON.parse(jsonStr);
+        if (Array.isArray(data.channels)) {
+          storageService.saveChannels(data.channels);
+        }
+        if (data.settings) {
+          storageService.saveSettings(data.settings);
+        }
+        if (Array.isArray(data.macros)) {
+          storageService.saveMacros(data.macros);
+        }
+        if (Array.isArray(data.history)) {
+          storageService.saveChannelHistory(data.history);
+        }
+        if (data.profiles) {
+          storageService.saveProfiles(data.profiles);
+        }
+        if (this.onImportSuccess) {
+          await this.onImportSuccess(data);
+        }
+        if (this.showToast) this.showToast('✅ ¡Todos tus canales, paneles y ajustes fueron transferidos con éxito!', 'success');
+        this.close();
+      } catch (err) {
+        alert('El código ingresado no es válido. Asegúrate de copiarlo completo.');
+      }
+    });
 
     // Force Cloud Sync Button
     this.modal.querySelector('#btn-hub-force-sync')?.addEventListener('click', async () => {

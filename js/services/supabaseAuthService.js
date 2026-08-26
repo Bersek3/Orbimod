@@ -347,29 +347,15 @@ class SupabaseAuthService {
       layout_type: layoutData.layoutType || layoutData.layout || 'layout-grid-2x2',
       channels: Array.isArray(layoutData.channels) ? layoutData.channels : [],
       active_widgets: Array.isArray(layoutData.activeWidgets) ? layoutData.activeWidgets : [],
-      preferences: layoutData.preferences || {},
-      user_email: userEmail,
+      preferences: {
+        ...(layoutData.preferences || {}),
+        user_email: userEmail
+      },
       updated_at: new Date().toISOString()
     };
 
     if (client) {
       try {
-        // 1. Try helper RPC function if exists
-        try {
-          const { data: rpcData, error: rpcError } = await client.rpc('save_complete_user_layout', {
-            p_user_id: userId,
-            p_layout_type: payload.layout_type,
-            p_channels: payload.channels,
-            p_active_widgets: payload.active_widgets,
-            p_preferences: payload.preferences,
-            p_user_email: userEmail
-          });
-          if (!rpcError && rpcData) {
-            return { success: true, data: rpcData };
-          }
-        } catch (e) {}
-
-        // 2. Direct upsert on user_layouts table
         const { data, error } = await client
           .from('user_layouts')
           .upsert(payload, { onConflict: 'user_id' });
@@ -389,13 +375,15 @@ class SupabaseAuthService {
     // Direct REST Fallback
     const url = this.supabaseConfig.url || DEFAULT_SUPABASE_URL;
     const key = this.supabaseConfig.anonKey || DEFAULT_SUPABASE_KEY;
+    const sessionToken = this.session?.accessToken && this.session.accessToken.length > 20 ? this.session.accessToken : key;
+
     try {
       const resp = await fetch(`${url}/rest/v1/user_layouts?on_conflict=user_id`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': key,
-          'Authorization': `Bearer ${key}`,
+          'Authorization': `Bearer ${sessionToken}`,
           'Prefer': 'resolution=merge-duplicates'
         },
         body: JSON.stringify(payload)
