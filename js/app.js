@@ -132,6 +132,10 @@ class OrbiModApp {
           this._updateAccountPills();
           this.updateLandingAuthStatus();
         },
+        onForceSync: async () => {
+          await this.syncToSupabase();
+          await this.syncFromSupabase();
+        },
         showToast: (m, t) => this.showToast(m, t)
       }
     );
@@ -638,6 +642,9 @@ class OrbiModApp {
     }
 
     await this.syncFromSupabase();
+    if (this.channels && this.channels.length > 0) {
+      await this.syncToSupabase();
+    }
     this.updateLandingAuthStatus();
     this._updateAccountPills();
     this.switchView('deck');
@@ -790,6 +797,14 @@ class OrbiModApp {
         if (Array.isArray(layoutData.channels) && layoutData.channels.length > 0) {
           this.channels = layoutData.channels;
           storageService.saveChannels(this.channels);
+        } else if (this.channels && this.channels.length > 0) {
+          // Cloud had no channels, upload our local channels to cloud
+          await this.syncToSupabase();
+        }
+      } else {
+        // No cloud layout found yet, but local browser has channels -> upload to cloud
+        if (this.channels && this.channels.length > 0) {
+          await this.syncToSupabase();
         }
       }
 
@@ -824,6 +839,7 @@ class OrbiModApp {
     // Refresh UI components with restored cloud state
     if (this.currentView === 'deck') {
       this.renderChannels();
+      this.initConnections();
     }
     this.searchHistoryBar?.render();
   }

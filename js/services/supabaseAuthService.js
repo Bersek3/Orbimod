@@ -326,7 +326,7 @@ class SupabaseAuthService {
   async saveUserLayout(userId, layoutData, email = null) {
     if (!userId || !layoutData) return { success: false };
     const client = this.getClient();
-    const userEmail = email || this.getCurrentUser()?.email || null;
+    const userEmail = (email || this.getCurrentUser()?.email || '').trim().toLowerCase() || null;
 
     const payload = {
       user_id: userId,
@@ -340,12 +340,27 @@ class SupabaseAuthService {
 
     if (client) {
       try {
+        // 1. Try helper RPC function if exists
+        try {
+          const { data: rpcData, error: rpcError } = await client.rpc('save_complete_user_layout', {
+            p_user_id: userId,
+            p_layout_type: payload.layout_type,
+            p_channels: payload.channels,
+            p_active_widgets: payload.active_widgets,
+            p_preferences: payload.preferences,
+            p_user_email: userEmail
+          });
+          if (!rpcError && rpcData) {
+            return { success: true, data: rpcData };
+          }
+        } catch (e) {}
+
+        // 2. Direct upsert on user_layouts table
         const { data, error } = await client
           .from('user_layouts')
           .upsert(payload, { onConflict: 'user_id' });
 
         if (error) {
-          console.warn('[Supabase saveUserLayout upsert warn, fallback to update]', error);
           const updateRes = await client.from('user_layouts').update(payload).eq('user_id', userId);
           if (updateRes.error) {
             await client.from('user_layouts').insert(payload);
@@ -383,12 +398,13 @@ class SupabaseAuthService {
   async loadUserLayout(userId, email = null, twitchLogin = null, kickUsername = null) {
     const client = this.getClient();
     let targetUserId = userId;
+    const cleanEmail = (email || this.getCurrentUser()?.email || '').trim().toLowerCase();
 
     // If userId not provided, try to resolve from profile lookup
-    if (!targetUserId && (email || twitchLogin || kickUsername)) {
+    if (!targetUserId && (cleanEmail || twitchLogin || kickUsername)) {
       try {
-        if (email) {
-          const p = await this.loadLinkedAccounts(null, email);
+        if (cleanEmail) {
+          const p = await this.loadLinkedAccounts(null, cleanEmail);
           if (p.success && p.profile?.id) targetUserId = p.profile.id;
         }
         if (!targetUserId && twitchLogin) {
@@ -402,18 +418,38 @@ class SupabaseAuthService {
       } catch (e) {}
     }
 
-    if (!targetUserId) return { success: false };
+    if (!targetUserId && !cleanEmail) return { success: false };
 
     if (client) {
       try {
-        const { data, error } = await client
-          .from('user_layouts')
-          .select('*')
-          .eq('user_id', targetUserId)
-          .maybeSingle();
+        // 1. Try lookup by user_id
+        if (targetUserId) {
+          const { data, error } = await client
+            .from('user_layouts')
+            .select('*')
+            .eq('user_id', targetUserId)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-        if (!error && data) {
-          return { success: true, layout: data };
+          if (!error && data && Array.isArray(data.channels) && data.channels.length > 0) {
+            return { success: true, layout: data };
+          }
+        }
+
+        // 2. Try lookup by user_email
+        if (cleanEmail) {
+          const { data, error } = await client
+            .from('user_layouts')
+            .select('*')
+            .eq('user_email', cleanEmail)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (!error && data) {
+            return { success: true, layout: data };
+          }
         }
       } catch (e) {
         console.warn('[Supabase loadUserLayout client exception]', e);
@@ -424,17 +460,29 @@ class SupabaseAuthService {
     const url = this.supabaseConfig.url || DEFAULT_SUPABASE_URL;
     const key = this.supabaseConfig.anonKey || DEFAULT_SUPABASE_KEY;
     try {
-      const resp = await fetch(`${url}/rest/v1/user_layouts?user_id=eq.${targetUserId}&select=*`, {
-        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
-      });
-      const data = await resp.json();
-      if (Array.isArray(data) && data.length > 0) {
-        return { success: true, layout: data[0] };
+      if (targetUserId) {
+        const resp = await fetch(`${url}/rest/v1/user_layouts?user_id=eq.${targetUserId}&select=*&order=updated_at.desc&limit=1`, {
+          headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+        });
+        const data = await resp.json();
+        if (Array.isArray(data) && data.length > 0 && Array.isArray(data[0].channels) && data[0].channels.length > 0) {
+          return { success: true, layout: data[0] };
+        }
       }
-      return { success: false };
+      if (cleanEmail) {
+        const resp = await fetch(`${url}/rest/v1/user_layouts?user_email=eq.${cleanEmail}&select=*&order=updated_at.desc&limit=1`, {
+          headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+        });
+        const data = await resp.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return { success: true, layout: data[0] };
+        }
+      }
     } catch (e) {
       return { success: false, error: e.message };
     }
+
+    return { success: false };
   }
 
   /**

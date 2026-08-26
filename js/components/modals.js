@@ -1276,14 +1276,12 @@ export class UnifiedAuthModal {
   }
 }
 
-// ==========================================
-// 8. UNIFIED ACCOUNT & PROFILES HUB MODAL
-// ==========================================
 export class UnifiedAccountHubModal {
-  constructor(modalElement, { onLogout, onUpdate, showToast }) {
+  constructor(modalElement, { onLogout, onUpdate, onForceSync, showToast }) {
     this.modal = modalElement;
     this.onLogout = onLogout;
     this.onUpdate = onUpdate;
+    this.onForceSync = onForceSync;
     this.showToast = showToast;
   }
 
@@ -1338,7 +1336,7 @@ export class UnifiedAccountHubModal {
                 <div style="font-size: 11.5px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis;">${email}</div>
                 <div style="margin-top: 2px;">
                   <span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 3px; border: 1px solid rgba(59, 130, 246, 0.3);">
-                    ${googleLinked ? '☁️ GOOGLE CONECTADO' : 'PERFIL MAESTRO'}
+                    ${googleLinked ? '☁️ CUENTA CONECTADA' : 'PERFIL MAESTRO'}
                   </span>
                 </div>
               </div>
@@ -1356,6 +1354,17 @@ export class UnifiedAccountHubModal {
                 </button>
               `}
             </div>
+          </div>
+
+          <!-- Cloud Sync Status Bar -->
+          <div style="background: rgba(59, 130, 246, 0.08); border: 1px dashed rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <div style="font-size: 11.5px; color: #93c5fd; display: flex; align-items: center; gap: 6px;">
+              <span>💾</span>
+              <span><strong>Nube Activa:</strong> Tus streamers y paneles se guardan en tu cuenta.</span>
+            </div>
+            <button id="btn-hub-force-sync" class="btn btn-primary" style="font-size: 11px; padding: 4px 12px; white-space: nowrap; background: #2563eb;">
+              ☁️ Sincronizar Ahora
+            </button>
           </div>
 
           <div style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -1431,6 +1440,31 @@ export class UnifiedAccountHubModal {
 
   _bindEvents() {
     this.modal.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => this.close()));
+
+    // Force Cloud Sync Button
+    this.modal.querySelector('#btn-hub-force-sync')?.addEventListener('click', async () => {
+      const btn = this.modal.querySelector('#btn-hub-force-sync');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Sincronizando...';
+      }
+      try {
+        if (this.onForceSync) {
+          await this.onForceSync();
+        }
+        if (btn) btn.textContent = '✅ ¡Sincronizado!';
+        if (this.showToast) this.showToast('☁️ Configuración y canales sincronizados con éxito en la nube', 'success');
+      } catch (e) {
+        if (btn) btn.textContent = '❌ Error al sincronizar';
+        if (this.showToast) this.showToast('Error al conectar con la nube', 'danger');
+      }
+      setTimeout(() => {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '☁️ Sincronizar Ahora';
+        }
+      }, 2500);
+    });
 
     // Link Google
     this.modal.querySelector('#btn-hub-link-google')?.addEventListener('click', async () => {
