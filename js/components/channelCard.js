@@ -232,18 +232,18 @@ export class ChannelCard {
     const isMod = Boolean(this.channel.isModerator === true || this.channel.role === 'owner' || this.channel.role === 'mod');
     const isOwner = this.channel.role === 'owner';
     const modRoleBadgeHtml = isOwner
-      ? `<span class="mod-role-pill owner" title="Eres el propietario del canal">👑 PROPIETARIO</span>`
+      ? `<span class="mod-role-pill owner" title="Propietario">👑 OWNER</span>`
       : (isMod
-        ? `<span class="mod-role-pill mod" title="Eres moderador activo en este canal">🛡️ MOD</span>`
-        : `<span class="mod-role-pill stream-only" title="Modo Solo Stream / Espectador (sin permisos de mod)">👁️ SOLO STREAM</span>`);
+        ? `<span class="mod-role-pill mod" title="Moderador">🛡️ MOD</span>`
+        : '');
 
     card.innerHTML = `
       <!-- Header -->
       <div class="channel-header">
         <div class="channel-info">
           <!-- Drag Handle -->
-          <div class="channel-drag-handle" title="Arrastrar y soltar para mover posición del panel">
-            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;">
+          <div class="channel-drag-handle" title="Arrastrar para reordenar panel">
+            <svg viewBox="0 0 24 24" style="width:13px; height:13px; fill:currentColor;">
               <circle cx="8.5" cy="6" r="1.5"/><circle cx="15.5" cy="6" r="1.5"/>
               <circle cx="8.5" cy="12" r="1.5"/><circle cx="15.5" cy="12" r="1.5"/>
               <circle cx="8.5" cy="18" r="1.5"/><circle cx="15.5" cy="18" r="1.5"/>
@@ -254,31 +254,18 @@ export class ChannelCard {
             <div class="channel-title">
               <span>#${this.channel.name}</span>
               <span class="channel-tag ${tagClass}">${platformLabel}</span>
+              ${modRoleBadgeHtml}
             </div>
             <div class="channel-meta">
               ${this.channel.isLive !== false 
-                ? `<span class="live-badge">● EN VIVO</span><span>${this.channel.viewers ? Number(this.channel.viewers).toLocaleString() + ' viewers' : 'Directo'}</span>`
-                : `<span class="live-badge" style="background: rgba(255,255,255,0.08); color: var(--text-dim); border-color: rgba(255,255,255,0.15);">⚪ OFFLINE</span><span>Canal en espera</span>`
+                ? `<span class="live-badge">● LIVE</span><span>${this.channel.viewers ? Number(this.channel.viewers).toLocaleString() + ' viewers' : 'En directo'}</span>`
+                : `<span class="live-badge" style="color: var(--text-dim); opacity: 0.7;">⚪ OFFLINE</span>`
               }
-              ${modRoleBadgeHtml}
             </div>
           </div>
         </div>
 
         <div class="channel-actions">
-          <!-- Move Position Buttons -->
-          <button class="icon-btn-subtle move-left-btn" title="Mover panel a la izquierda (←)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <button class="icon-btn-subtle move-right-btn" title="Mover panel a la derecha (→)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-
-          <!-- Popout Real Chat Button -->
-          <button class="icon-btn-subtle popout-chat-btn" title="Abrir Chat Real en Ventana Popout">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
-          </button>
-
           <!-- Interactive Volume Slider Widget -->
           <div class="channel-volume-control ${currentVol > 0 ? 'active' : ''}">
             <button class="volume-mute-toggle-btn" title="${currentVol > 0 ? 'Silenciar (' + currentVol + '%)' : 'Activar Sonido'}">
@@ -295,22 +282,17 @@ export class ChannelCard {
           </div>
 
           <!-- Video Toggle Button -->
-          <button class="icon-btn-subtle video-toggle-btn ${hasVideo ? 'active' : ''}" title="${hasVideo ? 'Ocultar Video Player' : 'Cargar Video Player'}">
+          <button class="icon-btn-subtle video-toggle-btn ${hasVideo ? 'active' : ''}" title="${hasVideo ? 'Ocultar Video Player' : 'Mostrar Video Player'}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           </button>
 
-          <!-- Reload Player Button -->
-          <button class="icon-btn-subtle reload-player-btn" title="Recargar Stream si hay error de descarga">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-          </button>
-
-          <!-- Clear Chat -->
-          <button class="icon-btn-subtle clear-chat-btn" title="Limpiar Chat (/clear)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>
+          <!-- Popout Real Chat Button -->
+          <button class="icon-btn-subtle popout-chat-btn" title="Abrir Chat Real en Popout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
           </button>
 
           <!-- Remove Channel -->
-          <button class="icon-btn-subtle remove-channel-btn" title="Cerrar Canal de la Vista">
+          <button class="icon-btn-subtle remove-channel-btn" title="Cerrar Canal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
@@ -320,44 +302,8 @@ export class ChannelCard {
       <div class="channel-player-container ${hasVideo ? '' : 'collapsed'}">
         ${hasVideo ? `
           <div class="player-mount-area" style="width:100%; height:100%; position:absolute; top:0; left:0;"></div>
-        ` : `
-          <div class="video-placeholder-lazy" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-dim); font-size: 11.5px; gap: 8px;">
-            <span>📹 Modo Chat Ligero (Haz clic en el ícono de cámara arriba para cargar video)</span>
-          </div>
-        `}
+        ` : ''}
       </div>
-
-      <!-- Room Moderation Modes Bar -->
-      ${isMod ? `
-        <div class="room-modes-bar">
-          <div class="room-mode-toggles">
-            <button class="mode-chip slow-mode-btn ${this.channel.slowMode ? 'active' : ''}" data-mode="slow" title="Activar Modo Lento (Slow Mode)">
-              ⏱️ Slow ${this.channel.slowMode ? this.channel.slowMode + 's' : 'Off'}
-            </button>
-            <button class="mode-chip sub-mode-btn ${this.channel.subOnly ? 'active' : ''}" data-mode="sub" title="Solo Suscriptores pueden chatear">
-              ⭐ Subs
-            </button>
-            <button class="mode-chip follow-mode-btn ${this.channel.followOnly ? 'active' : ''}" data-mode="follow" title="Solo Seguidores pueden chatear">
-              👥 Follow
-            </button>
-            <button class="mode-chip emote-mode-btn ${this.channel.emoteOnly ? 'active' : ''}" data-mode="emote" title="Solo Emotes">
-              😀 Emotes
-            </button>
-          </div>
-          <div class="room-status-indicator mono" style="font-size: 10px; color: var(--text-dim);">
-            ID: ${this.channel.id}
-          </div>
-        </div>
-      ` : `
-        <div class="room-modes-bar not-mod" style="background: rgba(255, 255, 255, 0.02); justify-content: space-between;">
-          <span style="font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 5px;">
-            👁️ <strong style="color: #d1d8e0;">Modo Stream</strong> (Solo lectura / Sin permisos de moderación)
-          </span>
-          <div class="room-status-indicator mono" style="font-size: 10px; color: var(--text-dim);">
-            ID: ${this.channel.id}
-          </div>
-        </div>
-      `}
 
       <!-- 100% Real Native Official Platform Chat Section (Twitch & Kick) -->
       <div class="channel-chat-section">
@@ -496,32 +442,10 @@ export class ChannelCard {
       }
     });
 
-    // 3. Reload Player (Fixes any stalled HLS download or Error #1000)
-    reloadBtn?.addEventListener('click', () => {
-      reloadPlayer();
-    });
-
-    // Clear Chat
-    this.element.querySelector('.clear-chat-btn').addEventListener('click', () => {
-      this.clearMessages();
-      if (this.options.onToggleMode) {
-        this.options.onToggleMode(this.channel, 'clear');
-      }
-    });
-
-    // Move Panel Position Buttons
-    this.element.querySelector('.move-left-btn')?.addEventListener('click', (e) => {
+    // Popout Real Chat
+    this.element.querySelector('.popout-chat-btn')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (this.options.onMoveStep) {
-        this.options.onMoveStep(this.channel.id, -1);
-      }
-    });
-
-    this.element.querySelector('.move-right-btn')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (this.options.onMoveStep) {
-        this.options.onMoveStep(this.channel.id, 1);
-      }
+      window.open(this._getPopoutChatUrl(), `chat_popout_${this.channel.id}`, 'width=420,height=680,menubar=no,toolbar=no,location=no,status=no');
     });
 
     // Drag and Drop Panel Reordering

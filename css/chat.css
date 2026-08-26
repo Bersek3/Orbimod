@@ -88,29 +88,45 @@
 
 /* Channel Card Header */
 .channel-header {
-  padding: 8px 14px;
-  background: rgba(14, 18, 28, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 6px 12px;
+  background: rgba(14, 18, 28, 0.98);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  height: 48px;
+  gap: 8px;
+  height: 46px;
   flex-shrink: 0;
 }
 
 .channel-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
+  flex: 1;
+}
+
+.channel-drag-handle {
+  cursor: grab;
+  color: var(--text-dim);
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  transition: all 0.15s ease;
+}
+
+.channel-drag-handle:hover {
+  opacity: 1;
+  color: #fff;
 }
 
 .channel-avatar {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
   object-fit: cover;
   flex-shrink: 0;
 }
@@ -122,25 +138,27 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  gap: 1px;
 }
 
 .channel-title {
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #fff;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .channel-tag {
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 800;
   text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.3px;
 }
 
 .badge-twitch {
@@ -156,59 +174,52 @@
 }
 
 .channel-meta {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 2px;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .channel-meta .live-badge {
   color: var(--danger-red);
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   font-weight: 700;
-  font-size: 10px;
+  font-size: 9.5px;
   letter-spacing: 0.3px;
 }
 
 .mod-role-pill {
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 800;
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 1px 5px;
+  border-radius: 3px;
   letter-spacing: 0.3px;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
 }
 
 .mod-role-pill.mod {
   background: rgba(0, 210, 211, 0.2);
   color: #00d2d3;
   border: 1px solid rgba(0, 210, 211, 0.45);
-  box-shadow: 0 0 8px rgba(0, 210, 211, 0.2);
 }
 
 .mod-role-pill.owner {
   background: rgba(255, 177, 66, 0.2);
   color: #ffb142;
   border: 1px solid rgba(255, 177, 66, 0.45);
-  box-shadow: 0 0 8px rgba(255, 177, 66, 0.2);
-}
-
-.mod-role-pill.stream-only {
-  background: rgba(255, 255, 255, 0.08);
-  color: #d1d8e0;
-  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .channel-actions {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .icon-btn-subtle {
