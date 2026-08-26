@@ -21,7 +21,8 @@ export class ChannelCard {
   _getPlayerIframeSrc() {
     const isTwitch = this.channel.platform === 'twitch';
     const cleanName = (this.channel.name || '').trim().toLowerCase().replace(/[@#]/g, '');
-    const isMuted = !this.channel.audioEnabled;
+    const vol = (typeof this.channel.volume === 'number') ? this.channel.volume : (this.channel.audioEnabled ? 100 : 0);
+    const isMuted = vol === 0;
 
     if (isTwitch) {
       const hostname = window.location.hostname || 'localhost';
@@ -38,7 +39,7 @@ export class ChannelCard {
       // Twitch stream starts muted in URL for safe autoplay with controls=false to completely remove top-bar and overlays
       return `https://player.twitch.tv/?channel=${encodeURIComponent(cleanName)}&${parentParams}&autoplay=true&muted=true&playsinline=true&controls=false`;
     } else {
-      return `https://player.kick.com/${encodeURIComponent(cleanName)}?autoplay=true&muted=${isMuted}`;
+      return `https://player.kick.com/${encodeURIComponent(cleanName)}?autoplay=true&muted=${isMuted}&volume=${vol / 100}`;
     }
   }
 
@@ -386,7 +387,7 @@ export class ChannelCard {
         reloadPlayer();
       }
 
-      // Apply volume level directly to Twitch Interactive Player
+      // Apply volume level directly to Twitch & Kick Players
       if (this.channel.platform === 'twitch') {
         if (this.twitchPlayer) {
           try {
@@ -395,6 +396,35 @@ export class ChannelCard {
           } catch (e) {
             console.warn('[Twitch setVolume error]', e);
           }
+        }
+      } else if (this.channel.platform === 'kick') {
+        const iframe = playerContainer.querySelector('iframe');
+        if (iframe && iframe.contentWindow) {
+          try {
+            const video = iframe.contentDocument?.querySelector('video');
+            if (video) {
+              video.muted = isMuted;
+              video.volume = vol / 100;
+            }
+          } catch (e) {}
+
+          try {
+            const msgs = [
+              { event: 'setVolume', value: vol / 100 },
+              { event: 'volume', volume: vol / 100 },
+              { type: 'setVolume', data: { volume: vol / 100 } },
+              { type: 'volume', value: vol / 100 },
+              { method: 'setVolume', value: vol / 100 },
+              { event: isMuted ? 'mute' : 'unmute' },
+              { type: isMuted ? 'mute' : 'unmute' },
+              { event: 'setMuted', value: isMuted },
+              { type: 'setMuted', data: { muted: isMuted } }
+            ];
+            msgs.forEach(m => {
+              iframe.contentWindow.postMessage(m, '*');
+              iframe.contentWindow.postMessage(JSON.stringify(m), '*');
+            });
+          } catch (e) {}
         }
       }
 
@@ -408,6 +438,17 @@ export class ChannelCard {
       updateVolumeUI(vol);
     });
 
+    volumeSlider?.addEventListener('change', (e) => {
+      const vol = parseInt(e.target.value, 10);
+      if (this.channel.platform === 'kick') {
+        const isMuted = vol === 0;
+        if (this._kickWasMuted !== isMuted) {
+          this._kickWasMuted = isMuted;
+          reloadPlayer();
+        }
+      }
+    });
+
     volumeSlider?.addEventListener('click', (e) => e.stopPropagation());
 
     muteToggleBtn?.addEventListener('click', (e) => {
@@ -415,9 +456,17 @@ export class ChannelCard {
       if (this.channel.volume > 0) {
         this._lastNonZeroVolume = this.channel.volume;
         updateVolumeUI(0);
+        if (this.channel.platform === 'kick') {
+          this._kickWasMuted = true;
+          reloadPlayer();
+        }
       } else {
         const targetVol = this._lastNonZeroVolume || 100;
         updateVolumeUI(targetVol);
+        if (this.channel.platform === 'kick') {
+          this._kickWasMuted = false;
+          reloadPlayer();
+        }
       }
     });
 
