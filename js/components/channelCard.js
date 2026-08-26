@@ -391,10 +391,30 @@ export class ChannelCard {
       if (this.channel.platform === 'twitch') {
         if (this.twitchPlayer) {
           try {
-            this.twitchPlayer.setMuted(isMuted);
-            this.twitchPlayer.setVolume(vol / 100);
+            if (isMuted) {
+              this.twitchPlayer.setMuted(true);
+            } else {
+              this.twitchPlayer.setMuted(false);
+              this.twitchPlayer.setVolume(vol / 100);
+            }
           } catch (e) {
             console.warn('[Twitch setVolume error]', e);
+          }
+        } else {
+          const iframe = playerContainer.querySelector('iframe');
+          if (iframe && iframe.contentWindow) {
+            try {
+              iframe.contentWindow.postMessage({
+                eventName: 'setMuted',
+                params: { muted: isMuted }
+              }, '*');
+              if (!isMuted) {
+                iframe.contentWindow.postMessage({
+                  eventName: 'setVolume',
+                  params: { volume: vol / 100 }
+                }, '*');
+              }
+            } catch (e) {}
           }
         }
       } else if (this.channel.platform === 'kick') {
@@ -406,24 +426,6 @@ export class ChannelCard {
               video.muted = isMuted;
               video.volume = vol / 100;
             }
-          } catch (e) {}
-
-          try {
-            const msgs = [
-              { event: 'setVolume', value: vol / 100 },
-              { event: 'volume', volume: vol / 100 },
-              { type: 'setVolume', data: { volume: vol / 100 } },
-              { type: 'volume', value: vol / 100 },
-              { method: 'setVolume', value: vol / 100 },
-              { event: isMuted ? 'mute' : 'unmute' },
-              { type: isMuted ? 'mute' : 'unmute' },
-              { event: 'setMuted', value: isMuted },
-              { type: 'setMuted', data: { muted: isMuted } }
-            ];
-            msgs.forEach(m => {
-              iframe.contentWindow.postMessage(m, '*');
-              iframe.contentWindow.postMessage(JSON.stringify(m), '*');
-            });
           } catch (e) {}
         }
       }
