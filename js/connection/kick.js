@@ -94,27 +94,42 @@ export class KickClient {
 
   _subscribeChannel(channelName, chatroomId) {
     if (!this.ws || !this.connected) return;
-    const channelString = `chatrooms.${chatroomId}.v2`;
-    this.ws.send(JSON.stringify({
-      event: 'pusher:subscribe',
-      data: { auth: '', channel: channelString }
-    }));
+    const toSubscribe = new Set();
+    if (chatroomId) {
+      toSubscribe.add(`chatrooms.${chatroomId}.v2`);
+      toSubscribe.add(`channel.${chatroomId}`);
+    }
+    toSubscribe.add(`chatrooms.${channelName}.v2`);
+    toSubscribe.add(`channel.${channelName}`);
+
+    toSubscribe.forEach(chStr => {
+      try {
+        this.ws.send(JSON.stringify({
+          event: 'pusher:subscribe',
+          data: { auth: '', channel: chStr }
+        }));
+      } catch (e) {}
+    });
   }
 
   partChannel(channelName) {
     const cleanChan = channelName.toLowerCase().trim();
     const chatroomId = this.channels.get(cleanChan);
-    if (chatroomId && this.ws && this.connected) {
-      this.ws.send(JSON.stringify({
-        event: 'pusher:unsubscribe',
-        data: { channel: `chatrooms.${chatroomId}.v2` }
-      }));
+    if (this.ws && this.connected) {
+      const toUnsub = [`chatrooms.${chatroomId || cleanChan}.v2`, `channel.${chatroomId || cleanChan}`, `chatrooms.${cleanChan}.v2`];
+      toUnsub.forEach(chStr => {
+        try {
+          this.ws.send(JSON.stringify({
+            event: 'pusher:unsubscribe',
+            data: { channel: chStr }
+          }));
+        } catch (e) {}
+      });
     }
     this.channels.delete(cleanChan);
   }
 
   async _fetchChatroomId(channelName) {
-    // Attempt to lookup Kick chatroom ID or fallback to hash-based pseudo id
     try {
       const res = await fetch(`https://kick.com/api/v2/channels/${channelName}`, {
         headers: { 'Accept': 'application/json' }
@@ -127,8 +142,19 @@ export class KickClient {
       }
     } catch (e) {}
 
-    // Fallback ID representation
-    return 'cr_' + Math.abs(channelName.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0));
+    try {
+      const res = await fetch(`https://kick.com/api/v1/channels/${channelName}`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.chatroom && data.chatroom.id) {
+          return data.chatroom.id;
+        }
+      }
+    } catch (e) {}
+
+    return channelName;
   }
 
   _handleEvent(msg) {

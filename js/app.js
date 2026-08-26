@@ -48,8 +48,8 @@ class OrbiModApp {
     this.auditLogDrawer = new AuditLogDrawer(
       document.getElementById('audit-log-drawer'),
       {
-        onFetchRealLogs: () => this.syncRealModerationLogs(),
-        getChannels: () => this.channels
+        getChannels: () => this.channels,
+        showToast: (m, t) => this.showToast(m, t)
       }
     );
 

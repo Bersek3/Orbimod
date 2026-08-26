@@ -9,12 +9,22 @@ import { storageService } from '../services/storageService.js';
 export class AuditLogDrawer {
   constructor(containerElement, options = {}) {
     this.container = containerElement;
-    this.options = options; // { onFetchRealLogs, getChannels }
+    this.options = options; // { getChannels, showToast }
     this.filterPlatform = 'ALL'; // 'ALL' | 'twitch' | 'kick'
     this.filterAction = 'ALL';
     this.selectedChannelTab = 'ALL'; // 'ALL' or channel name
     this.searchQuery = '';
-    this.groupByChannel = false; // Toggle for grouping view
+
+    // Auto-update in real-time without reloading the page
+    storageService.onAuditLogChange(() => {
+      if (this.isOpen()) {
+        this.render();
+      }
+    });
+  }
+
+  isOpen() {
+    return Boolean(this.container && this.container.classList.contains('open'));
   }
 
   open() {
@@ -142,9 +152,7 @@ export class AuditLogDrawer {
           <span>
             ${this.selectedChannelTab === 'ALL' ? `Mostrando <strong>${filtered.length}</strong> de ${allLogs.length} acciones` : `Canal <strong>#${this.selectedChannelTab}</strong> (${filtered.length} acciones)`}
           </span>
-          <button class="refresh-real-logs-btn" style="background: none; border: none; color: #00d2d3; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="Sincronizar historial con Twitch/Kick">
-            <span>🔄 Sincronizar Logs API</span>
-          </button>
+          <span class="mono" style="font-size: 10.5px; color: var(--success-green);">🟢 Tiempo Real</span>
         </div>
 
         <!-- Real Mod Logs List -->
@@ -153,7 +161,7 @@ export class AuditLogDrawer {
             <div style="text-align: center; color: var(--text-dim); padding: 45px 15px; font-size: 12.5px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px dashed var(--border-subtle);">
               <div style="font-size: 32px; margin-bottom: 8px;">🛡️</div>
               <div style="font-weight: 700; color: #fff; margin-bottom: 4px;">Sin acciones registradas para este filtro</div>
-              <div style="font-size: 11px; max-width: 320px; margin: 0 auto; color: var(--text-dim);">Cualquier sanción (timeouts con duración, vetos permanentes, mensajes borrados) ejecutada en Twitch o Kick aparecerá aquí en tiempo real.</div>
+              <div style="font-size: 11px; max-width: 320px; margin: 0 auto; color: var(--text-dim);">Cualquier sanción (timeouts con duración, vetos permanentes, mensajes borrados) ejecutada en Twitch o Kick aparecerá aquí en tiempo real de forma automática.</div>
             </div>
           ` : ''}
 
@@ -161,13 +169,12 @@ export class AuditLogDrawer {
         </div>
       </div>
 
-      <!-- Drawer Footer -->
-      <div class="drawer-footer" style="padding: 12px 18px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25);">
-        <button class="btn btn-secondary clear-audit-btn" style="color: var(--danger-red); font-size: 11.5px; padding: 6px 12px;">Vaciar Historial</button>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn btn-secondary export-csv-btn" style="font-size: 11.5px; padding: 6px 12px;">Exportar CSV</button>
-          <button class="btn btn-primary export-json-btn" style="font-size: 11.5px; padding: 6px 12px;">Exportar JSON</button>
-        </div>
+      <!-- Drawer Footer: Only Vaciar Historial Button as requested -->
+      <div class="drawer-footer" style="padding: 12px 18px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.25);">
+        <button class="btn btn-secondary clear-audit-btn" style="color: var(--danger-red); font-size: 12px; font-weight: 600; padding: 8px 18px; width: 100%; justify-content: center; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255, 71, 87, 0.3); background: rgba(255, 71, 87, 0.08);">
+          <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          <span>Vaciar Historial</span>
+        </button>
       </div>
     `;
 
@@ -305,32 +312,15 @@ export class AuditLogDrawer {
       this.render();
     });
 
-    // Sync button
-    this.container.querySelector('.refresh-real-logs-btn')?.addEventListener('click', async () => {
-      if (this.options.onFetchRealLogs) {
-        const btn = this.container.querySelector('.refresh-real-logs-btn');
-        if (btn) btn.innerHTML = '<span>⏳ Sincronizando con API...</span>';
-        await this.options.onFetchRealLogs();
-        this.render();
-      }
-    });
-
-    // Clear logs
+    // Clear logs (Vaciar Historial)
     this.container.querySelector('.clear-audit-btn')?.addEventListener('click', () => {
       if (confirm('¿Deseas vaciar todo el registro de auditoría de moderación?')) {
         storageService.clearAuditLogs();
         this.render();
+        if (this.options.showToast) {
+          this.options.showToast('Historial de moderación vaciado correctamente', 'info');
+        }
       }
-    });
-
-    // Export CSV
-    this.container.querySelector('.export-csv-btn')?.addEventListener('click', () => {
-      this._exportCsv();
-    });
-
-    // Export JSON
-    this.container.querySelector('.export-json-btn')?.addEventListener('click', () => {
-      this._exportJson();
     });
   }
 
@@ -346,43 +336,6 @@ export class AuditLogDrawer {
     return `hace ${Math.floor(diffHours / 24)}d`;
   }
 
-  _exportCsv() {
-    const logs = storageService.getAuditLogs();
-    const headers = ['ID', 'Timestamp', 'Platform', 'Channel', 'Action', 'TargetUser', 'Mod', 'Duration', 'Reason', 'Details'];
-    const rows = logs.map(l => [
-      l.id,
-      l.timestamp,
-      l.platform,
-      l.channel,
-      l.action,
-      `"${(l.targetUser || '').replace(/"/g, '""')}"`,
-      `"${(l.mod || '').replace(/"/g, '""')}"`,
-      l.duration || '',
-      `"${(l.reason || '').replace(/"/g, '""')}"`,
-      `"${(l.details || '').replace(/"/g, '""')}"`
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `orbimod_mod_actions_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  }
-
-  _exportJson() {
-    const logs = storageService.getAuditLogs();
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(logs, null, 2));
-    const link = document.createElement('a');
-    link.setAttribute('href', dataStr);
-    link.setAttribute('download', `orbimod_mod_actions_${new Date().toISOString().slice(0, 10)}.json`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  }
-
   _escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -390,5 +343,6 @@ export class AuditLogDrawer {
     return div.innerHTML;
   }
 }
+
 
 

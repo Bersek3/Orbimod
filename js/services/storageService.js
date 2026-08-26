@@ -189,6 +189,23 @@ class StorageService {
   }
 
   // Audit Logs
+  onAuditLogChange(callback) {
+    if (!this._auditListeners) this._auditListeners = new Set();
+    if (typeof callback === 'function') {
+      this._auditListeners.add(callback);
+      return () => this._auditListeners.delete(callback);
+    }
+  }
+
+  _notifyAuditListeners() {
+    if (this._auditListeners) {
+      const logs = this.getAuditLogs();
+      this._auditListeners.forEach(fn => {
+        try { fn(logs); } catch (e) {}
+      });
+    }
+  }
+
   getAuditLogs() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
@@ -201,7 +218,7 @@ class StorageService {
   addAuditLog(entry) {
     try {
       const logs = this.getAuditLogs();
-      logs.unshift({
+      const newEntry = {
         id: entry.id || ('audit-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)),
         action: entry.action || 'MOD', // 'TIMEOUT', 'BAN', 'UNBAN', 'DELETE', 'MODE_CHANGE', 'SHIELD'
         targetUser: entry.targetUser || null,
@@ -213,10 +230,12 @@ class StorageService {
         reason: entry.reason || '',
         details: entry.details || '',
         timestamp: entry.timestamp || new Date().toISOString()
-      });
+      };
+      logs.unshift(newEntry);
       // Keep last 300 logs
       const trimmed = logs.slice(0, 300);
       localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(trimmed));
+      this._notifyAuditListeners();
       return trimmed[0];
     } catch (e) {
       console.error('Failed to save audit log', e);
@@ -227,6 +246,7 @@ class StorageService {
   clearAuditLogs() {
     try {
       localStorage.removeItem(STORAGE_KEYS.AUDIT_LOGS);
+      this._notifyAuditListeners();
     } catch (e) {}
   }
 
