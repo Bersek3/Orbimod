@@ -155,6 +155,33 @@ export class AuditLogDrawer {
           <span class="mono" style="font-size: 10.5px; color: var(--success-green);">🟢 Tiempo Real</span>
         </div>
 
+        ${(() => {
+          if (this.selectedChannelTab === 'ALL') return '';
+          const found = activeChannelsList.find(c => c.name.toLowerCase() === this.selectedChannelTab.toLowerCase());
+          const platform = found ? found.platform : 'kick';
+          const isKick = platform === 'kick';
+          const popoutUrl = isKick 
+            ? `https://dashboard.kick.com/popout/${this.selectedChannelTab}/mod-actions`
+            : `https://www.twitch.tv/moderator/${this.selectedChannelTab}`;
+
+          return `
+            <div style="background: ${isKick ? 'rgba(83, 252, 24, 0.08)' : 'rgba(145, 70, 255, 0.08)'}; border: 1px solid ${isKick ? 'rgba(83, 252, 24, 0.25)' : 'rgba(145, 70, 255, 0.25)'}; border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+              <div>
+                <div style="font-weight: 700; font-size: 12.5px; color: #fff; display: flex; align-items: center; gap: 6px;">
+                  <span>${isKick ? '🟢' : '🟣'} Dashboard Oficial de Moderación</span>
+                  <span style="font-size: 10px; color: var(--text-dim);">#${this.selectedChannelTab}</span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">
+                  Acceso directo a las acciones de moderador de ${isKick ? 'Kick' : 'Twitch'} con tu cuenta vinculada.
+                </div>
+              </div>
+              <a href="${popoutUrl}" target="_blank" rel="noreferrer" class="btn" style="background: ${isKick ? '#53fc18' : '#9146ff'}; color: ${isKick ? '#000' : '#fff'}; font-size: 11.5px; font-weight: 700; padding: 6px 12px; border-radius: 4px; text-decoration: none; display: flex; align-items: center; gap: 5px; white-space: nowrap;" title="Abrir popout oficial de ${isKick ? 'Kick' : 'Twitch'}">
+                <span>Popout Oficial ↗</span>
+              </a>
+            </div>
+          `;
+        })()}
+
         <!-- Real Mod Logs List -->
         <div class="audit-logs-list" style="display: flex; flex-direction: column; gap: 8px;">
           ${filtered.length === 0 ? `
@@ -240,9 +267,10 @@ export class AuditLogDrawer {
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
           <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 2.5px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px;">${badgeText}</span>
-            <span class="channel-tag ${isTwitch ? 'badge-twitch' : 'badge-kick'}" style="font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px;">
-              ${isTwitch ? '🟣' : '🟢'} #${this._escapeHtml(channelName)}
-            </span>
+            <a href="${isTwitch ? `https://www.twitch.tv/moderator/${channelName}` : `https://dashboard.kick.com/popout/${channelName}/mod-actions`}" target="_blank" rel="noreferrer" class="channel-tag ${isTwitch ? 'badge-twitch' : 'badge-kick'}" style="font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Abrir popout oficial de moderación (${isTwitch ? 'Twitch' : 'Kick'})">
+              <span>${isTwitch ? '🟣' : '🟢'} #${this._escapeHtml(channelName)}</span>
+              <svg viewBox="0 0 24 24" style="width: 10px; height: 10px;" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
           </div>
           <span style="font-size: 10.5px; color: var(--text-dim); font-family: var(--font-mono, monospace);" title="${log.timestamp}">
             ${timeStr} <small style="opacity:0.75;">(${relativeTime})</small>

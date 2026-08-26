@@ -287,6 +287,11 @@ export class ChannelCard {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           </button>
 
+          <!-- Popout Official Mod Actions Dashboard -->
+          <a href="${isTwitch ? `https://www.twitch.tv/moderator/${this.channel.name}` : `https://dashboard.kick.com/popout/${this.channel.name}/mod-actions`}" target="_blank" rel="noreferrer" class="icon-btn-subtle popout-mod-btn" title="Abrir Dashboard Oficial de Moderador (${isTwitch ? 'Twitch' : 'Kick'})" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; color: ${isTwitch ? '#bf94ff' : '#53fc18'};">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </a>
+
           <!-- Popout Real Chat Button -->
           <button class="icon-btn-subtle popout-chat-btn" title="Abrir Chat Real en Popout">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
