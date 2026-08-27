@@ -287,6 +287,14 @@ export class ChannelCard {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           </button>
 
+          ${!isTwitch ? `
+            <!-- In-Widget Quick Kick Login Button -->
+            <button class="icon-btn-subtle kick-widget-login-btn" title="Iniciar Sesión en Kick para este Widget" style="color: #53fc18; font-weight: 800; font-size: 11px; padding: 2px 7px; background: rgba(83, 252, 24, 0.12); border: 1px solid rgba(83, 252, 24, 0.3); border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+              <span>🔑</span>
+              <span>Login</span>
+            </button>
+          ` : ''}
+
           <!-- Reload Chat Widget Button -->
           <button class="icon-btn-subtle reload-chat-btn" title="Recargar Chat de este canal" style="color: var(--text-dim);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -319,7 +327,7 @@ export class ChannelCard {
       <!-- 100% Real Native Official Platform Chat Section (Twitch & Kick) -->
       <div class="channel-chat-section">
         <div class="channel-native-chat-container">
-          <iframe class="channel-native-chat-iframe" src="${this._getNativeChatSrc()}" frameborder="0" scrolling="yes" allow="autoplay; fullscreen; clipboard-write; encrypted-media; storage-access;"></iframe>
+          <iframe class="channel-native-chat-iframe" src="${this._getNativeChatSrc()}" frameborder="0" scrolling="yes" allow="autoplay; fullscreen; clipboard-write; encrypted-media; storage-access; forms; modals; popups;"></iframe>
         </div>
       </div>
     `;
@@ -501,6 +509,21 @@ export class ChannelCard {
       if (this.options.onConfigChange) {
         this.options.onConfigChange(this.channel);
       }
+    });
+
+    // In-Widget Kick Login Popup & Auto-Reload
+    this.element.querySelector('.kick-widget-login-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const popup = window.open('https://kick.com/login', 'kick_login_window', 'width=520,height=720,menubar=no,toolbar=no,location=no,status=no');
+      const timer = setInterval(() => {
+        if (!popup || popup.closed) {
+          clearInterval(timer);
+          const iframe = this.element.querySelector('.channel-native-chat-iframe');
+          if (iframe) {
+            iframe.src = this._getNativeChatSrc();
+          }
+        }
+      }, 1000);
     });
 
     // Reload Chat Widget iframe
