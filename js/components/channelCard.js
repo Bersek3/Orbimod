@@ -287,13 +287,18 @@ export class ChannelCard {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           </button>
 
+          <!-- Reload Chat Widget Button -->
+          <button class="icon-btn-subtle reload-chat-btn" title="Recargar Chat de este canal" style="color: var(--text-dim);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+
           <!-- Popout Official Mod Actions Dashboard -->
           <a href="${isTwitch ? `https://www.twitch.tv/moderator/${this.channel.name}` : `https://dashboard.kick.com/popout/${this.channel.name}/mod-actions`}" target="_blank" rel="noreferrer" class="icon-btn-subtle popout-mod-btn" title="Abrir Dashboard Oficial de Moderador (${isTwitch ? 'Twitch' : 'Kick'})" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; color: ${isTwitch ? '#bf94ff' : '#53fc18'};">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </a>
 
           <!-- Popout Real Chat Button -->
-          <button class="icon-btn-subtle popout-chat-btn" title="Abrir Chat Real en Popout">
+          <button class="icon-btn-subtle popout-chat-btn" title="Abrir Chat Oficial en Ventana Popout (${isTwitch ? 'Twitch' : 'Kick'})" style="color: ${isTwitch ? '#bf94ff' : '#53fc18'};">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
           </button>
 
@@ -314,7 +319,7 @@ export class ChannelCard {
       <!-- 100% Real Native Official Platform Chat Section (Twitch & Kick) -->
       <div class="channel-chat-section">
         <div class="channel-native-chat-container">
-          <iframe class="channel-native-chat-iframe" src="${this._getNativeChatSrc()}" frameborder="0" scrolling="yes" allow="autoplay; fullscreen; clipboard-write; encrypted-media;"></iframe>
+          <iframe class="channel-native-chat-iframe" src="${this._getNativeChatSrc()}" frameborder="0" scrolling="yes" allow="autoplay; fullscreen; clipboard-write; encrypted-media; storage-access;"></iframe>
         </div>
       </div>
     `;
@@ -495,6 +500,15 @@ export class ChannelCard {
 
       if (this.options.onConfigChange) {
         this.options.onConfigChange(this.channel);
+      }
+    });
+
+    // Reload Chat Widget iframe
+    this.element.querySelector('.reload-chat-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const iframe = this.element.querySelector('.channel-native-chat-iframe');
+      if (iframe) {
+        iframe.src = this._getNativeChatSrc();
       }
     });
 
