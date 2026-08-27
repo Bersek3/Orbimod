@@ -23,14 +23,40 @@
   <!-- Official Supabase JavaScript SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Instant Active View Preloader (Eliminates F5 Flash from Deck to Landing) -->
+  <!-- Instant Active View Preloader: Only activates deck if user has an active account/session -->
   <script>
     (function() {
       try {
         var hash = (window.location.hash || '').toLowerCase();
+        var isAuthRedirect = hash.indexOf('access_token=') !== -1 || window.location.search.indexOf('code=') !== -1;
+        
+        var hasAccount = false;
+        var s1 = localStorage.getItem('orbimod_supabase_session_v2') || localStorage.getItem('orbimod_supabase_session');
+        var s2 = localStorage.getItem('orbimod_master_hub_v2');
+        var s3 = localStorage.getItem('nexus_mod_profiles_v1');
+        
+        if (s1) {
+          try { var p1 = JSON.parse(s1); if (p1 && (p1.user || p1.accessToken)) hasAccount = true; } catch(e){}
+        }
+        if (!hasAccount && s2) {
+          try { var p2 = JSON.parse(s2); if (p2 && (p2.google || p2.twitch || p2.kick)) hasAccount = true; } catch(e){}
+        }
+        if (!hasAccount && s3) {
+          try { var p3 = JSON.parse(s3); if (p3 && ((p3.twitch && p3.twitch.valid) || (p3.kick && p3.kick.valid))) hasAccount = true; } catch(e){}
+        }
+        
         var saved = localStorage.getItem('orbimod_active_view');
-        if (hash === '#deck' || saved === 'deck' || hash.indexOf('access_token=') !== -1) {
+        
+        // ONLY allow deck directly if the user actually has an account or is completing OAuth
+        if (hasAccount && (hash === '#deck' || saved === 'deck' || isAuthRedirect)) {
           document.documentElement.classList.add('deck-active-init');
+        } else {
+          // If no account, always force landing / home
+          document.documentElement.classList.remove('deck-active-init');
+          localStorage.setItem('orbimod_active_view', 'landing');
+          if (hash === '#deck') {
+            window.location.replace('#home');
+          }
         }
       } catch (e) {}
     })();

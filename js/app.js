@@ -171,11 +171,32 @@ class OrbiModApp {
     );
   }
 
+  hasAnyAccount() {
+    const supabaseUser = supabaseAuthService.getCurrentUser();
+    if (supabaseUser) return true;
+
+    const profiles = storageService.getProfiles();
+    if (profiles && ((profiles.twitch && profiles.twitch.valid) || (profiles.kick && profiles.kick.valid))) {
+      return true;
+    }
+
+    const masterHub = storageService.getMasterHub();
+    if (masterHub && (masterHub.google || (masterHub.twitch && masterHub.twitch.valid) || (masterHub.kick && masterHub.kick.valid))) {
+      return true;
+    }
+
+    return false;
+  }
+
   async init() {
-    // 1. Resolve active view immediately (prevent any landing flash on F5 inside deck)
+    // 1. Resolve active view immediately (prevent any landing flash on F5 inside deck for registered users)
     const savedView = localStorage.getItem('orbimod_active_view');
     const hash = window.location.hash.toLowerCase();
-    const shouldBeDeck = (hash === '#deck' || savedView === 'deck' || hash.includes('access_token='));
+    const isOAuth = hash.includes('access_token=') || window.location.search.includes('code=');
+    const hasAccount = this.hasAnyAccount();
+
+    // STRICT RULE: If the user has never had an account / is not logged in, NEVER go to deck -> ALWAYS landing/home!
+    const shouldBeDeck = (hasAccount || isOAuth) && (hash === '#deck' || savedView === 'deck' || isOAuth);
 
     if (shouldBeDeck) {
       document.documentElement.classList.add('deck-active-init');
@@ -184,6 +205,10 @@ class OrbiModApp {
       document.getElementById('view-deck')?.classList.add('active');
     } else {
       document.documentElement.classList.remove('deck-active-init');
+      localStorage.setItem('orbimod_active_view', 'landing');
+      if (window.location.hash === '#deck') {
+        window.history.replaceState(null, null, '#home');
+      }
       this.currentView = 'landing';
       document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
       document.getElementById('view-landing')?.classList.add('active');
