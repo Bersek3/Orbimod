@@ -89,8 +89,9 @@ export class AuditLogDrawer {
         </div>
         
         <div style="display: flex; align-items: center; gap: 6px;">
-          <a href="${officialUrl}" target="_blank" rel="noreferrer" class="icon-btn-subtle popout-window-btn" title="Abrir en ventana independiente" style="background: rgba(255,255,255,0.06); border: none; border-radius: 4px; padding: 6px; cursor: pointer; color: ${isKick ? '#53fc18' : '#bf94ff'}; text-decoration: none; display: flex; align-items: center;">
-            <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          <a href="${officialUrl}" target="_blank" rel="noreferrer" class="btn btn-secondary popout-window-btn" title="Abrir en ventana independiente (con tu sesión de Kick activa)" style="background: rgba(83, 252, 24, 0.12); border: 1px solid rgba(83, 252, 24, 0.3); border-radius: 6px; padding: 4px 10px; cursor: pointer; color: ${isKick ? '#53fc18' : '#bf94ff'}; text-decoration: none; display: flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700;">
+            <svg viewBox="0 0 24 24" style="width: 13px; height: 13px;" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            <span>Abrir en Ventana Oficial</span>
           </a>
           <button class="icon-btn-subtle close-drawer-btn" style="background: rgba(255,255,255,0.06); border: none; border-radius: 4px; padding: 6px; cursor: pointer; color: var(--text-dim);" title="Cerrar (ESC)">
             <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -129,9 +130,14 @@ export class AuditLogDrawer {
         <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); font-family: var(--font-mono, monospace);">
           <span style="color: ${isKick ? '#53fc18' : '#bf94ff'};">🔗</span> ${officialUrl}
         </div>
-        <button class="copy-mod-url-btn" data-url="${officialUrl}" style="background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 10.5px; white-space: nowrap;" title="Copiar enlace oficial">
-          📋 Copiar Link
-        </button>
+        <div style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+          <a href="${officialUrl}" target="_blank" rel="noreferrer" style="color: #53fc18; font-weight: 700; text-decoration: underline; font-size: 10.5px;">
+            ↗️ Abrir en Kick
+          </a>
+          <button class="copy-mod-url-btn" data-url="${officialUrl}" style="background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 10.5px; white-space: nowrap;" title="Copiar enlace oficial">
+            📋 Copiar Link
+          </button>
+        </div>
       </div>
 
       <!-- Full-Height Official Platform Embedded Iframe -->
